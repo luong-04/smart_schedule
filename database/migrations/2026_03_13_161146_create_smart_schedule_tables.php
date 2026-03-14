@@ -13,10 +13,10 @@ return new class extends Migration
     {
         // 1. Danh mục Môn học (Lý thuyết/Thực hành)
         Schema::create('subjects', function (Blueprint $table) {
-            $table->id();
+            $table->id(); // Đây là ID bạn dùng để truy cập dữ liệu, nó tự động sinh ra
             $table->string('name');
-            $table->string('code')->unique();
-            $table->enum('type', ['theory', 'practice'])->default('theory'); // Phân loại môn
+            // $table->string('code')->unique(); // Xóa hoặc chú thích dòng này để không bị lỗi NOT NULL
+            $table->enum('type', ['theory', 'practice'])->default('theory');
             $table->timestamps();
         });
 
@@ -60,7 +60,6 @@ return new class extends Migration
             $table->foreignId('teacher_id')->constrained()->onDelete('cascade');
             $table->foreignId('subject_id')->constrained()->onDelete('cascade');
             $table->foreignId('class_id')->constrained()->onDelete('cascade');
-            $table->integer('slots_per_week'); // Số tiết môn này tại lớp này
             $table->timestamps();
         });
 
@@ -74,6 +73,14 @@ return new class extends Migration
             $table->integer('period'); // Tiết 1 -> 10
             $table->timestamps();
         });
+        // 7. Bảng cấu hình yêu cầu cho từng môn học (Số tiết/tuần, lớp nào cần...)
+        Schema::create('subject_configurations', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('subject_id')->constrained()->onDelete('cascade');
+            $table->integer('grade'); // 10, 11, hoặc 12
+            $table->integer('slots_per_week')->default(0);
+            $table->timestamps();
+        });
     }
 
     /**
@@ -81,6 +88,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('smart_schedule_tables');
+        // Phải xóa theo thứ tự ngược lại để tránh lỗi khóa ngoại (Foreign Key)
+        Schema::dropIfExists('subject_configurations');
+        Schema::dropIfExists('schedules');
+        Schema::dropIfExists('assignments');
+        Schema::dropIfExists('teachers');
+        Schema::dropIfExists('classes');
+        Schema::dropIfExists('rooms');
+        Schema::dropIfExists('room_types');
+        Schema::dropIfExists('subjects');
     }
 };

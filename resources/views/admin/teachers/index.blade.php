@@ -1,53 +1,44 @@
 @extends('layouts.admin')
-
+@section('title', 'Danh mục Giáo viên')
 @section('content')
-<div class="flex justify-between items-center mb-8">
-    <div>
-        <h3 class="text-2xl font-black text-slate-800">Danh mục Giáo viên</h3>
-        <p class="text-sm text-slate-500">Quản lý thông tin và phân công giảng dạy</p>
+<div class="bg-white rounded-3xl shadow-sm border border-blue-50 overflow-hidden">
+    <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+        <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Danh sách cán bộ giảng dạy</h3>
+        <a href="{{ route('teachers.create') }}" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
+            Thêm giáo viên mới
+        </a>
     </div>
-    <button class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-blue-200 hover:scale-105 transition-all">
-        + Thêm Giáo viên mới
-    </button>
-</div>
-
-<div class="overflow-x-auto">
-    <table class="w-full border-separate border-spacing-y-3">
-        <thead>
-            <tr class="text-slate-400 text-[11px] uppercase tracking-widest">
-                <th class="px-6 py-2 text-left">Mã GV</th>
-                <th class="px-6 py-2 text-left">Họ và Tên</th>
-                <th class="px-6 py-2">Định mức</th>
-                <th class="px-6 py-2 text-left">Phân công hiện tại</th>
-                <th class="px-6 py-2 text-right">Thao tác</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($teachers as $teacher)
-            <tr class="bg-slate-50 hover:bg-white hover:shadow-xl hover:shadow-blue-100/50 transition-all group">
-                <td class="px-6 py-5 rounded-l-3xl font-bold text-blue-600">{{ $teacher->code }}</td>
-                <td class="px-6 py-5">
-                    <p class="font-bold text-slate-700">{{ $teacher->name }}</p>
-                </td>
-                <td class="px-6 py-5 text-center font-semibold text-slate-500">
-                    {{ $teacher->max_slots_week }} tiết/tuần
-                </td>
-                <td class="px-6 py-5">
-                    <div class="flex flex-wrap gap-2">
-                        @foreach($teacher->assignments as $assign)
-                            <span class="px-3 py-1 bg-white border border-blue-100 text-blue-600 rounded-lg text-[10px] font-bold">
-                                {{ $assign->subject->name }} - {{ $assign->classroom->name }}
-                            </span>
-                        @endforeach
-                    </div>
-                </td>
-                <td class="px-6 py-5 rounded-r-3xl text-right">
-                    <button class="p-2 text-slate-400 hover:text-blue-600 transition">Sửa</button>
-                    <button class="p-2 text-slate-400 hover:text-red-500 transition">Xóa</button>
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <tr>
+                    <th class="px-6 py-4">Mã GV</th>
+                    <th class="px-6 py-4">Họ và tên</th>
+                    <th class="px-6 py-4 text-center">Định mức/Tuần</th>
+                    <th class="px-6 py-4 text-center">Số lớp đang dạy</th>
+                    <th class="px-6 py-4 text-right">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50 text-sm">
+                @foreach($teachers as $t)
+                <tr class="hover:bg-blue-50/20 transition-all">
+                    <td class="px-6 py-4 font-bold text-blue-600">{{ $t->code }}</td>
+                    <td class="px-6 py-4 font-bold text-slate-700">{{ $t->name }}</td>
+                    <td class="px-6 py-4 text-center font-bold text-slate-500">{{ $t->max_slots_week }} tiết</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg font-black text-[10px]">{{ $t->assignments_count }} lớp</span>
+                    </td>
+                    <td class="px-6 py-4 text-right flex justify-end gap-3">
+                        <a href="{{ route('teachers.edit', $t->id) }}" class="text-blue-500 font-bold hover:underline">Sửa & Phân công</a>
+                        <form action="{{ route('teachers.destroy', $t->id) }}" method="POST" onsubmit="return confirm('Xác nhận xóa?')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="text-red-400 font-bold">Xóa</button>
+                        </form>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 </div>
 @endsection

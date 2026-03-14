@@ -19,6 +19,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Chia sẻ biến $globalSettings cho tất cả các file .blade.php
+        view()->composer('*', function ($view) {
+            $view->with('globalSettings', \App\Models\Setting::pluck('value', 'key')->all());
+        });
     }
 }

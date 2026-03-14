@@ -1,115 +1,112 @@
 @extends('layouts.admin')
-@section('title', 'Ma trận Xếp lịch')
 
 @section('content')
-<div class="flex flex-col gap-6">
-    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+<div x-data="{ selectedClass: {{ $selectedClassId }} }" class="space-y-6">
+    <div class="flex justify-between items-center bg-blue-50 p-4 rounded-2xl border border-blue-100">
         <div class="flex items-center gap-4">
-            <div class="p-3 bg-blue-100 text-blue-600 rounded-2xl">
-                <span class="material-symbols-outlined">filter_list</span>
-            </div>
-            <div>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Đang hiển thị</p>
-                <form action="{{ route('matrix.index') }}" method="GET" id="classFilter">
-                    <select name="class_id" onchange="this.form.submit()" class="bg-transparent border-none p-0 font-black text-slate-800 focus:ring-0 text-lg uppercase">
-                        @foreach($classes as $class)
-                            <option value="{{ $class->id }}" {{ $selectedClassId == $class->id ? 'selected' : '' }}>
-                                Lớp {{ $class->name }} - Khối {{ $class->grade }}
-                            </option>
-                        @endforeach
-                    </select>
-                </form>
-            </div>
+            <span class="font-bold text-slate-700 uppercase text-xs">Đang xem lớp:</span>
+            <select @change="window.location.href = '?class_id=' + $el.value" class="bg-white border-none rounded-xl shadow-sm px-4 py-2 font-bold text-blue-600 focus:ring-2 focus:ring-blue-500">
+                @foreach($classes as $class)
+                    <option value="{{ $class->id }}" {{ $selectedClassId == $class->id ? 'selected' : '' }}>
+                        Lớp {{ $class->name }}
+                    </option>
+                @endforeach
+            </select>
         </div>
-        <button onclick="saveSchedule()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all">
-            Lưu bản TKB hiện tại
-        </button>
+        <div class="flex gap-2">
+            <button class="bg-white text-slate-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm border border-gray-100">Tự động sắp</button>
+            <button class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-200">Lưu thay đổi</button>
+        </div>
     </div>
 
-    <div class="grid grid-cols-12 gap-6 items-start">
-        <div class="col-span-12 lg:col-span-3 space-y-4">
-            <div class="bg-[#F0F7FF] p-6 rounded-[2rem] border border-blue-100">
-                <h3 class="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">inventory_2</span>
-                    Môn đã phân công
-                </h3>
-                <div class="space-y-3" id="subject-pool">
-                    @foreach($assignments as $assign)
-                    <div class="p-4 bg-white rounded-2xl border border-blue-50 shadow-sm cursor-move hover:shadow-md transition-all group" 
-                         draggable="true" 
-                         data-assignment-id="{{ $assign->id }}">
-                        <p class="font-black text-slate-700 uppercase text-xs tracking-tight">{{ $assign->subject->name }}</p>
-                        <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase">{{ $assign->teacher->name }}</p>
-                    </div>
-                    @endforeach
+    <div class="flex gap-6">
+        <div class="w-1/4 space-y-3">
+            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Môn cần gán</h4>
+            @foreach($assignments as $assign)
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-blue-50 cursor-move hover:border-blue-300 transition-all group">
+                <div class="flex justify-between items-start">
+                    <span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-md font-bold">{{ $assign->subject->name }}</span>
+                    <span class="text-[10px] font-black text-slate-300 italic">x{{ $assign->slots_per_week }} tiết</span>
                 </div>
+                <p class="text-sm font-bold text-slate-700 mt-2">{{ $assign->teacher->name }}</p>
             </div>
+            @endforeach
         </div>
 
-        <div class="col-span-12 lg:col-span-9 bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm">
-            <table class="w-full border-collapse">
+        <div class="flex-1 overflow-x-auto">
+            <table class="w-full border-separate border-spacing-1.5">
                 <thead>
-                    <tr class="bg-slate-50/50">
-                        <th class="px-4 py-5 border-r border-slate-100 text-[10px] font-black text-slate-400 uppercase">Tiết</th>
-                        @foreach(['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'] as $day)
-                        <th class="px-4 py-5 text-[10px] font-black text-slate-700 uppercase tracking-widest">{{ $day }}</th>
+                    <tr>
+                        <th class="w-16"></th>
+                        @foreach(['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'] as $thu)
+                        <th class="p-3 bg-slate-800 text-white rounded-xl text-xs font-bold uppercase tracking-widest">{{ $thu }}</th>
                         @endforeach
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-50">
-                    @for($p = 1; $p <= 5; $p++)
-                    <tr>
-                        <td class="px-4 py-8 border-r border-slate-100 text-center font-black text-slate-300">{{ $p }}</td>
-                        @for($d = 2; $d <= 7; $d++)
-                        <td class="p-2 border-r border-slate-50">
-                            <div class="schedule-slot min-h-[80px] rounded-2xl border-2 border-dashed border-slate-100 flex items-center justify-center p-2 text-center transition-all hover:bg-blue-50/30"
-                                 data-day="{{ $d }}" 
-                                 data-period="{{ $p }}">
-                                </div>
+                <tbody>
+                <div id="source-subjects" class="w-1/4 space-y-3">
+                    @foreach($assignments as $assign)
+                    <div data-id="{{ $assign->id }}" class="bg-white p-4 rounded-2xl shadow-sm border border-blue-50 cursor-grab active:cursor-grabbing">
+                        <span class="text-[10px] font-bold text-blue-600">{{ $assign->subject->name }}</span>
+                        <p class="text-xs font-bold">{{ $assign->teacher->name }}</p>
+                    </div>
+                    @endforeach
+                </div>
+
+                @foreach(range(1, 10) as $tiet)
+                <tr>
+                    <td class="p-3 bg-white text-slate-400 font-black text-center rounded-xl text-xs shadow-sm">Tiết {{ $tiet }}</td>
+                    @foreach(range(2, 7) as $thu)
+                    <td data-day="{{ $thu }}" data-period="{{ $tiet }}" 
+                        class="slot-box h-24 min-w-[120px] bg-white/50 border-2 border-dashed border-slate-200 rounded-2xl transition-all">
                         </td>
-                        @endfor
-                    </tr>
-                    @endfor
+                    @endforeach
+                </tr>
+                @endforeach
                 </tbody>
             </table>
         </div>
     </div>
 </div>
-
+@endsection
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
-    // Logic kéo thả cơ bản (Dùng chung cho v2.0)
-    document.addEventListener('DOMContentLoaded', () => {
-        const draggables = document.querySelectorAll('[draggable="true"]');
-        const slots = document.querySelectorAll('.schedule-slot');
-
-        draggables.forEach(dr => {
-            dr.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('assignment_id', dr.dataset.assignmentId);
-                e.dataTransfer.setData('html', dr.innerHTML);
-            });
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. Kích hoạt kéo từ danh sách "Môn cần gán"
+        const sourceList = document.querySelector('.w-1\/4.space-y-3'); // Selector cho cột trái
+        new Sortable(sourceList, {
+            group: { name: 'shared', pull: 'clone', put: false },
+            sort: false,
+            animation: 150
         });
 
-        slots.forEach(slot => {
-            slot.addEventListener('dragover', (e) => e.preventDefault());
-            slot.addEventListener('drop', (e) => {
-                const id = e.dataTransfer.getData('assignment_id');
-                const html = e.dataTransfer.getData('html');
-                slot.innerHTML = `<div class="bg-blue-600 text-white p-2 rounded-xl text-[10px] font-bold uppercase shadow-lg shadow-blue-100 w-full" data-id="${id}">${html}</div>`;
-                slot.classList.remove('border-dashed');
-                slot.classList.add('border-solid', 'border-blue-100');
+        // 2. Kích hoạt thả vào từng ô Tiết học
+        document.querySelectorAll('.slot-box').forEach(el => {
+            new Sortable(el, {
+                group: 'shared',
+                animation: 150,
+                onAdd: function (evt) {
+                    // Khi thả vào, có thể gọi API kiểm tra trùng lịch ngay lập tức ở đây
+                    const assignmentId = evt.item.getAttribute('data-id');
+                    const day = el.getAttribute('data-day');
+                    const period = el.getAttribute('data-period');
+                    console.log(`Gán ID ${assignmentId} vào Thứ ${day} Tiết ${period}`);
+                }
             });
         });
     });
 
     function saveSchedule() {
-        const data = [];
-        document.querySelectorAll('.schedule-slot [data-id]').forEach(item => {
-            const parent = item.parentElement;
-            data.push({
-                assignment_id: item.dataset.id,
-                day_of_week: parent.dataset.day,
-                period: parent.dataset.period
-            });
+        let data = [];
+        document.querySelectorAll('.slot-box').forEach(box => {
+            const item = box.querySelector('[data-id]');
+            if (item) {
+                data.push({
+                    assignment_id: item.getAttribute('data-id'),
+                    day_of_week: box.getAttribute('data-day'),
+                    period: box.getAttribute('data-period')
+                });
+            }
         });
 
         fetch('{{ route("matrix.save") }}', {
@@ -118,8 +115,7 @@
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({ schedules: data })
-        }).then(res => res.json()).then(data => alert('Đã lưu TKB thành công!'));
+            body: JSON.stringify({ schedules: data, class_id: {{ $selectedClassId }} })
+        }).then(res => alert('Đã lưu thời khóa biểu!'));
     }
 </script>
-@endsection

@@ -75,4 +75,28 @@ class ScheduleController extends Controller
 
         return response()->json(['status' => 'success']);
     }
+    public function list()
+    {
+        // Lấy tất cả lớp học và nhóm theo Khối
+        $groupedClasses = Classroom::all()->groupBy('grade');
+        return view('admin.schedules.list', compact('groupedClasses'));
+    }
+
+    /**
+     * XEM CHI TIẾT TKB CỦA MỘT LỚP
+     */
+    public function show($class_id)
+        {
+            $classroom = Classroom::findOrFail($class_id);
+            
+            // Lấy dữ liệu TKB đã lưu của lớp này
+            $schedules = Schedule::where('schedule_name', 'Học kỳ 1')
+                ->whereHas('assignment', function($query) use ($class_id) {
+                    $query->where('class_id', $class_id);
+                })
+                ->with(['assignment.subject', 'assignment.teacher'])
+                ->get();
+
+            return view('admin.schedules.show', compact('classroom', 'schedules'));
+        }
 }

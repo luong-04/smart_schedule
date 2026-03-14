@@ -30,19 +30,20 @@
             <nav class="flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
                 @php
                     $groups = [
-                        'Tổng quan' => [
+                        'Thống kê & Tổng quan' => [
                             ['name' => 'Dashboard', 'icon' => 'dashboard', 'route' => 'admin.dashboard'],
-                            ['name' => 'TKB đã sắp', 'icon' => 'calendar_today', 'route' => 'matrix.index'],
+                            ['name' => 'TKB đã sắp', 'icon' => 'calendar_today', 'route' => 'schedules.list'],
                         ],
-                        'Danh mục' => [
+                        'Quản lý Danh mục' => [
                             ['name' => 'Giáo viên', 'icon' => 'group', 'route' => 'teachers.index'],
-                            ['name' => 'Lớp học', 'icon' => 'school', 'route' => 'classrooms.index'],
                             ['name' => 'Môn học', 'icon' => 'book', 'route' => 'subjects.index'],
+                            ['name' => 'Lớp học', 'icon' => 'school', 'route' => 'classrooms.index'],
                             ['name' => 'Phòng học', 'icon' => 'meeting_room', 'route' => 'rooms.index'],
                         ],
-                        'Cấu hình' => [
-                            ['name' => 'Chương trình', 'icon' => 'history_edu', 'route' => 'curriculum.index'],
+                        'Nghiệp vụ & Cấu hình' => [
+                            ['name' => 'Chương trình học', 'icon' => 'history_edu', 'route' => 'curriculum.index'],
                             ['name' => 'Ma trận TKB', 'icon' => 'grid_on', 'route' => 'matrix.index'],
+                            ['name' => 'Cài đặt hệ thống', 'icon' => 'settings', 'route' => 'admin.settings.index'],
                         ]
                     ];
                 @endphp

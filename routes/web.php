@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ClassroomController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\RoomTypeController;
 use App\Http\Controllers\Admin\CurriculumController; // Thêm dòng này
+use App\Http\Controllers\Admin\SettingsController;
 
 Route::get('/', function () { return view('welcome'); });
 
@@ -37,4 +38,12 @@ Route::prefix('admin')->group(function () {
     Route::resource('rooms', RoomController::class);
 
     Route::resource('curriculum', CurriculumController::class);
+
+    // 7. TKB đã sắp (Dành cho việc xem/in ấn/phát cho lớp)
+    Route::get('/schedules/list', [ScheduleController::class, 'list'])->name('schedules.list');
+    Route::get('/schedules/view/{class_id}', [ScheduleController::class, 'show'])->name('schedules.show');
+
+    // Sửa lại tên route tại đây (thêm admin.)
+    Route::get('/settings', [SettingsController::class, 'index'])->name('admin.settings.index');
+    Route::post('/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
 });

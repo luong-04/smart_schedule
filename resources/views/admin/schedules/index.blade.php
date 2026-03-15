@@ -15,8 +15,11 @@
     }
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-    .sortable-ghost { opacity: 0.4; }
-    .sortable-drag { cursor: grabbing !important; box-shadow: 0 10px 25px -5px rgba(19, 91, 236, 0.5); }
+    
+    /* Làm mờ thẻ gốc khi đang kéo đi */
+    .sortable-ghost { opacity: 0.3; }
+    /* Định dạng thẻ đang được chuột giữ */
+    .sortable-drag { cursor: grabbing !important; box-shadow: 0 10px 25px -5px rgba(19, 91, 236, 0.3); }
 </style>
 
 <div class="flex flex-col h-[calc(100vh-100px)]">
@@ -100,7 +103,6 @@
 
                     <div class="divide-y divide-slate-100 bg-[#f8f9fa]">
                         @php
-                            // ÉP KIỂU CHỮ THƯỜNG ĐỂ TRÁNH LỖI GÕ HOA TRONG DATABASE
                             $shiftStr = strtolower($classroom->shift ?? 'morning');
                             $fDay = $settings[$shiftStr.'_flag_day'] ?? 2;
                             $fPer = $settings[$shiftStr.'_flag_period'] ?? ($shiftStr == 'morning' ? 1 : 10);
@@ -110,10 +112,11 @@
 
                         @for($p=1; $p<=10; $p++)
                         @if($p == 6)
-                        <div class="schedule-grid bg-slate-100/80">
-                            <div class="p-2 border-r border-slate-200"></div>
-                            <div class="col-span-6 flex items-center justify-center h-8">
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Nghỉ trưa / Đổi ca</span>
+                        <div class="schedule-grid bg-slate-50/50 border-y border-slate-200 relative overflow-hidden">
+                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjBMMjAgMEgxNkwwIDE2djRaTTIwIDE2djRMMTYgMjBMMjAgMTZ6IiBmaWxsPSIjZTFlNWU5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-[0.05]"></div>
+                            <div class="p-2 border-r border-slate-200 relative z-10"></div>
+                            <div class="col-span-6 flex items-center justify-center h-8 relative z-10">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] bg-slate-50/80 px-4 rounded-full">Nghỉ trưa / Đổi ca</span>
                             </div>
                         </div>
                         @endif
@@ -125,29 +128,50 @@
                             
                             @for($d=2; $d<=7; $d++)
                                 @php
-                                    $isFixed = ($d == $fDay && $p == $fPer) || ($d == $mDay && $p == $mPer);
-                                    $fixedLabel = ($d == $fDay && $p == $fPer) ? 'CHÀO CỜ' : 'SINH HOẠT';
+                                    $isFlagSalute = ($d == $fDay && $p == $fPer);
+                                    $isClassMeeting = ($d == $mDay && $p == $mPer);
+                                    $isFixed = $isFlagSalute || $isClassMeeting;
+                                    $fixedLabel = $isFlagSalute ? 'CHÀO CỜ' : 'SINH HOẠT';
                                     $current = $schedules->where('day_of_week', $d)->where('period', $p)->where('assignment.class_id', $selectedClassId)->first();
+                                    
+                                    // KIỂM TRA HIỂN THỊ GVCN VÀO Ô CỐ ĐỊNH
+                                    $assignFlag = $settings['assign_gvcn_flag_salute'] ?? 0;
+                                    $assignMeeting = $settings['assign_gvcn_class_meeting'] ?? 0;
+                                    $gvcnName = $classroom->homeroom_teacher;
+                                    $showGvcn = ($isFlagSalute && $assignFlag) || ($isClassMeeting && $assignMeeting);
+
+                                    // MÀU SẮC ĐẶC TRƯNG CHO CHÀO CỜ VÀ SINH HOẠT
+                                    $fixedBg = $isFlagSalute ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200';
+                                    $fixedText = $isFlagSalute ? 'text-rose-600' : 'text-emerald-600';
+                                    $fixedGvcnBg = $isFlagSalute ? 'bg-rose-100/80 text-rose-800' : 'bg-emerald-100/80 text-emerald-800';
                                 @endphp
                                 
-                                <div class="p-1.5 border-r last:border-r-0 border-slate-200 min-h-[75px] flex items-center justify-center relative bg-white">
+                                <div class="p-1.5 border-r last:border-r-0 border-slate-200 h-[85px] flex items-center justify-center relative bg-white">
                                     @if($isFixed)
-                                        <div class="w-full h-full rounded-xl flex items-center justify-center overflow-hidden bg-slate-100/80 pointer-events-none select-none" 
+                                        <div class="w-full h-full rounded-xl flex flex-col items-center justify-center border {{ $fixedBg }} pointer-events-none select-none relative overflow-hidden" 
                                              data-day="{{ $d }}" data-period="{{ $p }}">
-                                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjBMMjAgMEgxNkwwIDE2djRaTTIwIDE2djRMMTYgMjBMMjAgMTZ6IiBmaWxsPSIjZTFlNWU5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-20"></div>
-                                            <span class="relative z-10 text-[10px] font-black text-slate-400 tracking-widest">{{ $fixedLabel }}</span>
+                                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjBMMjAgMEgxNkwwIDE2djRaTTIwIDE2djRMMTYgMjBMMjAgMTZ6IiBmaWxsPSIjZTFlNWU5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-[0.03]"></div>
+                                            
+                                            <span class="relative z-10 text-[11px] font-black tracking-widest {{ $fixedText }}">{{ $fixedLabel }}</span>
+                                            
+                                            @if($showGvcn && !empty($gvcnName))
+                                                <span class="relative z-10 text-[9px] font-bold mt-1 px-2 py-0.5 truncate max-w-[95%] rounded {{ $fixedGvcnBg }}">{{ $gvcnName }}</span>
+                                            @endif
                                         </div>
                                     @else
-                                        <div class="drop-zone w-full h-full rounded-xl flex items-center justify-center overflow-hidden transition-all border border-dashed border-slate-200 hover:border-primary hover:bg-blue-50/20 cursor-pointer" 
+                                        <div class="drop-zone w-full h-full rounded-xl flex items-center justify-center overflow-hidden transition-all border-2 border-dashed border-slate-200 hover:border-primary hover:bg-blue-50/20 cursor-pointer relative" 
                                              data-day="{{ $d }}" data-period="{{ $p }}">
                                             
                                             @if($current)
-                                                <div class="matrix-item bg-primary/10 border border-primary/30 w-full h-full p-1.5 rounded-xl flex flex-col items-center justify-center cursor-move group-hover:shadow-md" 
+                                                <div class="matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 transition-all overflow-hidden" 
                                                      data-id="{{ $current->assignment_id }}"
                                                      data-teacher-id="{{ $current->assignment->teacher_id }}"
                                                      data-off-days="{{ json_encode($current->assignment->teacher->off_days ?? []) }}">
-                                                    <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full">{{ $current->assignment->subject->name }}</span>
-                                                    <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5">{{ $current->assignment->teacher->name }}</span>
+                                                    
+                                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+                                                    
+                                                    <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">{{ $current->assignment->subject->name }}</span>
+                                                    <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-1 px-2">{{ $current->assignment->teacher->name }}</span>
                                                 </div>
                                             @endif
                                         </div>
@@ -161,10 +185,11 @@
             </div>
             
             <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-500 font-medium">
-                <div class="flex items-center gap-4">
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-md bg-slate-100 border border-slate-300"></span> Ô trống</span>
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-md bg-slate-200"></span> Cố định</span>
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-md bg-primary/20 border border-primary/40"></span> Đã xếp lịch</span>
+                <div class="flex items-center gap-5">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-slate-100 border border-slate-300"></span> Ô trống</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-rose-50 border border-rose-200"></span> Chào cờ</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-emerald-50 border border-emerald-200"></span> Sinh hoạt lớp</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-primary/20 border border-primary/40"></span> Đã xếp lịch</span>
                 </div>
                 <div>Lưu ý: Chỉ những thẻ nằm trong lưới ma trận mới được lưu.</div>
             </div>
@@ -213,7 +238,7 @@
     document.querySelectorAll('.matrix-item').forEach(item => { attachDoubleClickEvent(item); });
 
     // ==========================================
-    // 2. THUẬT TOÁN ĐẾM SỐ TIẾT CẢI TIẾN
+    // 2. THUẬT TOÁN ĐẾM SỐ TIẾT
     // ==========================================
     function getConsecutiveSlotsCount(teacherId, day, targetPeriod) {
         let periods = [];
@@ -222,14 +247,12 @@
             if (item) periods.push(parseInt(box.dataset.period));
         });
         
-        // CỘNG THÊM TIẾT ĐANG ĐƯỢC THẢ VÀO ĐỂ ĐẾM LUÔN (Fix lỗi đếm chậm 1 nhịp)
         if (targetPeriod !== undefined) {
             periods.push(parseInt(targetPeriod));
         }
         
         if (periods.length === 0) return 0;
         
-        // Loại bỏ trùng lặp và sắp xếp
         periods = [...new Set(periods)].sort((a,b) => a - b);
         
         let maxCons = 1, currentCons = 1;
@@ -245,7 +268,7 @@
     }
 
     // ==========================================
-    // 3. TẠO DRAG & DROP
+    // 3. TẠO DRAG & DROP KHÔNG BỊ GIẬT/PHÓNG TO
     // ==========================================
     document.querySelectorAll('.drop-zone').forEach(el => {
         new Sortable(el, {
@@ -259,23 +282,20 @@
                 const targetPeriod = evt.to.dataset.period;
                 const isFromSidebar = evt.from.id === 'external-events';
 
-                // LỚP CHẶN 1: NẾU ĐÃ HẾT TIẾT MÀ CỐ KÉO VÀO -> XÓA THẺ, BÁO LỖI
                 if (isFromSidebar && teacherSlots[tid] <= 0) {
                     alert("⚠️ HỆ THỐNG CHẶN: Môn này đã được xếp hết số tiết khả dụng!");
                     item.remove();
                     return;
                 }
 
-                // LỚP CHẶN 2: LUẬT LIÊN TIẾP
                 let currentConsecutive = getConsecutiveSlotsCount(tid, targetDay, targetPeriod);
                 if (currentConsecutive > MAX_CONSECUTIVE) {
                     alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên này bị giới hạn dạy tối đa ${MAX_CONSECUTIVE} tiết liên tiếp!`);
                     if (isFromSidebar) item.remove();
-                    else evt.from.appendChild(item); // Trả về nếu kéo trong lưới
+                    else evt.from.appendChild(item); 
                     return;
                 }
 
-                // XỬ LÝ KÉO ĐÈ
                 Array.from(evt.to.children).forEach(child => {
                     if (child !== item) {
                         if (child.dataset.teacherId) teacherSlots[child.dataset.teacherId]++;
@@ -295,8 +315,13 @@
                     const subjectName = item.querySelector('.subject-name').innerText;
                     const teacherName = item.querySelector('.teacher-name').innerText;
                     
-                    item.className = "matrix-item bg-primary/10 border border-primary/30 w-full h-full p-1.5 rounded-xl flex flex-col items-center justify-center cursor-move";
-                    item.innerHTML = `<span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full">${subjectName}</span><span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5">${teacherName}</span>`;
+                    // Vẽ lại Giao diện Thẻ Môn trong lưới (Không bị phình to)
+                    item.className = "matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 transition-all overflow-hidden";
+                    item.innerHTML = `
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+                        <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">${subjectName}</span>
+                        <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-1 px-2">${teacherName}</span>
+                    `;
                     
                     attachDoubleClickEvent(item);
                 }

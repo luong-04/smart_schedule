@@ -32,20 +32,17 @@
         </div>
 
         <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-8 border-b border-slate-50 flex items-center gap-3 bg-slate-50/50">
-                <span class="material-symbols-outlined text-indigo-600">lock_clock</span>
-                <h3 class="font-black text-slate-700 uppercase tracking-widest text-sm">Thiết lập Chào cờ & Sinh hoạt lớp (Theo Buổi)</h3>
+            <div class="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-indigo-600">lock_clock</span>
+                    <h3 class="font-black text-slate-700 uppercase tracking-widest text-sm">Thiết lập Tiết Cố định (Chào cờ & Sinh hoạt)</h3>
+                </div>
             </div>
             
             <div class="p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div class="space-y-6 p-8 bg-blue-50/30 rounded-[2.5rem] border border-blue-100 relative">
-                    <span class="absolute top-4 right-6 text-[10px] font-black text-blue-300 uppercase">Shift: Morning</span>
-                    <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                        <h4 class="text-xs font-black text-blue-700 uppercase tracking-wider">Khối học SÁNG</h4>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
+                    <span class="absolute top-4 right-6 text-[10px] font-black text-blue-300 uppercase">Khối Sáng</span>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
                         <div class="space-y-2 text-center bg-white p-4 rounded-3xl shadow-sm">
                             <label class="text-[9px] font-black text-slate-400 uppercase">Chào cờ (Thứ)</label>
                             <select name="morning_flag_day" class="w-full border-none text-xs font-bold text-center">
@@ -69,13 +66,8 @@
                 </div>
 
                 <div class="space-y-6 p-8 bg-orange-50/30 rounded-[2.5rem] border border-orange-100 relative">
-                    <span class="absolute top-4 right-6 text-[10px] font-black text-orange-300 uppercase">Shift: Afternoon</span>
-                    <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-orange-500"></span>
-                        <h4 class="text-xs font-black text-orange-700 uppercase tracking-wider">Khối học CHIỀU</h4>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
+                    <span class="absolute top-4 right-6 text-[10px] font-black text-orange-300 uppercase">Khối Chiều</span>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
                         <div class="space-y-2 text-center bg-white p-4 rounded-3xl shadow-sm">
                             <label class="text-[9px] font-black text-slate-400 uppercase">Chào cờ (Thứ)</label>
                             <select name="afternoon_flag_day" class="w-full border-none text-xs font-bold text-center">
@@ -98,7 +90,35 @@
                     </div>
                 </div>
             </div>
-        </div>
+
+            <div class="p-8 border-t border-slate-100">
+                <h4 class="text-sm font-black text-purple-700 uppercase tracking-tight mb-4">Tự động gán GVCN vào tiết Cố định</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <div class="flex items-center justify-between p-6 bg-purple-50/50 rounded-3xl border border-purple-100 shadow-sm">
+                        <div>
+                            <p class="text-xs font-black text-purple-800 uppercase">Tiết Chào Cờ</p>
+                            <p class="text-[10px] text-slate-500 font-medium mt-1">Gán GVCN và <span class="text-rose-500 font-bold">trừ 1 tiết</span></p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="assign_gvcn_flag_salute" value="1" {{ ($settings['assign_gvcn_flag_salute'] ?? 0) ? 'checked' : '' }} class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-purple-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white shadow-inner"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between p-6 bg-purple-50/50 rounded-3xl border border-purple-100 shadow-sm">
+                        <div>
+                            <p class="text-xs font-black text-purple-800 uppercase">Tiết Sinh Hoạt Lớp</p>
+                            <p class="text-[10px] text-slate-500 font-medium mt-1">Gán GVCN và <span class="text-rose-500 font-bold">trừ 1 tiết</span></p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="assign_gvcn_class_meeting" value="1" {{ ($settings['assign_gvcn_class_meeting'] ?? 0) ? 'checked' : '' }} class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-purple-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white shadow-inner"></div>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
 
         <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
             <div class="p-8 border-b border-slate-50 flex items-center gap-3 bg-slate-50/50">

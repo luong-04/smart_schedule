@@ -32,7 +32,7 @@ class ScheduleController extends Controller
         $classes = Classroom::all();
         $selectedClassId = $request->get('class_id', $classes->first()?->id);
         
-        // 1. Lấy thông tin lớp học hiện tại để biết buổi học (shift)
+        // 1. Lấy thông tin lớp học hiện tại để biết buổi học (shift) và GVCN
         $classroom = Classroom::findOrFail($selectedClassId);
     
         // 2. Lấy danh sách phân công của lớp này
@@ -40,22 +40,39 @@ class ScheduleController extends Controller
             ->where('class_id', $selectedClassId)
             ->get();
     
-        // 3. Lấy dữ liệu Thời khóa biểu đã lưu (Biến gây lỗi nếu thiếu)
+        // 3. Lấy dữ liệu Thời khóa biểu đã lưu
         $schedules = Schedule::where('schedule_name', 'Học kỳ 1')
             ->with(['assignment.subject', 'assignment.teacher'])
             ->get();
     
-        // 4. Lấy các cài đặt (Chào cờ, Sinh hoạt...)
+        // 4. Lấy các cài đặt
         $settings = \App\Models\Setting::pluck('value', 'key')->all();
+
+        // LOGIC MỚI: TÍNH ĐỊNH MỨC ĐỘC LẬP CHÀO CỜ VÀ SINH HOẠT CÓ KIỂM TRA TRỐNG GVCN
+        $assignFlag = $settings['assign_gvcn_flag_salute'] ?? 0;
+        $assignMeeting = $settings['assign_gvcn_class_meeting'] ?? 0;
+        
+        foreach($assignments as $as) {
+            $used = Schedule::whereHas('assignment', function($q) use ($as) {
+                $q->where('teacher_id', $as->teacher_id);
+            })->count();
+            
+            // CHỈ TRỪ TIẾT NẾU LỚP ĐÃ CÓ GVCN VÀ TRÙNG TÊN VỚI GIÁO VIÊN NÀY
+            if (!empty($classroom->homeroom_teacher) && $as->teacher->name === $classroom->homeroom_teacher) {
+                if ($assignFlag) {
+                    $used += 1; // Trừ 1 tiết Chào cờ
+                }
+                if ($assignMeeting) {
+                    $used += 1; // Trừ 1 tiết Sinh hoạt lớp
+                }
+            }
+            
+            $as->teacher->remaining_slots = $as->teacher->max_slots_week - $used;
+        }
     
-        // 5. Quan trọng: Truyền tất cả biến vào compact()
+        // 5. Truyền tất cả biến vào compact()
         return view('admin.schedules.index', compact(
-            'classes', 
-            'assignments', 
-            'schedules', 
-            'selectedClassId', 
-            'classroom', 
-            'settings'
+            'classes', 'assignments', 'schedules', 'selectedClassId', 'classroom', 'settings'
         ));
     }
 
@@ -67,10 +84,11 @@ class ScheduleController extends Controller
         $classroom = Classroom::findOrFail($classId);
         $settings = \App\Models\Setting::pluck('value', 'key')->all();
     
-        $shift = $classroom->shift; // 'morning' hoặc 'afternoon'
-        $maxConsecutive = $settings['max_consecutive_slots'] ?? 3; // Lấy cài đặt giới hạn số tiết
+        // ÉP KIỂU CHỮ THƯỜNG ĐỂ TRÁNH LỖI GÕ HOA TRONG DATABASE
+        $shiftStr = strtolower($classroom->shift ?? 'morning');
+        $maxConsecutive = $settings['max_consecutive_slots'] ?? 3; 
     
-        $teacherDayPeriods = []; // Mảng dùng để đếm số tiết liên tiếp
+        $teacherDayPeriods = []; 
     
         foreach ($schedules as $item) {
             $assignment = Assignment::with('teacher')->findOrFail($item['assignment_id']);
@@ -78,14 +96,14 @@ class ScheduleController extends Controller
             $d = $item['day_of_week'];
             $p = $item['period'];
     
-            // 1. KHÓA CỨNG: Kiểm tra đè lên tiết cố định (Chào cờ/Sinh hoạt)
-            $flagDay = $settings[$shift.'_flag_day'] ?? 2;
-            $flagPeriod = $settings[$shift.'_flag_period'] ?? ($shift == 'morning' ? 1 : 10);
-            $meetDay = $settings[$shift.'_meeting_day'] ?? 7;
-            $meetPeriod = $settings[$shift.'_meeting_period'] ?? ($shift == 'morning' ? 5 : 10);
+            // 1. KHÓA CỨNG: Kiểm tra vị trí cố định theo shiftStr
+            $flagDay = $settings[$shiftStr.'_flag_day'] ?? 2;
+            $flagPeriod = $settings[$shiftStr.'_flag_period'] ?? ($shiftStr == 'morning' ? 1 : 10);
+            $meetDay = $settings[$shiftStr.'_meeting_day'] ?? 7;
+            $meetPeriod = $settings[$shiftStr.'_meeting_period'] ?? ($shiftStr == 'morning' ? 5 : 10);
     
             if (($d == $flagDay && $p == $flagPeriod) || ($d == $meetDay && $p == $meetPeriod)) {
-                return response()->json(['status' => 'error', 'message' => "Hệ thống từ chối: Không được phép xếp môn vào vị trí cố định của Chào cờ hoặc Sinh hoạt lớp!"]);
+                return response()->json(['status' => 'error', 'message' => "Hệ thống từ chối: Không được phép xếp môn đè lên Chào cờ hoặc Sinh hoạt lớp!"]);
             }
     
             // 2. Thu thập dữ liệu để kiểm tra số tiết liên tiếp
@@ -161,22 +179,5 @@ class ScheduleController extends Controller
         $settings = \App\Models\Setting::pluck('value', 'key')->all();
 
         return view('admin.schedules.list', compact('groupedClasses', 'schedules', 'settings'));
-    }
-
-    // Xem chi tiết/In TKB
-    public function show($class_id)
-    {
-        $classroom = Classroom::findOrFail($class_id);
-        $schedules = Schedule::where('schedule_name', 'Học kỳ 1')
-            ->whereHas('assignment', function($q) use ($class_id) { 
-                $q->where('class_id', $class_id); 
-            })
-            ->with(['assignment.subject', 'assignment.teacher'])
-            ->get();
-            
-        // Thêm dòng này để lấy thông tin Tên trường, Hiệu trưởng...
-        $settings = Setting::pluck('value', 'key')->all();
-
-        return view('admin.schedules.show', compact('classroom', 'schedules', 'settings'));
     }
 }

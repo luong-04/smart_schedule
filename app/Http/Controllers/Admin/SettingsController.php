@@ -17,11 +17,16 @@ class SettingsController extends Controller
 
     public function update(Request $request)
     {
-        // Loại bỏ token để lặp qua dữ liệu
         $data = $request->except('_token');
 
-        // Các checkbox nếu không check sẽ không gửi lên, ta cần gán giá trị 0
-        $checkboxes = ['check_teacher_conflict', 'check_room_conflict'];
+        // Bổ sung 2 biến mới vào mảng checkboxes
+        $checkboxes = [
+            'check_teacher_conflict', 
+            'check_room_conflict', 
+            'assign_gvcn_flag_salute', 
+            'assign_gvcn_class_meeting'
+        ];
+        
         foreach($checkboxes as $cb) {
             if (!$request->has($cb)) {
                 $data[$cb] = '0';
@@ -29,10 +34,7 @@ class SettingsController extends Controller
         }
 
         foreach ($data as $key => $value) {
-            Setting::updateOrCreate(
-                ['key' => $key],
-                ['value' => $value]
-            );
+            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
         }
 
         return back()->with('success', 'Hệ thống đã cập nhật cấu hình mới nhất!');

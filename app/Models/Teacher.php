@@ -9,18 +9,30 @@ class Teacher extends Model
 {
     use HasFactory;
 
-    // Cho phép lưu dữ liệu hàng loạt cho các trường này
     protected $fillable = [
         'name',
         'code',
-        'max_slots_week'
+        'max_slots_week',
+        'off_days'
     ];
 
-    /**
-     * Liên kết với bảng Phân công (Assignments)
-     */
+    protected $casts = [
+        'off_days' => 'array' // Tự động convert JSON <-> Array
+    ];
+
     public function assignments()
     {
         return $this->hasMany(Assignment::class);
+    }
+    public function getRemainingSlotsAttribute() {
+        // Tổng tiết tối đa
+        $max = $this->max_slots_week;
+        
+        // Đếm số tiết đã được xếp trong bảng schedules thông qua assignments
+        $used = \App\Models\Schedule::whereHas('assignment', function($q) {
+            $q->where('teacher_id', $this->id);
+        })->count();
+        
+        return $max - $used;
     }
 }

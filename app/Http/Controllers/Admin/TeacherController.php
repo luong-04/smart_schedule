@@ -4,18 +4,23 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Teacher;
-
+use App\Models\Subject;
+use App\Models\Classroom;
+use App\Models\Assignment;
 use Illuminate\Http\Request;
 
 class TeacherController extends Controller
 {
     public function index() {
+        // Lấy danh sách giáo viên kèm số lượng lớp đang dạy
         $teachers = Teacher::withCount('assignments')->get();
         return view('admin.teachers.index', compact('teachers'));
     }
 
     public function create() {
-        return view('admin.teachers.create');
+        $subjects = Subject::all();
+        $classrooms = Classroom::all();
+        return view('admin.teachers.create', compact('subjects', 'classrooms'));
     }
 
     public function store(Request $request) {
@@ -23,20 +28,29 @@ class TeacherController extends Controller
             'name' => 'required|string|max:255',
             'code' => 'required|string|unique:teachers,code',
             'max_slots_week' => 'required|integer|min:1',
+            'off_days' => 'nullable|array',
         ]);
 
-        Teacher::create($data);
-        return redirect()->route('teachers.index')->with('success', 'Đã thêm giáo viên!');
+        // 1. Tạo giáo viên
+        $teacher = Teacher::create($data);
+
+        // 2. Nếu có chọn lớp & môn ngay lúc tạo, thực hiện phân công luôn
+        if ($request->filled('class_id') && $request->filled('subject_id')) {
+            Assignment::create([
+                'teacher_id' => $teacher->id,
+                'class_id' => $request->class_id,
+                'subject_id' => $request->subject_id,
+            ]);
+        }
+
+        return redirect()->route('teachers.index')->with('success', 'Đã thêm giáo viên và thực hiện phân công!');
     }
 
     public function edit(Teacher $teacher)
     {
-        $subjects = \App\Models\Subject::all();
-        $classrooms = \App\Models\Classroom::all(); // Lấy danh sách lớp để gán phân công
-        
-        // Nạp sẵn các phân công của giáo viên này kèm thông tin lớp và môn
+        $subjects = Subject::all();
+        $classrooms = Classroom::all();
         $teacher->load('assignments.subject', 'assignments.classroom');
-
         return view('admin.teachers.edit', compact('teacher', 'subjects', 'classrooms'));
     }
 
@@ -45,14 +59,15 @@ class TeacherController extends Controller
             'name' => 'required|string|max:255',
             'code' => 'required|string|unique:teachers,code,' . $teacher->id,
             'max_slots_week' => 'required|integer|min:1',
+            'off_days' => 'nullable|array', // Cập nhật lịch nghỉ
         ]);
 
         $teacher->update($data);
-        return redirect()->route('teachers.index')->with('success', 'Đã cập nhật thông tin!');
+        return redirect()->route('teachers.index')->with('success', 'Đã cập nhật hồ sơ giáo viên!');
     }
 
     public function destroy(Teacher $teacher) {
         $teacher->delete();
-        return redirect()->route('teachers.index')->with('success', 'Đã xóa giáo viên!');
+        return back()->with('success', 'Đã xóa giáo viên!');
     }
 }

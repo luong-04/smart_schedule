@@ -32,7 +32,7 @@ Route::prefix('admin')->group(function () {
 
     // 6. Ma trận TKB (Smart Matrix)
     Route::get('/matrix', [ScheduleController::class, 'index'])->name('matrix.index');
-    Route::post('/matrix/save', [ScheduleController::class, 'save'])->name('matrix.save');
+    Route::post('/matrix/save', [ScheduleController::class, 'save'])->name('admin.schedules.save');
 
     Route::resource('room-types', RoomTypeController::class);
     Route::resource('rooms', RoomController::class);

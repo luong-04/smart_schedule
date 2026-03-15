@@ -1,93 +1,97 @@
 @extends('layouts.admin')
-
 @section('title', 'Hồ sơ & Phân công Giáo viên')
-
 @section('content')
 <div class="max-w-5xl mx-auto space-y-6">
-    <div class="bg-white p-8 rounded-3xl shadow-sm border border-blue-50">
-        <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest mb-6">Thông tin cán bộ</h3>
-        <form action="{{ route('teachers.update', $teacher->id) }}" method="POST" class="grid grid-cols-12 gap-6">
-            @csrf @method('PUT')
-            <div class="col-span-4">
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">Họ và tên</label>
-                <input type="text" name="name" value="{{ $teacher->name }}" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div class="col-span-3">
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">Mã định danh</label>
-                <input type="text" name="code" value="{{ $teacher->code }}" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 uppercase">
-            </div>
-            <div class="col-span-3">
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">Tiết tối đa/Tuần</label>
-                <input type="number" name="max_slots_week" value="{{ $teacher->max_slots_week }}" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div class="col-span-2 flex items-end">
-                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all">Lưu</button>
-            </div>
-        </form>
-    </div>
+    <form action="{{ route('teachers.update', $teacher->id) }}" method="POST" class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+        @csrf @method('PUT')
+        <div class="flex justify-between items-center mb-8">
+            <h3 class="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                <span class="material-symbols-outlined text-blue-600">person_edit</span> Chỉnh sửa hồ sơ
+            </h3>
+            <button type="submit" class="text-blue-600 font-black text-[10px] uppercase hover:underline">Cập nhật thông tin</button>
+        </div>
 
-    <div class="bg-[#F0F7FF] p-8 rounded-3xl border border-blue-100 shadow-sm">
-        <h3 class="text-xs font-black text-blue-700 uppercase tracking-widest mb-6 flex items-center gap-2">
-            <span class="w-2 h-4 bg-blue-600 rounded-full"></span>
-            Phân công lớp và môn dạy
-        </h3>
-
-        <form action="{{ route('assignments.store') }}" method="POST" class="flex gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-blue-50">
-            @csrf
-            <input type="hidden" name="teacher_id" value="{{ $teacher->id }}">
-            
-            <div class="flex-1">
-                <select name="class_id" required class="w-full bg-slate-50 border-none rounded-xl text-xs py-3">
-                    <option value="">Chọn lớp học...</option>
-                    @foreach($classrooms as $class)
-                        <option value="{{ $class->id }}">Lớp {{ $class->name }} (Khối {{ $class->grade }})</option>
-                    @endforeach
-                </select>
+        <div class="grid grid-cols-12 gap-6 mb-8">
+            <div class="col-span-12 md:col-span-4">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Họ và tên</label>
+                <input type="text" name="name" value="{{ $teacher->name }}" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner">
             </div>
-
-            <div class="flex-1">
-                <select name="subject_id" required class="w-full bg-slate-50 border-none rounded-xl text-xs py-3">
-                    <option value="">Chọn môn học...</option>
-                    @foreach($subjects as $sub)
-                        <option value="{{ $sub->id }}">{{ $sub->name }}</option>
-                    @endforeach
-                </select>
+            <div class="col-span-12 md:col-span-4">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Mã định danh</label>
+                <input type="text" name="code" value="{{ $teacher->code }}" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner uppercase">
             </div>
+            <div class="col-span-12 md:col-span-4">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Định mức/Tuần</label>
+                <input type="number" name="max_slots_week" value="{{ $teacher->max_slots_week }}" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner">
+            </div>
+        </div>
 
-            <button type="submit" class="bg-blue-600 text-white font-black px-8 py-2 rounded-xl text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all">
-                Gán nhiệm vụ
-            </button>
-        </form>
+        <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+            <h4 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">event_busy</span> Đăng ký lịch nghỉ
+            </h4>
+            <div class="flex flex-wrap gap-3">
+                @foreach([2 => 'Thứ 2', 3 => 'Thứ 3', 4 => 'Thứ 4', 5 => 'Thứ 5', 6 => 'Thứ 6', 7 => 'Thứ 7'] as $val => $label)
+                <label class="flex-1 min-w-[100px] flex items-center justify-center gap-2 p-3 bg-white rounded-xl border-2 border-transparent cursor-pointer has-[:checked]:border-red-500 has-[:checked]:bg-red-50 transition-all shadow-sm">
+                    <input type="checkbox" name="off_days[]" value="{{ $val }}" 
+                           {{ in_array($val, $teacher->off_days ?? []) ? 'checked' : '' }} class="sr-only">
+                    <span class="text-[10px] font-black uppercase text-slate-500">{{ $label }}</span>
+                </label>
+                @endforeach
+            </div>
+        </div>
+    </form>
 
-        <div class="grid grid-cols-1 gap-3">
-            @forelse($teacher->assignments as $as)
-            <div class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm border border-blue-50 group transition-all hover:border-blue-300">
-                <div class="flex items-center gap-8">
-                    <div class="flex flex-col">
-                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Lớp học</span>
-                        <span class="text-sm font-black text-slate-700 uppercase">{{ $as->classroom->name }}</span>
-                    </div>
-                    <div class="flex flex-col border-l border-slate-100 pl-8">
-                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Môn giảng dạy</span>
-                        <span class="text-sm font-bold text-blue-600">{{ $as->subject->name }}</span>
-                    </div>
+    <div class="grid grid-cols-12 gap-6">
+        <div class="col-span-12 md:col-span-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 h-fit">
+            <h3 class="text-xs font-black text-slate-700 uppercase tracking-widest mb-6">Thêm phân công</h3>
+            <form action="{{ route('assignments.store') }}" method="POST" class="space-y-4">
+                @csrf
+                <input type="hidden" name="teacher_id" value="{{ $teacher->id }}">
+                <div>
+                    <select name="class_id" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-xs font-bold focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- Chọn lớp học --</option>
+                        @foreach($classrooms as $c) <option value="{{ $c->id }}">Lớp {{ $c->name }} (Khối {{ $c->grade }})</option> @endforeach
+                    </select>
                 </div>
-                
-                <div class="flex items-center gap-4">
-                    <span class="text-[9px] font-black text-slate-300 uppercase italic">Theo định mức khối</span>
-                    <form action="{{ route('assignments.destroy', $as->id) }}" method="POST" onsubmit="return confirm('Hủy phân công này?')">
+                <div>
+                    <select name="subject_id" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-xs font-bold focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- Chọn môn dạy --</option>
+                        @foreach($subjects as $s) <option value="{{ $s->id }}">{{ $s->name }}</option> @endforeach
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-slate-200">
+                    Gán phân công
+                </button>
+            </form>
+        </div>
+
+        <div class="col-span-12 md:col-span-8 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+            <h3 class="text-xs font-black text-slate-700 uppercase tracking-widest mb-6">Lớp học đang phụ trách</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                @forelse($teacher->assignments as $as)
+                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center group">
+                    <div class="flex items-center gap-4">
+                        <div class="size-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs">{{ $as->classroom->name }}</div>
+                        <div>
+                            <p class="text-[11px] font-black text-slate-700 uppercase tracking-tight">{{ $as->subject->name }}</p>
+                            <p class="text-[9px] text-slate-400 font-bold uppercase">Khối {{ $as->classroom->grade }}</p>
+                        </div>
+                    </div>
+                    <form action="{{ route('assignments.destroy', $as->id) }}" method="POST" onsubmit="return confirm('Hủy phân công?')">
                         @csrf @method('DELETE')
-                        <button type="submit" class="p-2 text-red-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        <button type="submit" class="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                            <span class="material-symbols-outlined text-sm">cancel</span>
                         </button>
                     </form>
                 </div>
+                @empty
+                <div class="col-span-2 text-center py-12 opacity-30">
+                    <span class="material-symbols-outlined text-4xl">inventory_2</span>
+                    <p class="text-[10px] font-black uppercase tracking-widest mt-2">Chưa gán phân công nào</p>
+                </div>
+                @endforelse
             </div>
-            @empty
-            <div class="text-center py-8 bg-white/50 rounded-2xl border-2 border-dashed border-blue-100">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest italic">Chưa có dữ liệu phân công giảng dạy</p>
-            </div>
-            @endforelse
         </div>
     </div>
 </div>

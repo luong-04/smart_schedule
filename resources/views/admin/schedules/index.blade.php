@@ -3,24 +3,39 @@
 
 @section('content')
 <style>
-    /* Nhúng CSS tùy chỉnh từ bản thiết kế của bạn */
     :root { --primary: #135bec; }
     .text-primary { color: var(--primary) !important; }
     .bg-primary { background-color: var(--primary) !important; }
     .border-primary { border-color: var(--primary) !important; }
     
-    .schedule-grid {
-        display: grid;
-        grid-template-columns: 80px repeat(6, 1fr);
-    }
+    .schedule-grid { display: grid; grid-template-columns: 80px repeat(6, 1fr); }
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-    
-    /* Làm mờ thẻ gốc khi đang kéo đi */
     .sortable-ghost { opacity: 0.3; }
-    /* Định dạng thẻ đang được chuột giữ */
     .sortable-drag { cursor: grabbing !important; box-shadow: 0 10px 25px -5px rgba(19, 91, 236, 0.3); }
 </style>
+
+<div id="roomModal" class="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center hidden opacity-0 transition-opacity backdrop-blur-sm">
+    <div class="bg-white rounded-3xl p-6 w-[400px] shadow-2xl transform scale-95 transition-transform" id="roomModalContent">
+        <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-4">
+            <div class="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-xl">meeting_room</span>
+            </div>
+            <div>
+                <h3 class="font-black text-slate-800 text-lg uppercase tracking-tight">Chọn phòng học</h3>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Môn học yêu cầu thực hành</p>
+            </div>
+        </div>
+        
+        <select id="roomSelect" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-black uppercase text-xs tracking-widest rounded-xl px-4 py-4 mb-6 focus:ring-primary focus:border-primary shadow-inner">
+        </select>
+        
+        <div class="flex justify-end gap-3">
+            <button id="btnCancelRoom" class="px-5 py-3 rounded-xl font-bold text-xs text-slate-500 hover:bg-slate-100 uppercase tracking-widest transition-colors">Hủy thao tác</button>
+            <button id="btnConfirmRoom" class="px-5 py-3 rounded-xl font-black text-xs bg-primary text-white uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">Xác nhận</button>
+        </div>
+    </div>
+</div>
 
 <div class="flex flex-col h-[calc(100vh-100px)]">
     <div class="bg-white p-4 rounded-t-[2rem] border-b border-slate-200 flex justify-between items-center shrink-0">
@@ -55,15 +70,17 @@
             <div class="flex-1 overflow-y-auto p-5 scrollbar-hide flex flex-col gap-3" id="external-events">
                 <div class="flex justify-between items-center mb-1">
                     <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest">Danh sách phân công</h3>
-                    <span class="bg-slate-200 text-slate-600 text-[9px] px-2 py-1 rounded font-bold">{{ count($assignments) }} GV</span>
+                    <span class="bg-slate-200 text-slate-600 text-[9px] px-2 py-1 rounded font-bold">{{ count($assignments) }} Môn</span>
                 </div>
 
-                @foreach($assignments as $as)
+                @forelse($assignments as $as)
                 <div class="sidebar-item bg-white p-3 rounded-xl border border-slate-200 shadow-sm cursor-move hover:border-primary/50 transition-all group relative" 
                      data-id="{{ $as->id }}" 
                      data-teacher-id="{{ $as->teacher_id }}"
+                     data-room-type-id="{{ $as->subject->room_type_id }}"
                      data-off-days="{{ json_encode($as->teacher->off_days ?? []) }}"
-                     data-remaining="{{ $as->teacher->remaining_slots }}">
+                     data-teacher-remaining="{{ $as->teacher_remaining }}"
+                     data-subject-remaining="{{ $as->remaining_subject_slots }}">
                     
                     <div class="flex justify-between items-start mb-2">
                         <div>
@@ -74,13 +91,28 @@
                     </div>
                     
                     <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
-                        <span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Tiết khả dụng</span>
-                        <span class="slot-badge text-xs font-black {{ $as->teacher->remaining_slots <= 0 ? 'text-rose-500' : 'text-emerald-500' }}">
-                            {{ $as->teacher->remaining_slots > 0 ? sprintf("%02d", $as->teacher->remaining_slots) : 'HẾT' }}
+                        <div class="flex items-center gap-4">
+                            <div class="flex flex-col items-center">
+                                <span class="text-[8px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Tiết GV</span>
+                                <span class="teacher-badge text-xs font-black {{ $as->teacher_remaining <= 0 ? 'text-rose-500' : 'text-blue-600' }}">{{ $as->teacher_remaining }}</span>
+                            </div>
+                            <div class="w-px h-6 bg-slate-200"></div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-[8px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Tiết Môn</span>
+                                <span class="subject-badge text-xs font-black {{ $as->remaining_subject_slots <= 0 ? 'text-rose-500' : 'text-emerald-600' }}">{{ $as->remaining_subject_slots }}</span>
+                            </div>
+                        </div>
+                        <span class="slot-badge text-xs font-black {{ $as->actual_remaining <= 0 ? 'text-rose-500' : 'text-emerald-500' }}">
+                            {{ $as->actual_remaining > 0 ? sprintf("%02d", $as->actual_remaining) : 'HẾT' }}
                         </span>
                     </div>
                 </div>
-                @endforeach
+                @empty
+                <div class="text-center py-10 opacity-50">
+                    <span class="material-symbols-outlined text-4xl">inventory_2</span>
+                    <p class="text-xs font-bold mt-2 uppercase">Lớp chưa có môn học định mức</p>
+                </div>
+                @endforelse
             </div>
             
             <div class="p-4 border-t border-slate-200 text-center bg-white">
@@ -134,13 +166,11 @@
                                     $fixedLabel = $isFlagSalute ? 'CHÀO CỜ' : 'SINH HOẠT';
                                     $current = $schedules->where('day_of_week', $d)->where('period', $p)->where('assignment.class_id', $selectedClassId)->first();
                                     
-                                    // KIỂM TRA HIỂN THỊ GVCN VÀO Ô CỐ ĐỊNH
                                     $assignFlag = $settings['assign_gvcn_flag_salute'] ?? 0;
                                     $assignMeeting = $settings['assign_gvcn_class_meeting'] ?? 0;
                                     $gvcnName = $classroom->homeroom_teacher;
                                     $showGvcn = ($isFlagSalute && $assignFlag) || ($isClassMeeting && $assignMeeting);
 
-                                    // MÀU SẮC ĐẶC TRƯNG CHO CHÀO CỜ VÀ SINH HOẠT
                                     $fixedBg = $isFlagSalute ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200';
                                     $fixedText = $isFlagSalute ? 'text-rose-600' : 'text-emerald-600';
                                     $fixedGvcnBg = $isFlagSalute ? 'bg-rose-100/80 text-rose-800' : 'bg-emerald-100/80 text-emerald-800';
@@ -151,9 +181,7 @@
                                         <div class="w-full h-full rounded-xl flex flex-col items-center justify-center border {{ $fixedBg }} pointer-events-none select-none relative overflow-hidden" 
                                              data-day="{{ $d }}" data-period="{{ $p }}">
                                             <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjBMMjAgMEgxNkwwIDE2djRaTTIwIDE2djRMMTYgMjBMMjAgMTZ6IiBmaWxsPSIjZTFlNWU5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-[0.03]"></div>
-                                            
                                             <span class="relative z-10 text-[11px] font-black tracking-widest {{ $fixedText }}">{{ $fixedLabel }}</span>
-                                            
                                             @if($showGvcn && !empty($gvcnName))
                                                 <span class="relative z-10 text-[9px] font-bold mt-1 px-2 py-0.5 truncate max-w-[95%] rounded {{ $fixedGvcnBg }}">{{ $gvcnName }}</span>
                                             @endif
@@ -166,12 +194,17 @@
                                                 <div class="matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 transition-all overflow-hidden" 
                                                      data-id="{{ $current->assignment_id }}"
                                                      data-teacher-id="{{ $current->assignment->teacher_id }}"
+                                                     data-room-id="{{ $current->room_id }}"
+                                                     data-room-type-id="{{ $current->assignment->subject->room_type_id }}"
                                                      data-off-days="{{ json_encode($current->assignment->teacher->off_days ?? []) }}">
                                                     
                                                     <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
-                                                    
                                                     <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">{{ $current->assignment->subject->name }}</span>
-                                                    <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-1 px-2">{{ $current->assignment->teacher->name }}</span>
+                                                    <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5 px-2">{{ $current->assignment->teacher->name }}</span>
+                                                    
+                                                    @if($current->room_id)
+                                                        <span class="text-[8px] font-bold text-orange-600 bg-orange-100 px-1 rounded mt-0.5 max-w-[90%] truncate block room-tag">P: {{ $current->room->name }}</span>
+                                                    @endif
                                                 </div>
                                             @endif
                                         </div>
@@ -191,7 +224,6 @@
                     <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-emerald-50 border border-emerald-200"></span> Sinh hoạt lớp</span>
                     <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-primary/20 border border-primary/40"></span> Đã xếp lịch</span>
                 </div>
-                <div>Lưu ý: Chỉ những thẻ nằm trong lưới ma trận mới được lưu.</div>
             </div>
         </section>
     </div>
@@ -199,28 +231,62 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
-    // 1. STATE MANAGEMENT
     const MAX_CONSECUTIVE = {{ $settings['max_consecutive_slots'] ?? 3 }};
-    let teacherSlots = {};
+    const MAX_DAYS_PER_WEEK = {{ $settings['max_days_per_week'] ?? 6 }};
+    const CHECK_TEACHER_CONFLICT = {{ $settings['check_teacher_conflict'] ?? 0 }};
+    const CHECK_ROOM_CONFLICT = {{ $settings['check_room_conflict'] ?? 0 }}; // [MỚI] Biến kiểm tra trùng phòng
     
+    const allRooms = @json($rooms ?? []);
+    const teacherBusySlots = @json($teacherBusySlots ?? []);
+    const teacherOtherDays = @json($teacherOtherDays ?? []);
+    const roomBusySlots = @json($roomBusySlots ?? []); // [MỚI] Data phòng đang bận
+    
+    let teacherSlots = {};
+    let subjectSlots = {};
+    let pendingItem = null; 
+    let pendingTargetDay = null; // [MỚI]
+    let pendingTargetPeriod = null; // [MỚI]
+
     document.querySelectorAll('.sidebar-item').forEach(el => {
         let tid = el.dataset.teacherId;
-        teacherSlots[tid] = parseInt(el.dataset.remaining);
+        let asId = el.dataset.id;
+        
+        if (teacherSlots[tid] === undefined) {
+            teacherSlots[tid] = parseInt(el.dataset.teacherRemaining);
+        }
+        subjectSlots[asId] = parseInt(el.dataset.subjectRemaining);
     });
 
     function updateSidebarUI() {
         document.querySelectorAll('.sidebar-item').forEach(el => {
             let tid = el.dataset.teacherId;
-            let slots = teacherSlots[tid];
-            let badge = el.querySelector('.slot-badge');
+            let asId = el.dataset.id;
             
-            if(slots <= 0) {
-                badge.innerText = "HẾT";
-                badge.className = "slot-badge text-xs font-black text-rose-500";
+            let tSlots = teacherSlots[tid];
+            let sSlots = subjectSlots[asId];
+            
+            let tBadge = el.querySelector('.teacher-badge');
+            let sBadge = el.querySelector('.subject-badge');
+            let mainBadge = el.querySelector('.slot-badge');
+            
+            if(tBadge) {
+                tBadge.innerText = tSlots;
+                tBadge.className = `teacher-badge text-xs font-black ${tSlots <= 0 ? 'text-rose-500' : 'text-blue-600'}`;
+            }
+            if(sBadge) {
+                sBadge.innerText = sSlots;
+                sBadge.className = `subject-badge text-xs font-black ${sSlots <= 0 ? 'text-rose-500' : 'text-emerald-600'}`;
+            }
+            
+            let minSlots = Math.min(tSlots, sSlots);
+            if(mainBadge) {
+                mainBadge.innerText = minSlots > 0 ? (minSlots < 10 ? "0"+minSlots : minSlots) : "HẾT";
+                mainBadge.className = `slot-badge text-xs font-black ${minSlots <= 0 ? 'text-rose-500' : 'text-emerald-500'}`;
+            }
+
+            if(tSlots <= 0 || sSlots <= 0) {
                 el.classList.add('opacity-50', 'bg-slate-50');
             } else {
-                badge.innerText = slots < 10 ? "0" + slots : slots;
-                badge.className = "slot-badge text-xs font-black text-emerald-500";
                 el.classList.remove('opacity-50', 'bg-slate-50');
             }
         });
@@ -228,8 +294,12 @@
 
     function attachDoubleClickEvent(item) {
         item.addEventListener('dblclick', function() {
+            let asId = this.dataset.id;
             let tid = this.dataset.teacherId;
-            teacherSlots[tid]++;
+            
+            if(subjectSlots[asId] !== undefined) subjectSlots[asId]++;
+            if(teacherSlots[tid] !== undefined) teacherSlots[tid]++;
+            
             updateSidebarUI();
             this.remove();
         });
@@ -237,24 +307,16 @@
 
     document.querySelectorAll('.matrix-item').forEach(item => { attachDoubleClickEvent(item); });
 
-    // ==========================================
-    // 2. THUẬT TOÁN ĐẾM SỐ TIẾT
-    // ==========================================
     function getConsecutiveSlotsCount(teacherId, day, targetPeriod) {
         let periods = [];
         document.querySelectorAll(`.drop-zone[data-day="${day}"]`).forEach(box => {
             let item = box.querySelector(`.matrix-item[data-teacher-id="${teacherId}"]`);
             if (item) periods.push(parseInt(box.dataset.period));
         });
-        
-        if (targetPeriod !== undefined) {
-            periods.push(parseInt(targetPeriod));
-        }
-        
+        if (targetPeriod !== undefined) periods.push(parseInt(targetPeriod));
         if (periods.length === 0) return 0;
         
         periods = [...new Set(periods)].sort((a,b) => a - b);
-        
         let maxCons = 1, currentCons = 1;
         for(let i = 1; i < periods.length; i++) {
             if (periods[i] === periods[i-1] + 1) {
@@ -267,9 +329,77 @@
         return maxCons;
     }
 
-    // ==========================================
-    // 3. TẠO DRAG & DROP KHÔNG BỊ GIẬT/PHÓNG TO
-    // ==========================================
+    function getTeacherTotalDays(teacherId, targetDayToAdd) {
+        let daysInMatrix = new Set();
+        document.querySelectorAll(`.matrix-item[data-teacher-id="${teacherId}"]`).forEach(el => {
+            let box = el.closest('.drop-zone');
+            if (box) daysInMatrix.add(parseInt(box.dataset.day));
+        });
+        if (targetDayToAdd) daysInMatrix.add(parseInt(targetDayToAdd));
+
+        let otherDays = teacherOtherDays[teacherId] || [];
+        otherDays.forEach(d => daysInMatrix.add(parseInt(d)));
+
+        return daysInMatrix.size;
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('roomModal');
+        const content = document.getElementById('roomModalContent');
+        modal.classList.add('opacity-0');
+        content.classList.replace('scale-100', 'scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    document.getElementById('btnCancelRoom').addEventListener('click', function() {
+        if(pendingItem) {
+            let asId = pendingItem.dataset.id;
+            let tid = pendingItem.dataset.teacherId;
+            subjectSlots[asId]++; 
+            teacherSlots[tid]++; 
+            updateSidebarUI();
+            pendingItem.remove(); 
+            pendingItem = null;
+        }
+        closeModal();
+    });
+
+    document.getElementById('btnConfirmRoom').addEventListener('click', function() {
+        const select = document.getElementById('roomSelect');
+        const roomId = select.value;
+        const roomName = select.options[select.selectedIndex].text;
+
+        // [MỚI] KIỂM TRA TRÙNG PHÒNG TRỰC TIẾP TRÊN GIAO DIỆN
+        if (CHECK_ROOM_CONFLICT == 1) {
+            let slotKey = pendingTargetDay + '-' + pendingTargetPeriod;
+            if (roomBusySlots[roomId] && roomBusySlots[roomId].includes(slotKey)) {
+                alert(`⚠️ HỆ THỐNG CHẶN: [${roomName}] đã được lớp khác sử dụng vào Thứ ${pendingTargetDay} - Tiết ${pendingTargetPeriod}! Vui lòng chọn phòng khác.`);
+                return; // Dừng lại, không đóng Modal để user chọn phòng khác
+            }
+        }
+
+        if(pendingItem) {
+            pendingItem.dataset.roomId = roomId;
+            
+            const subjectName = pendingItem.querySelector('.subject-name') ? pendingItem.querySelector('.subject-name').innerText : pendingItem.querySelector('span').innerText;
+            const teacherName = pendingItem.querySelector('.teacher-name') ? pendingItem.querySelector('.teacher-name').innerText : pendingItem.querySelectorAll('span')[1].innerText;
+            
+            pendingItem.className = "matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 transition-all overflow-hidden";
+            pendingItem.innerHTML = `
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+                <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">${subjectName}</span>
+                <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5 px-2">${teacherName}</span>
+                <span class="text-[8px] font-bold text-orange-600 bg-orange-100 px-1 rounded mt-0.5 max-w-[90%] truncate block room-tag">P: ${roomName}</span>
+            `;
+            
+            attachDoubleClickEvent(pendingItem);
+            pendingItem.style.display = 'flex'; 
+            pendingItem = null;
+        }
+        closeModal();
+    });
+
+    // --- CẤU HÌNH KÉO THẢ ---
     document.querySelectorAll('.drop-zone').forEach(el => {
         new Sortable(el, {
             group: 'shared',
@@ -277,20 +407,47 @@
             ghostClass: 'sortable-ghost',
             onAdd: function (evt) {
                 const item = evt.item;
+                const asId = item.dataset.id;
                 const tid = item.dataset.teacherId;
+                const reqRoomType = item.dataset.roomTypeId; 
                 const targetDay = evt.to.dataset.day;
                 const targetPeriod = evt.to.dataset.period;
                 const isFromSidebar = evt.from.id === 'external-events';
 
-                if (isFromSidebar && teacherSlots[tid] <= 0) {
-                    alert("⚠️ HỆ THỐNG CHẶN: Môn này đã được xếp hết số tiết khả dụng!");
-                    item.remove();
+                if (isFromSidebar) {
+                    if (teacherSlots[tid] <= 0) {
+                        alert("⚠️ HỆ THỐNG CHẶN: Giáo viên này đã giảng dạy hết số tiết trong tuần!");
+                        item.remove();
+                        return;
+                    }
+                    if (subjectSlots[asId] <= 0) {
+                        alert("⚠️ HỆ THỐNG CHẶN: Môn này đã được xếp đủ số tiết cho lớp!");
+                        item.remove();
+                        return;
+                    }
+                }
+
+                if (CHECK_TEACHER_CONFLICT == 1) {
+                    let slotKey = targetDay + '-' + targetPeriod;
+                    if (teacherBusySlots[tid] && teacherBusySlots[tid].includes(slotKey)) {
+                        alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên bị TRÙNG LỊCH! (Đã có tiết dạy ở lớp khác vào Thứ ${targetDay} - Tiết ${targetPeriod})`);
+                        if (isFromSidebar) item.remove();
+                        else evt.from.appendChild(item);
+                        return;
+                    }
+                }
+
+                let totalDays = getTeacherTotalDays(tid, targetDay);
+                if (totalDays > MAX_DAYS_PER_WEEK) {
+                    alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên này vượt quá số ngày dạy tối đa (Tối đa ${MAX_DAYS_PER_WEEK} ngày/tuần)!`);
+                    if (isFromSidebar) item.remove();
+                    else evt.from.appendChild(item);
                     return;
                 }
 
                 let currentConsecutive = getConsecutiveSlotsCount(tid, targetDay, targetPeriod);
                 if (currentConsecutive > MAX_CONSECUTIVE) {
-                    alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên này bị giới hạn dạy tối đa ${MAX_CONSECUTIVE} tiết liên tiếp!`);
+                    alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên bị giới hạn dạy tối đa ${MAX_CONSECUTIVE} tiết liên tiếp!`);
                     if (isFromSidebar) item.remove();
                     else evt.from.appendChild(item); 
                     return;
@@ -298,12 +455,16 @@
 
                 Array.from(evt.to.children).forEach(child => {
                     if (child !== item) {
-                        if (child.dataset.teacherId) teacherSlots[child.dataset.teacherId]++;
+                        if (child.dataset.id) {
+                            subjectSlots[child.dataset.id]++;
+                            teacherSlots[child.dataset.teacherId]++;
+                        }
                         child.remove();
                     }
                 });
 
                 if (isFromSidebar) {
+                    subjectSlots[asId]--;
                     teacherSlots[tid]--;
                     
                     const offDays = JSON.parse(item.dataset.offDays || '[]');
@@ -312,15 +473,49 @@
                         item.classList.add('ring-2', 'ring-rose-500');
                     }
 
+                    if (reqRoomType && reqRoomType !== "" && reqRoomType !== "null") {
+                        const filteredRooms = allRooms.filter(r => r.room_type_id == reqRoomType);
+                        
+                        if(filteredRooms.length === 0) {
+                            alert("⚠️ LỖI: Hệ thống chưa có phòng học nào thuộc loại phòng yêu cầu cho môn này!");
+                            subjectSlots[asId]++; 
+                            teacherSlots[tid]++; 
+                            item.remove();
+                            updateSidebarUI();
+                            return;
+                        }
+
+                        const select = document.getElementById('roomSelect');
+                        select.innerHTML = '';
+                        filteredRooms.forEach(r => {
+                            select.innerHTML += `<option value="${r.id}">${r.name}</option>`;
+                        });
+
+                        pendingItem = item;
+                        pendingTargetDay = targetDay;     // [MỚI] Lưu lại vị trí để quét trùng phòng
+                        pendingTargetPeriod = targetPeriod; // [MỚI] Lưu lại vị trí để quét trùng phòng
+                        item.style.display = 'none'; 
+                        
+                        const modal = document.getElementById('roomModal');
+                        const content = document.getElementById('roomModalContent');
+                        modal.classList.remove('hidden');
+                        setTimeout(() => {
+                            modal.classList.remove('opacity-0');
+                            content.classList.replace('scale-95', 'scale-100');
+                        }, 10);
+                        
+                        updateSidebarUI();
+                        return; 
+                    }
+
                     const subjectName = item.querySelector('.subject-name').innerText;
                     const teacherName = item.querySelector('.teacher-name').innerText;
                     
-                    // Vẽ lại Giao diện Thẻ Môn trong lưới (Không bị phình to)
                     item.className = "matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 transition-all overflow-hidden";
                     item.innerHTML = `
                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
                         <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">${subjectName}</span>
-                        <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-1 px-2">${teacherName}</span>
+                        <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5 px-2">${teacherName}</span>
                     `;
                     
                     attachDoubleClickEvent(item);
@@ -350,7 +545,12 @@
         document.querySelectorAll('.drop-zone').forEach(box => {
             const item = box.querySelector('.matrix-item');
             if (item) {
-                data.push({ assignment_id: item.dataset.id, day_of_week: box.dataset.day, period: box.dataset.period });
+                data.push({ 
+                    assignment_id: item.dataset.id, 
+                    day_of_week: box.dataset.day, 
+                    period: box.dataset.period,
+                    room_id: item.dataset.roomId || null
+                });
             }
         });
 
@@ -365,7 +565,7 @@
             } else {
                 alert('⚠️ ' + res.message);
             }
-        }).catch(err => alert('Lỗi hệ thống!'));
+        }).catch(err => alert('Lỗi kết nối với máy chủ!'));
     }
 </script>
 @endsection

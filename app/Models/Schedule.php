@@ -18,4 +18,10 @@ class Schedule extends Model
     {
         return $this->belongsTo(Assignment::class);
     }
+
+    // BỔ SUNG HÀM NÀY ĐỂ FIX LỖI RELATION NOT FOUND
+    public function room()
+    {
+        return $this->belongsTo(Room::class);
+    }
 }

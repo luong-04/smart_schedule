@@ -9,6 +9,16 @@ class Subject extends Model
 {
     use HasFactory;
 
-    // Chỉ giữ lại Tên và Loại hình môn học
-    protected $fillable = ['name', 'type'];
+    // Bổ sung thêm room_type_id vào mảng fillable để cho phép lưu
+    protected $fillable = [
+        'name', 
+        'type', 
+        'room_type_id'
+    ];
+
+    // Tạo mối quan hệ: 1 Môn học sẽ thuộc về 1 Loại phòng (Nếu có)
+    public function roomType()
+    {
+        return $this->belongsTo(RoomType::class, 'room_type_id');
+    }
 }

@@ -23,7 +23,6 @@ class ScheduleController extends Controller
             'assignments' => Assignment::count()
         ];
         
-        // Lấy các lịch dạy mới nhất, nhóm theo lớp học
         $recentSchedules = Schedule::with('assignment.classroom')
             ->latest('updated_at')
             ->get()
@@ -62,7 +61,7 @@ class ScheduleController extends Controller
 
         $teacherBusySlots = [];
         $teacherOtherDays = [];
-        $roomBusySlots = []; // MẢNG MỚI ĐỂ LƯU CÁC PHÒNG ĐANG BẬN
+        $roomBusySlots = []; 
         
         $otherSchedules = Schedule::where('schedule_name', 'Học kỳ 1')
             ->whereHas('assignment', function($q) use ($selectedClassId) {
@@ -80,7 +79,6 @@ class ScheduleController extends Controller
                 $teacherOtherDays[$tId][] = $sch->day_of_week;
             }
 
-            // Lưu thời gian bận của Phòng thực hành
             if ($rId) {
                 $roomBusySlots[$rId][] = $sch->day_of_week . '-' . $sch->period;
             }
@@ -115,7 +113,7 @@ class ScheduleController extends Controller
     
         return view('admin.schedules.index', compact(
             'classes', 'assignments', 'schedules', 'selectedClassId', 'classroom', 'settings', 'rooms',
-            'teacherBusySlots', 'teacherOtherDays', 'roomBusySlots' // Truyền roomBusySlots ra view
+            'teacherBusySlots', 'teacherOtherDays', 'roomBusySlots'
         ));
     }
 
@@ -156,7 +154,6 @@ class ScheduleController extends Controller
     
             $teacherDayPeriods[$teacherId][$d][] = $p;
     
-            // KIỂM TRA TRÙNG GIÁO VIÊN (LỚP BẢO VỆ 2 TẠI BACKEND)
             if ($checkTeacherConflict) {
                 $conflict = Schedule::where('day_of_week', $d)->where('period', $p)
                     ->whereHas('assignment', function($q) use ($teacherId, $classId) {
@@ -171,7 +168,6 @@ class ScheduleController extends Controller
                 }
             }
 
-            // KIỂM TRA TRÙNG PHÒNG THỰC HÀNH (LỚP BẢO VỆ 2 TẠI BACKEND)
             if ($checkRoomConflict && $roomId) {
                 $roomConflict = Schedule::where('day_of_week', $d)->where('period', $p)->where('room_id', $roomId)
                     ->whereHas('assignment', function($q) use ($classId) {
@@ -249,14 +245,19 @@ class ScheduleController extends Controller
         return response()->json(['status' => 'success']);
     }
 
+    // ĐÃ SỬA: Lấy thêm danh sách $teachers và $classes truyền ra view
     public function list()
     {
-        $groupedClasses = Classroom::all()->groupBy('grade');
+        $classes = Classroom::orderBy('grade')->orderBy('name')->get();
+        $groupedClasses = $classes->groupBy('grade');
+        $teachers = Teacher::orderBy('name')->get();
+        
         $schedules = Schedule::where('schedule_name', 'Học kỳ 1')
-            ->with(['assignment.subject', 'assignment.teacher'])
+            ->with(['assignment.subject', 'assignment.teacher', 'assignment.classroom', 'room'])
             ->get();
+            
         $settings = Setting::pluck('value', 'key')->all();
 
-        return view('admin.schedules.list', compact('groupedClasses', 'schedules', 'settings'));
+        return view('admin.schedules.list', compact('groupedClasses', 'classes', 'teachers', 'schedules', 'settings'));
     }
 }

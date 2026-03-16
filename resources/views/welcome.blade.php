@@ -4,12 +4,18 @@
     use App\Models\Teacher;
     use App\Models\Schedule;
 
-    // Lấy thông tin cấu hình từ Admin
+    // Lấy thông tin cấu hình cơ bản từ Admin
     $schoolName = Setting::getVal('school_name', 'TRƯỜNG CHƯA CÀI ĐẶT');
     $schoolYear = Setting::getVal('school_year', '2024 - 2025');
     $principal = Setting::getVal('principal_name', 'Đang cập nhật');
+    $vicePrincipal = Setting::getVal('vice_principal_name', 'Đang cập nhật');
     
-    // Thuật toán tra cứu thông minh (Tự nhận diện Lớp hoặc Giáo viên)
+    // LẤY THÊM THÔNG TIN LIÊN HỆ ĐỂ HIỂN THỊ Ở FOOTER
+    $schoolAddress = Setting::getVal('school_address', 'Chưa cập nhật địa chỉ');
+    $schoolPhone = Setting::getVal('school_phone', 'Chưa cập nhật SĐT');
+    $schoolEmail = Setting::getVal('school_email', 'Chưa cập nhật Email');
+    
+    // Thuật toán tra cứu thông minh
     $searchQuery = request('q');
     $classroom = null;
     $teacher = null;
@@ -20,7 +26,6 @@
     $assignMeeting = Setting::getVal('assign_gvcn_class_meeting', 0);
 
     if ($searchQuery) {
-        // 1. Thử tìm kiếm theo Tên Lớp trước
         $classroom = Classroom::where('name', $searchQuery)->first();
         
         if ($classroom) {
@@ -39,7 +44,6 @@
             
             $gvcnName = $classroom->homeroom_teacher;
         } else {
-            // 2. Nếu không phải Lớp, thử tìm theo Mã Giáo viên hoặc Tên Giáo viên
             $teacher = Teacher::where('code', $searchQuery)
                               ->orWhere('name', 'LIKE', '%' . $searchQuery . '%')
                               ->first();
@@ -52,7 +56,6 @@
                     ->with(['assignment.subject', 'assignment.classroom', 'room'])
                     ->get();
                 
-                // Tìm xem giáo viên này đang làm chủ nhiệm lớp nào để hiển thị tiết Chào cờ/Sinh hoạt
                 $gvcnClasses = Classroom::where('homeroom_teacher', $teacher->name)->get();
             }
         }
@@ -98,7 +101,6 @@
             @if($classroom || $teacher)
                 
                 @php
-                    // Xác định đang xem dạng Lớp hay dạng Giáo viên để đổ ID ra HTML
                     $viewType = $classroom ? 'class' : 'teacher';
                     $targetId = $classroom ? $classroom->id : $teacher->id;
                     $targetName = $classroom ? $classroom->name : $teacher->name;
@@ -153,7 +155,6 @@
                                         @php
                                             $cell = $schedules->where('day_of_week', $d)->where('period', $p)->first();
                                             
-                                            // Xử lý riêng cho LỚP HỌC
                                             $isFixedClass = false;
                                             $fixedLabelClass = '';
                                             $showGvcnClass = false;
@@ -166,7 +167,6 @@
                                                 $showGvcnClass = ($isFlagSalute && $assignFlag) || ($isClassMeeting && $assignMeeting);
                                             }
 
-                                            // Xử lý riêng cho GIÁO VIÊN (Tìm tiết Cố định của các lớp họ làm GVCN)
                                             $gvcnSlotTeacher = null;
                                             if ($teacher && !$cell && $gvcnClasses->count() > 0) {
                                                 foreach($gvcnClasses as $c) {
@@ -227,17 +227,34 @@
                 <div class="bg-white rounded-[2.5rem] shadow-sm p-12 border border-rose-100 text-center max-w-2xl mx-auto mt-10">
                     <span class="material-symbols-outlined text-6xl text-rose-200 mb-4 block">search_off</span>
                     <h3 class="text-lg font-black text-slate-800 uppercase tracking-widest mb-2">Không tìm thấy dữ liệu</h3>
-                    <p class="text-sm font-medium text-slate-500">Hệ thống không tìm thấy Lớp hoặc Giáo viên nào mang mã "<span class="text-rose-500 font-bold">{{ request('q') }}</span>". Vui lòng kiểm tra lại!</p>
+                    <p class="text-sm font-medium text-slate-500">Hệ thống không tìm thấy Lớp hoặc Giáo viên nào có mã "<span class="text-rose-500 font-bold">{{ request('q') }}</span>". Vui lòng kiểm tra lại!</p>
                 </div>
             @endif
         @endif
     </main>
 
-    <footer class="mt-20 p-8 bg-white border-t border-slate-200 text-center mt-auto">
-        <p class="font-black text-slate-400 uppercase tracking-widest text-[11px]">
-            Hệ thống tra cứu Thời khóa biểu {{ $schoolName }}. <br>
-            Hiệu trưởng: {{ $principal }}
-        </p>
+    <footer class="mt-20 p-10 bg-white border-t border-slate-200 text-center mt-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8 text-xs font-bold text-slate-500 uppercase tracking-widest">
+            <div class="flex flex-col items-center gap-2">
+                <span class="material-symbols-outlined text-blue-500 text-2xl">location_on</span>
+                <p>{{ $schoolAddress }}</p>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+                <span class="material-symbols-outlined text-emerald-500 text-2xl">call</span>
+                <p>{{ $schoolPhone }}</p>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+                <span class="material-symbols-outlined text-amber-500 text-2xl">mail</span>
+                <p>{{ $schoolEmail }}</p>
+            </div>
+        </div>
+        
+        <div class="pt-6 border-t border-slate-100">
+            <p class="font-black text-slate-400 uppercase tracking-widest text-[10px]">
+                Hệ thống tra cứu Thời khóa biểu {{ $schoolName }} <br>
+                Ban Giám Hiệu - Hiệu trưởng: {{ $principal }} | Hiệu phó: {{ $vicePrincipal }}
+            </p>
+        </div>
     </footer>
 
     <script>

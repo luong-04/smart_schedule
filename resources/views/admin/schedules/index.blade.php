@@ -78,7 +78,7 @@
                      data-id="{{ $as->id }}" 
                      data-teacher-id="{{ $as->teacher_id }}"
                      data-room-type-id="{{ $as->subject->room_type_id }}"
-                     data-off-days="{{ json_encode($as->teacher->off_days ?? []) }}"
+                     data-off-days="{{ is_array($as->teacher->off_days) ? json_encode($as->teacher->off_days) : $as->teacher->off_days ?? '[]' }}"
                      data-teacher-remaining="{{ $as->teacher_remaining }}"
                      data-subject-remaining="{{ $as->remaining_subject_slots }}">
                     
@@ -196,14 +196,14 @@
                                                      data-teacher-id="{{ $current->assignment->teacher_id }}"
                                                      data-room-id="{{ $current->room_id }}"
                                                      data-room-type-id="{{ $current->assignment->subject->room_type_id }}"
-                                                     data-off-days="{{ json_encode($current->assignment->teacher->off_days ?? []) }}">
+                                                     data-off-days="{{ is_array($current->assignment->teacher->off_days) ? json_encode($current->assignment->teacher->off_days) : $current->assignment->teacher->off_days ?? '[]' }}">
                                                     
                                                     <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
                                                     <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">{{ $current->assignment->subject->name }}</span>
                                                     <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5 px-2">{{ $current->assignment->teacher->name }}</span>
                                                     
                                                     @if($current->room_id)
-                                                        <span class="text-[8px] font-bold text-orange-600 bg-orange-100 px-1 rounded mt-0.5 max-w-[90%] truncate block room-tag">P: {{ $current->room->name }}</span>
+                                                        <span class="text-[8px] font-bold text-orange-700 bg-orange-100 px-1 rounded mt-0.5 max-w-[90%] truncate block room-tag">P: {{ $current->room->name }}</span>
                                                     @endif
                                                 </div>
                                             @endif
@@ -234,18 +234,18 @@
     const MAX_CONSECUTIVE = {{ $settings['max_consecutive_slots'] ?? 3 }};
     const MAX_DAYS_PER_WEEK = {{ $settings['max_days_per_week'] ?? 6 }};
     const CHECK_TEACHER_CONFLICT = {{ $settings['check_teacher_conflict'] ?? 0 }};
-    const CHECK_ROOM_CONFLICT = {{ $settings['check_room_conflict'] ?? 0 }}; // [MỚI] Biến kiểm tra trùng phòng
+    const CHECK_ROOM_CONFLICT = {{ $settings['check_room_conflict'] ?? 0 }};
     
     const allRooms = @json($rooms ?? []);
     const teacherBusySlots = @json($teacherBusySlots ?? []);
     const teacherOtherDays = @json($teacherOtherDays ?? []);
-    const roomBusySlots = @json($roomBusySlots ?? []); // [MỚI] Data phòng đang bận
+    const roomBusySlots = @json($roomBusySlots ?? []);
     
     let teacherSlots = {};
     let subjectSlots = {};
     let pendingItem = null; 
-    let pendingTargetDay = null; // [MỚI]
-    let pendingTargetPeriod = null; // [MỚI]
+    let pendingTargetDay = null;
+    let pendingTargetPeriod = null;
 
     document.querySelectorAll('.sidebar-item').forEach(el => {
         let tid = el.dataset.teacherId;
@@ -369,12 +369,11 @@
         const roomId = select.value;
         const roomName = select.options[select.selectedIndex].text;
 
-        // [MỚI] KIỂM TRA TRÙNG PHÒNG TRỰC TIẾP TRÊN GIAO DIỆN
         if (CHECK_ROOM_CONFLICT == 1) {
             let slotKey = pendingTargetDay + '-' + pendingTargetPeriod;
             if (roomBusySlots[roomId] && roomBusySlots[roomId].includes(slotKey)) {
                 alert(`⚠️ HỆ THỐNG CHẶN: [${roomName}] đã được lớp khác sử dụng vào Thứ ${pendingTargetDay} - Tiết ${pendingTargetPeriod}! Vui lòng chọn phòng khác.`);
-                return; // Dừng lại, không đóng Modal để user chọn phòng khác
+                return;
             }
         }
 
@@ -389,7 +388,7 @@
                 <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
                 <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">${subjectName}</span>
                 <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5 px-2">${teacherName}</span>
-                <span class="text-[8px] font-bold text-orange-600 bg-orange-100 px-1 rounded mt-0.5 max-w-[90%] truncate block room-tag">P: ${roomName}</span>
+                <span class="text-[8px] font-bold text-orange-700 bg-orange-100 px-1 rounded mt-0.5 max-w-[90%] truncate block room-tag">P: ${roomName}</span>
             `;
             
             attachDoubleClickEvent(pendingItem);
@@ -399,7 +398,6 @@
         closeModal();
     });
 
-    // --- CẤU HÌNH KÉO THẢ ---
     document.querySelectorAll('.drop-zone').forEach(el => {
         new Sortable(el, {
             group: 'shared',
@@ -414,6 +412,32 @@
                 const targetPeriod = evt.to.dataset.period;
                 const isFromSidebar = evt.from.id === 'external-events';
 
+                // ====================================================
+                // 1. CHẶN NGAY LẬP TỨC: KIỂM TRA LỊCH NGHỈ GIÁO VIÊN
+                // ====================================================
+                let offDays = [];
+                try {
+                    // Xử lý dữ liệu từ dataset để đảm bảo là mảng số
+                    const rawOffDays = item.dataset.offDays || '[]';
+                    offDays = JSON.parse(rawOffDays).map(Number);
+                } catch(e) { offDays = []; }
+
+                if (offDays.includes(parseInt(targetDay))) {
+                    alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên này đã đăng ký NGHỈ CỐ ĐỊNH vào Thứ ${targetDay}!`);
+                    
+                    // Nếu kéo từ bên trái (sidebar) sang thì xóa thẻ giả đi
+                    if (isFromSidebar) {
+                        item.remove();
+                    } else {
+                        // Nếu di chuyển trong lưới thì búng thẻ quay về ô cũ
+                        evt.from.appendChild(item);
+                    }
+                    return; // Ngừng mọi xử lý tiếp theo
+                }
+
+                // ====================================================
+                // 2. CÁC KIỂM TRA KHÁC (TIẾT DẠY, TRÙNG LỊCH...)
+                // ====================================================
                 if (isFromSidebar) {
                     if (teacherSlots[tid] <= 0) {
                         alert("⚠️ HỆ THỐNG CHẶN: Giáo viên này đã giảng dạy hết số tiết trong tuần!");
@@ -453,6 +477,7 @@
                     return;
                 }
 
+                // Hoàn lại tiết khi kéo đè
                 Array.from(evt.to.children).forEach(child => {
                     if (child !== item) {
                         if (child.dataset.id) {
@@ -466,12 +491,6 @@
                 if (isFromSidebar) {
                     subjectSlots[asId]--;
                     teacherSlots[tid]--;
-                    
-                    const offDays = JSON.parse(item.dataset.offDays || '[]');
-                    if (offDays.includes(parseInt(targetDay))) {
-                        alert("⚠️ Cảnh báo: Giáo viên này đã đăng ký nghỉ vào Thứ " + targetDay);
-                        item.classList.add('ring-2', 'ring-rose-500');
-                    }
 
                     if (reqRoomType && reqRoomType !== "" && reqRoomType !== "null") {
                         const filteredRooms = allRooms.filter(r => r.room_type_id == reqRoomType);
@@ -492,8 +511,8 @@
                         });
 
                         pendingItem = item;
-                        pendingTargetDay = targetDay;     // [MỚI] Lưu lại vị trí để quét trùng phòng
-                        pendingTargetPeriod = targetPeriod; // [MỚI] Lưu lại vị trí để quét trùng phòng
+                        pendingTargetDay = targetDay;
+                        pendingTargetPeriod = targetPeriod;
                         item.style.display = 'none'; 
                         
                         const modal = document.getElementById('roomModal');

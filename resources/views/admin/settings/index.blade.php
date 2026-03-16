@@ -32,6 +32,27 @@
         </div>
 
         <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-8 border-b border-slate-50 flex items-center gap-3 bg-slate-50/50">
+                <span class="material-symbols-outlined text-emerald-600">contact_mail</span>
+                <h3 class="font-black text-slate-700 uppercase tracking-widest text-sm">Thông tin liên hệ</h3>
+            </div>
+            <div class="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Địa chỉ trường</label>
+                    <input type="text" name="school_address" value="{{ $settings['school_address'] ?? '' }}" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-emerald-500 shadow-inner" placeholder="VD: 123 Đường ABC, TP. HCM">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Số điện thoại liên hệ</label>
+                    <input type="text" name="school_phone" value="{{ $settings['school_phone'] ?? '' }}" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-emerald-500 shadow-inner" placeholder="VD: 0123 456 789">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email hỗ trợ</label>
+                    <input type="email" name="school_email" value="{{ $settings['school_email'] ?? '' }}" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-emerald-500 shadow-inner" placeholder="VD: contact@truong.edu.vn">
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
             <div class="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                 <div class="flex items-center gap-3">
                     <span class="material-symbols-outlined text-indigo-600">lock_clock</span>
@@ -119,6 +140,7 @@
 
                 </div>
             </div>
+        </div>
 
         <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
             <div class="p-8 border-b border-slate-50 flex items-center gap-3 bg-slate-50/50">

@@ -68,6 +68,7 @@
                             ['name' => 'Chương trình học', 'icon' => 'history_edu', 'route' => 'curriculum.index'],
                             ['name' => 'Ma trận TKB', 'icon' => 'grid_on', 'route' => 'matrix.index'],
                             ['name' => 'Cài đặt hệ thống', 'icon' => 'settings', 'route' => 'admin.settings.index'],
+                            ['name' => 'Phân công Giám thị', 'icon' => 'badge', 'route' => 'admin.proctors.index'],
                         ]
                     ];
                 @endphp

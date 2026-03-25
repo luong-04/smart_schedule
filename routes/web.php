@@ -7,8 +7,10 @@ use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\ClassroomController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\RoomTypeController;
-use App\Http\Controllers\Admin\CurriculumController; // Thêm dòng này
+use App\Http\Controllers\Admin\CurriculumController; 
 use App\Http\Controllers\Admin\SettingsController;
+// ---> THÊM KHAI BÁO CONTROLLER NÀY <---
+use App\Http\Controllers\Admin\ProctorController; 
 
 Route::get('/', function () { return view('welcome'); });
 
@@ -43,7 +45,12 @@ Route::prefix('admin')->group(function () {
     Route::get('/schedules/list', [ScheduleController::class, 'list'])->name('schedules.list');
     Route::get('/schedules/view/{class_id}', [ScheduleController::class, 'show'])->name('schedules.show');
 
-    // Sửa lại tên route tại đây (thêm admin.)
+    // 8. Cài đặt hệ thống
     Route::get('/settings', [SettingsController::class, 'index'])->name('admin.settings.index');
     Route::post('/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
+
+    // ---> 9. PHÂN CÔNG GIÁM THỊ <---
+    Route::get('/proctors', [ProctorController::class, 'index'])->name('admin.proctors.index');
+    Route::post('/proctors/assign', [ProctorController::class, 'assign'])->name('admin.proctors.assign');
+    Route::get('/proctors/history', [ProctorController::class, 'history'])->name('admin.proctors.history');
 });

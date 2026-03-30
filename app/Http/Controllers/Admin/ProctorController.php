@@ -182,4 +182,17 @@ class ProctorController extends Controller
             'data_by_date' => $historyByDate       
         ]);
     }
+    public function destroy($id)
+    {
+        $exam = Exam::findOrFail($id);
+        
+        // Xóa toàn bộ phân công và danh sách giám thị của kỳ thi đó
+        ProctorAssignment::where('exam_id', $exam->id)->delete();
+        ExamProctor::where('exam_id', $exam->id)->delete();
+        
+        // Xóa kỳ thi
+        $exam->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

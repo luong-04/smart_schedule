@@ -53,4 +53,5 @@ Route::prefix('admin')->group(function () {
     Route::get('/proctors', [ProctorController::class, 'index'])->name('admin.proctors.index');
     Route::post('/proctors/assign', [ProctorController::class, 'assign'])->name('admin.proctors.assign');
     Route::get('/proctors/history', [ProctorController::class, 'history'])->name('admin.proctors.history');
+    Route::delete('/proctors/{id}', [\App\Http\Controllers\Admin\ProctorController::class, 'destroy'])->name('proctors.destroy');
 });

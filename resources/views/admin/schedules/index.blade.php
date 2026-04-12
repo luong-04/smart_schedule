@@ -8,11 +8,14 @@
     .bg-primary { background-color: var(--primary) !important; }
     .border-primary { border-color: var(--primary) !important; }
     
-    .schedule-grid { display: grid; grid-template-columns: 80px repeat(6, 1fr); }
+    .schedule-grid { display: grid; grid-template-columns: 80px repeat(6, minmax(0, 1fr)); }
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     .sortable-ghost { opacity: 0.3; }
     .sortable-drag { cursor: grabbing !important; box-shadow: 0 10px 25px -5px rgba(19, 91, 236, 0.3); }
+
+    .drop-zone { max-width: 100%; min-width: 0; overflow: hidden; }
+    .matrix-item { width: 100%; max-width: 100%; min-width: 0; overflow: hidden; }
 </style>
 
 <div id="roomModal" class="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center hidden opacity-0 transition-opacity backdrop-blur-sm">
@@ -83,11 +86,11 @@
                      data-subject-remaining="{{ $as->remaining_subject_slots }}">
                     
                     <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <p class="teacher-name text-sm font-bold group-hover:text-primary transition-colors">{{ $as->teacher->name }}</p>
-                            <p class="subject-name text-[11px] text-slate-500 font-medium mt-0.5 uppercase">{{ $as->subject->name }}</p>
+                        <div class="w-[75%]">
+                            <p class="teacher-name text-sm font-bold group-hover:text-primary transition-colors truncate w-full" title="{{ $as->teacher->name }}">{{ $as->teacher->name }}</p>
+                            <p class="subject-name text-[11px] text-slate-500 font-medium mt-0.5 uppercase truncate w-full" title="{{ $as->subject->name }}">{{ $as->subject->name }}</p>
                         </div>
-                        <span class="bg-slate-50 text-slate-400 border border-slate-100 text-[9px] px-2 py-0.5 rounded-lg font-bold">ID: {{ $as->teacher->code ?? 'GV' }}</span>
+                        <span class="bg-slate-50 text-slate-400 border border-slate-100 text-[9px] px-2 py-0.5 rounded-lg font-bold shrink-0">ID: {{ $as->teacher->code ?? 'GV' }}</span>
                     </div>
                     
                     <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
@@ -115,7 +118,7 @@
                 @endforelse
             </div>
             
-            <div class="p-4 border-t border-slate-200 text-center bg-white">
+            <div class="p-4 border-t border-slate-200 text-center bg-white shrink-0">
                 <p class="text-[10px] text-slate-400 font-medium italic"><span class="material-symbols-outlined text-[12px] align-middle">mouse</span> Nhấp đúp vào môn trên lưới để xóa.</p>
             </div>
         </section>
@@ -183,7 +186,7 @@
                                             <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjBMMjAgMEgxNkwwIDE2djRaTTIwIDE2djRMMTYgMjBMMjAgMTZ6IiBmaWxsPSIjZTFlNWU5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-[0.03]"></div>
                                             <span class="relative z-10 text-[11px] font-black tracking-widest {{ $fixedText }}">{{ $fixedLabel }}</span>
                                             @if($showGvcn && !empty($gvcnName))
-                                                <span class="relative z-10 text-[9px] font-bold mt-1 px-2 py-0.5 truncate max-w-[95%] rounded {{ $fixedGvcnBg }}">{{ $gvcnName }}</span>
+                                                <span class="relative z-10 text-[9px] font-bold mt-1 px-2 py-0.5 truncate max-w-[95%] rounded {{ $fixedGvcnBg }}" title="{{ $gvcnName }}">{{ $gvcnName }}</span>
                                             @endif
                                         </div>
                                     @else
@@ -198,13 +201,22 @@
                                                      data-room-type-id="{{ $current->assignment->subject->room_type_id }}"
                                                      data-off-days="{{ is_array($current->assignment->teacher->off_days) ? json_encode($current->assignment->teacher->off_days) : $current->assignment->teacher->off_days ?? '[]' }}">
                                                     
-                                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
-                                                    <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">{{ $current->assignment->subject->name }}</span>
-                                                    <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5 px-2">{{ $current->assignment->teacher->name }}</span>
+                                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary shrink-0"></div>
                                                     
-                                                    @if($current->room_id)
-                                                        <span class="text-[8px] font-bold text-orange-700 bg-orange-100 px-1 rounded mt-0.5 max-w-[90%] truncate block room-tag">P: {{ $current->room->name }}</span>
-                                                    @endif
+                                                    <div class="w-full flex flex-col items-center justify-center px-1 min-w-0 overflow-hidden">
+                                                        <span class="text-[9px] font-black uppercase text-primary text-center leading-tight whitespace-normal break-words w-full block" title="{{ $current->assignment->subject->name }}">
+                                                            {{ $current->assignment->subject->name }}
+                                                        </span>
+                                                        <span class="text-[8px] font-semibold text-slate-600 text-center leading-tight whitespace-normal break-words w-full block mt-0.5" title="{{ $current->assignment->teacher->name }}">
+                                                            {{ $current->assignment->teacher->name }}
+                                                        </span>
+                                                        
+                                                        @if($current->room_id)
+                                                            <span class="text-[7px] font-bold text-orange-700 bg-orange-100 px-1 rounded mt-0.5 max-w-[95%] whitespace-normal break-words block room-tag" title="P: {{ $current->room->name }}">
+                                                                P: {{ $current->room->name }}
+                                                            </span>
+                                                        @endif
+                                                    </div>
                                                 </div>
                                             @endif
                                         </div>
@@ -217,7 +229,7 @@
                 </div>
             </div>
             
-            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-500 font-medium">
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-500 font-medium shrink-0">
                 <div class="flex items-center gap-5">
                     <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-slate-100 border border-slate-300"></span> Ô trống</span>
                     <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-rose-50 border border-rose-200"></span> Chào cờ</span>
@@ -380,15 +392,19 @@
         if(pendingItem) {
             pendingItem.dataset.roomId = roomId;
             
-            const subjectName = pendingItem.querySelector('.subject-name') ? pendingItem.querySelector('.subject-name').innerText : pendingItem.querySelector('span').innerText;
-            const teacherName = pendingItem.querySelector('.teacher-name') ? pendingItem.querySelector('.teacher-name').innerText : pendingItem.querySelectorAll('span')[1].innerText;
+            const subjectName = pendingItem.querySelector('.subject-name') ? pendingItem.querySelector('.subject-name').innerText : pendingItem.querySelector('span[title]').title;
+            const teacherName = pendingItem.querySelector('.teacher-name') ? pendingItem.querySelector('.teacher-name').innerText : pendingItem.querySelectorAll('span[title]')[1].title;
             
             pendingItem.className = "matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 transition-all overflow-hidden";
+            
+            // HTML BỌC CHỮ KHI CÓ PHÒNG (Cho phép rớt dòng)
             pendingItem.innerHTML = `
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
-                <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">${subjectName}</span>
-                <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5 px-2">${teacherName}</span>
-                <span class="text-[8px] font-bold text-orange-700 bg-orange-100 px-1 rounded mt-0.5 max-w-[90%] truncate block room-tag">P: ${roomName}</span>
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary shrink-0"></div>
+                <div class="w-full flex flex-col items-center justify-center px-1 min-w-0 overflow-hidden">
+                    <span class="text-[9px] font-black uppercase text-primary text-center leading-tight whitespace-normal break-words w-full block" title="${subjectName}">${subjectName}</span>
+                    <span class="text-[8px] font-semibold text-slate-600 text-center leading-tight whitespace-normal break-words w-full block mt-0.5" title="${teacherName}">${teacherName}</span>
+                    <span class="text-[7px] font-bold text-orange-700 bg-orange-100 px-1 rounded mt-0.5 max-w-[95%] whitespace-normal break-words block room-tag" title="P: ${roomName}">P: ${roomName}</span>
+                </div>
             `;
             
             attachDoubleClickEvent(pendingItem);
@@ -412,32 +428,18 @@
                 const targetPeriod = evt.to.dataset.period;
                 const isFromSidebar = evt.from.id === 'external-events';
 
-                // ====================================================
-                // 1. CHẶN NGAY LẬP TỨC: KIỂM TRA LỊCH NGHỈ GIÁO VIÊN
-                // ====================================================
                 let offDays = [];
                 try {
-                    // Xử lý dữ liệu từ dataset để đảm bảo là mảng số
                     const rawOffDays = item.dataset.offDays || '[]';
                     offDays = JSON.parse(rawOffDays).map(Number);
                 } catch(e) { offDays = []; }
 
                 if (offDays.includes(parseInt(targetDay))) {
                     alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên này đã đăng ký NGHỈ CỐ ĐỊNH vào Thứ ${targetDay}!`);
-                    
-                    // Nếu kéo từ bên trái (sidebar) sang thì xóa thẻ giả đi
-                    if (isFromSidebar) {
-                        item.remove();
-                    } else {
-                        // Nếu di chuyển trong lưới thì búng thẻ quay về ô cũ
-                        evt.from.appendChild(item);
-                    }
-                    return; // Ngừng mọi xử lý tiếp theo
+                    if (isFromSidebar) item.remove(); else evt.from.appendChild(item);
+                    return; 
                 }
 
-                // ====================================================
-                // 2. CÁC KIỂM TRA KHÁC (TIẾT DẠY, TRÙNG LỊCH...)
-                // ====================================================
                 if (isFromSidebar) {
                     if (teacherSlots[tid] <= 0) {
                         alert("⚠️ HỆ THỐNG CHẶN: Giáo viên này đã giảng dạy hết số tiết trong tuần!");
@@ -455,8 +457,7 @@
                     let slotKey = targetDay + '-' + targetPeriod;
                     if (teacherBusySlots[tid] && teacherBusySlots[tid].includes(slotKey)) {
                         alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên bị TRÙNG LỊCH! (Đã có tiết dạy ở lớp khác vào Thứ ${targetDay} - Tiết ${targetPeriod})`);
-                        if (isFromSidebar) item.remove();
-                        else evt.from.appendChild(item);
+                        if (isFromSidebar) item.remove(); else evt.from.appendChild(item);
                         return;
                     }
                 }
@@ -464,20 +465,17 @@
                 let totalDays = getTeacherTotalDays(tid, targetDay);
                 if (totalDays > MAX_DAYS_PER_WEEK) {
                     alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên này vượt quá số ngày dạy tối đa (Tối đa ${MAX_DAYS_PER_WEEK} ngày/tuần)!`);
-                    if (isFromSidebar) item.remove();
-                    else evt.from.appendChild(item);
+                    if (isFromSidebar) item.remove(); else evt.from.appendChild(item);
                     return;
                 }
 
                 let currentConsecutive = getConsecutiveSlotsCount(tid, targetDay, targetPeriod);
                 if (currentConsecutive > MAX_CONSECUTIVE) {
                     alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên bị giới hạn dạy tối đa ${MAX_CONSECUTIVE} tiết liên tiếp!`);
-                    if (isFromSidebar) item.remove();
-                    else evt.from.appendChild(item); 
+                    if (isFromSidebar) item.remove(); else evt.from.appendChild(item); 
                     return;
                 }
 
-                // Hoàn lại tiết khi kéo đè
                 Array.from(evt.to.children).forEach(child => {
                     if (child !== item) {
                         if (child.dataset.id) {
@@ -531,10 +529,14 @@
                     const teacherName = item.querySelector('.teacher-name').innerText;
                     
                     item.className = "matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 transition-all overflow-hidden";
+                    
+                    // HTML BỌC CHỮ KHI KHÔNG CÓ PHÒNG (Cho phép rớt dòng)
                     item.innerHTML = `
-                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
-                        <span class="text-[10px] font-black uppercase text-primary text-center leading-tight truncate w-full px-2">${subjectName}</span>
-                        <span class="text-[9px] font-semibold text-slate-600 text-center truncate w-full mt-0.5 px-2">${teacherName}</span>
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary shrink-0"></div>
+                        <div class="w-full flex flex-col items-center justify-center px-1 min-w-0 overflow-hidden">
+                            <span class="text-[9px] font-black uppercase text-primary text-center leading-tight whitespace-normal break-words w-full block" title="${subjectName}">${subjectName}</span>
+                            <span class="text-[8px] font-semibold text-slate-600 text-center leading-tight whitespace-normal break-words w-full block mt-0.5" title="${teacherName}">${teacherName}</span>
+                        </div>
                     `;
                     
                     attachDoubleClickEvent(item);

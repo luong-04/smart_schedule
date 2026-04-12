@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate; // ---> BẮT BUỘC THÊM ĐỂ DÙNG PHÂN QUYỀN
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,8 +20,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // ==========================================
+        // 1. CẤP QUYỀN TỐI THƯỢNG CHO SUPER ADMIN
+        // ==========================================
+        Gate::before(function ($user, $ability) {
+            return $user->hasRole('Super Admin') ? true : null;
+        });
+
+        // ==========================================
+        // 2. LOAD CÀI ĐẶT HỆ THỐNG
+        // ==========================================
         if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
-            // 1. Định nghĩa các giá trị mặc định
+            // Định nghĩa các giá trị mặc định
             $defaults = [
                 'school_name' => 'SMART SCHEDULE THPT',
                 'school_year' => '2024 - 2025',
@@ -31,10 +42,10 @@ class AppServiceProvider extends ServiceProvider
                 'max_consecutive_slots' => '3'
             ];
     
-            // 2. Lấy dữ liệu từ DB
+            // Lấy dữ liệu từ DB
             $dbSettings = \App\Models\Setting::pluck('value', 'key')->all();
     
-            // 3. Gộp dữ liệu DB đè lên mặc định
+            // Gộp dữ liệu DB đè lên mặc định
             $globalSettings = array_merge($defaults, $dbSettings);
     
             \Illuminate\Support\Facades\View::share('globalSettings', $globalSettings);

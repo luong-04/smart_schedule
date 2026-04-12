@@ -37,6 +37,14 @@ class ScheduleController extends Controller
     public function index(Request $request)
     {
         $classes = Classroom::all();
+        
+        // ---> ĐÃ SỬA: Chặn lỗi 404 khi Database chưa có lớp học nào <---
+        if ($classes->isEmpty()) {
+            return redirect()->route('classrooms.index')
+                             ->with('error', 'Hệ thống yêu cầu: Bạn phải tạo ít nhất 1 Lớp học trước khi vào tính năng Xếp lịch!');
+        }
+        // ------------------------------------------------------------------
+
         $selectedClassId = $request->get('class_id', $classes->first()?->id);
         $classroom = Classroom::findOrFail($selectedClassId);
     
@@ -245,7 +253,6 @@ class ScheduleController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    // ĐÃ SỬA: Lấy thêm danh sách $teachers và $classes truyền ra view
     public function list()
     {
         $classes = Classroom::orderBy('grade')->orderBy('name')->get();

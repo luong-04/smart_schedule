@@ -5,10 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Hệ thống Quản lý TKB')</title>
+    <link rel="icon" type="image/png" href="https://ui-avatars.com/api/?name=S&background=886cc0&color=fff&rounded=true">
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
+
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     
@@ -23,9 +30,15 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #94a3b8; }
+
+        /* Đổi màu thanh loading NProgress thành màu xanh chủ đạo của bạn */
+        #nprogress .bar { background: #135bec !important; height: 3px !important; }
+        #nprogress .peg { box-shadow: 0 0 10px #135bec, 0 0 5px #135bec !important; }
+        #nprogress .spinner-icon { border-top-color: #135bec !important; border-left-color: #135bec !important; }
     </style>
 </head>
-<body class="bg-[#f6f6f8] text-slate-900 antialiased overflow-x-hidden">
+
+<body hx-boost="true" class="bg-[#f6f6f8] text-slate-900 antialiased overflow-x-hidden">
     <div class="flex min-h-screen">
         
         <aside class="w-[20%] bg-[#F0F7FF] border-r border-slate-200 flex flex-col p-6 gap-6 sticky top-0 h-screen shrink-0">
@@ -51,54 +64,110 @@
                 </a>
             </div>
 
-            <nav class="flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2 mt-2">
-                @php
-                    $groups = [
-                        'Thống kê & Tổng quan' => [
-                            ['name' => 'Dashboard', 'icon' => 'dashboard', 'route' => 'admin.dashboard'],
-                            ['name' => 'TKB đã sắp', 'icon' => 'calendar_today', 'route' => 'schedules.list'],
-                        ],
-                        'Quản lý Danh mục' => [
-                            ['name' => 'Giáo viên', 'icon' => 'group', 'route' => 'teachers.index'],
-                            ['name' => 'Môn học', 'icon' => 'book', 'route' => 'subjects.index'],
-                            ['name' => 'Lớp học', 'icon' => 'meeting_room', 'route' => 'classrooms.index'],
-                            ['name' => 'Cơ sở vật chất', 'icon' => 'domain', 'route' => 'rooms.index'],
-                        ],
-                        'Nghiệp vụ & Cấu hình' => [
-                            ['name' => 'Chương trình học', 'icon' => 'history_edu', 'route' => 'curriculum.index'],
-                            ['name' => 'Ma trận TKB', 'icon' => 'grid_on', 'route' => 'matrix.index'],
-                            ['name' => 'Cài đặt hệ thống', 'icon' => 'settings', 'route' => 'admin.settings.index'],
-                            ['name' => 'Phân công Giám thị', 'icon' => 'badge', 'route' => 'admin.proctors.index'],
-                        ]
-                    ];
-                @endphp
-
-                @foreach($groups as $groupName => $items)
-                    <div>
-                        <p class="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{{ $groupName }}</p>
-                        <div class="flex flex-col gap-1">
-                            @foreach($items as $item)
-                                @php $isActive = request()->routeIs($item['route'].'*'); @endphp
-                                <a href="{{ route($item['route']) }}" 
-                                   class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ $isActive ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
-                                    <span class="material-symbols-outlined {{ $isActive ? 'text-blue-600' : 'text-slate-400' }}">{{ $item['icon'] }}</span>
-                                    <span class="text-sm">{{ $item['name'] }}</span>
-                                </a>
-                            @endforeach
-                        </div>
+            <nav id="sidebar-nav" class="flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2 mt-2">
+                
+                <div>
+                    <p class="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Thống kê & Tổng quan</p>
+                    <div class="flex flex-col gap-1">
+                        <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('admin.dashboard') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('admin.dashboard') ? 'text-blue-600' : 'text-slate-400' }}">dashboard</span>
+                            <span class="text-sm">Dashboard</span>
+                        </a>
+                        <a href="{{ route('schedules.list') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('schedules.list') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('schedules.list') ? 'text-blue-600' : 'text-slate-400' }}">calendar_today</span>
+                            <span class="text-sm">TKB đã sắp</span>
+                        </a>
                     </div>
-                @endforeach
+                </div>
+
+                <div>
+                    <p class="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Quản lý Danh mục</p>
+                    <div class="flex flex-col gap-1">
+                        @can('quan_ly_giao_vien')
+                        <a href="{{ route('teachers.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('teachers.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('teachers.*') ? 'text-blue-600' : 'text-slate-400' }}">group</span>
+                            <span class="text-sm">Giáo viên</span>
+                        </a>
+                        @endcan
+
+                        @can('quan_ly_mon_hoc')
+                        <a href="{{ route('subjects.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('subjects.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('subjects.*') ? 'text-blue-600' : 'text-slate-400' }}">book</span>
+                            <span class="text-sm">Môn học</span>
+                        </a>
+                        @endcan
+
+                        @can('quan_ly_lop_hoc')
+                        <a href="{{ route('classrooms.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('classrooms.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('classrooms.*') ? 'text-blue-600' : 'text-slate-400' }}">meeting_room</span>
+                            <span class="text-sm">Lớp học</span>
+                        </a>
+                        @endcan
+
+                        @canany(['quan_ly_mon_hoc', 'quan_ly_lop_hoc'])
+                        <a href="{{ route('rooms.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('rooms.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('rooms.*') ? 'text-blue-600' : 'text-slate-400' }}">domain</span>
+                            <span class="text-sm">Cơ sở vật chất</span>
+                        </a>
+                        @endcanany
+                    </div>
+                </div>
+
+                <div>
+                    <p class="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Nghiệp vụ & Cấu hình</p>
+                    <div class="flex flex-col gap-1">
+                        @can('quan_ly_xep_lich')
+                        <a href="{{ route('curriculum.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('curriculum.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('curriculum.*') ? 'text-blue-600' : 'text-slate-400' }}">history_edu</span>
+                            <span class="text-sm">Chương trình học</span>
+                        </a>
+                        <a href="{{ route('matrix.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('matrix.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('matrix.*') ? 'text-blue-600' : 'text-slate-400' }}">grid_on</span>
+                            <span class="text-sm">Ma trận TKB</span>
+                        </a>
+                        @endcan
+
+                        @can('quan_ly_giam_thi')
+                        <a href="{{ route('admin.proctors.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('admin.proctors.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('admin.proctors.*') ? 'text-blue-600' : 'text-slate-400' }}">badge</span>
+                            <span class="text-sm">Phân công Giám thị</span>
+                        </a>
+                        @endcan
+                        
+                        @role('Super Admin')
+                        <a href="{{ route('users.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('users.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('users.*') ? 'text-blue-600' : 'text-slate-400' }}">manage_accounts</span>
+                            <span class="text-sm">Tài khoản & Phân quyền</span>
+                        </a>
+                        <a href="{{ route('admin.settings.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('admin.settings.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                            <span class="material-symbols-outlined {{ request()->routeIs('admin.settings.*') ? 'text-blue-600' : 'text-slate-400' }}">settings</span>
+                            <span class="text-sm">Cài đặt hệ thống</span>
+                        </a>
+                        @endrole
+                    </div>
+                </div>
             </nav>
 
             <div class="mt-auto pt-6 border-t border-blue-100 shrink-0">
-                <div class="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm border border-blue-50">
-                    <div class="size-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-black text-xs shadow-inner shrink-0">AD</div>
-                    <div class="overflow-hidden">
-                        <p class="text-xs font-black truncate text-slate-700 uppercase tracking-widest">Quản trị viên</p>
-                        <p class="text-[9px] text-emerald-500 font-black uppercase tracking-widest mt-0.5 flex items-center gap-1">
-                            <span class="size-1.5 rounded-full bg-emerald-500"></span> Đang hoạt động
-                        </p>
+                <div class="flex items-center justify-between p-3 bg-white rounded-2xl shadow-sm border border-blue-50">
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="size-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-black text-xs shadow-inner shrink-0 uppercase">
+                            {{ mb_substr(Auth::user()->name ?? 'AD', 0, 2) }}
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="text-xs font-black truncate text-slate-700 uppercase tracking-widest">{{ Auth::user()->name }}</p>
+                            <p class="text-[9px] text-emerald-500 font-black uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                                <span class="size-1.5 rounded-full bg-emerald-500"></span> Đang hoạt động
+                            </p>
+                        </div>
                     </div>
+
+                    <form method="POST" action="{{ route('logout') }}" title="Đăng xuất khỏi hệ thống">
+                        @csrf
+                        <button type="submit" class="text-red-500 hover:text-red-700 p-2 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center">
+                            <span class="material-symbols-outlined text-lg">logout</span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </aside>
@@ -130,13 +199,49 @@
 
             <footer class="p-6 text-center border-t border-slate-200 bg-white mt-auto">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    &copy; 2024 {{ \App\Models\Setting::getVal('school_name', 'Hệ thống Xếp lịch') }}.
+                    &copy; {{ date('Y') }} {{ \App\Models\Setting::getVal('school_name', 'Hệ thống Xếp lịch') }}.
                 </p>
             </footer>
         </main>
     </div>
 
     <script>
+        // Cấu hình NProgress chạy khi click đổi trang
+        document.addEventListener('htmx:configRequest', function() { NProgress.start(); });
+        
+        // ===========================================================================
+        // BÍ QUYẾT XỬ LÝ THANH CUỘN DÀNH RIÊNG CHO HTMX (hx-boost)
+        // ===========================================================================
+
+        // 1. NGAY TRƯỚC KHI HTMX XÓA NỘI DUNG CŨ: Chụp lại vị trí cuộn
+        document.addEventListener('htmx:beforeSwap', function(evt) {
+            const sidebar = document.getElementById('sidebar-nav');
+            if (sidebar) {
+                localStorage.setItem('sidebar_scroll_position', sidebar.scrollTop);
+            }
+        });
+
+        // 2. NGAY SAU KHI HTMX ĐẮP NỘI DUNG MỚI VÀO: Phục hồi vị trí cuộn
+        document.addEventListener('htmx:afterSettle', function() {
+            NProgress.done();
+            const sidebar = document.getElementById('sidebar-nav');
+            const pos = localStorage.getItem('sidebar_scroll_position');
+            if (sidebar && pos !== null) {
+                sidebar.scrollTop = parseInt(pos, 10);
+            }
+        });
+
+        // 3. Phục hồi cho lần đầu tiên tải trang (Bấm F5)
+        window.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar-nav');
+            const pos = localStorage.getItem('sidebar_scroll_position');
+            if (sidebar && pos !== null) {
+                sidebar.scrollTop = parseInt(pos, 10);
+            }
+        });
+        // ===========================================================================
+
+        // Logic Đồng hồ (Được tối ưu để không bị lỗi khi chuyển trang bằng AJAX)
         function updateClock() {
             const now = new Date();
             const days = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
@@ -148,11 +253,15 @@
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
             const timeString = `${dayOfWeek}, ${date}/${month}/${year} • ${hours}:${minutes}:${seconds}`;
+            
             const clockElement = document.getElementById('realtime-clock');
             if (clockElement) clockElement.textContent = timeString;
         }
+
+        // Xóa interval cũ nếu trang bị đổi qua lại (Tránh lỗi nhảy giờ nhanh)
+        if (window.clockInterval) clearInterval(window.clockInterval);
+        window.clockInterval = setInterval(updateClock, 1000);
         updateClock();
-        setInterval(updateClock, 1000);
     </script>
 </body>
 </html>

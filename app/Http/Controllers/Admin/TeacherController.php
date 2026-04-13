@@ -70,4 +70,22 @@ class TeacherController extends Controller
         $teacher->delete();
         return back()->with('success', 'Đã xóa giáo viên!');
     }
+    public function import(Request $request) {
+        $request->validate(['import_data' => 'required|string']);
+        $teachers = json_decode($request->import_data, true);
+        $count = 0;
+        foreach ($teachers as $t) {
+            if (!empty($t['name']) && !empty($t['code'])) {
+                Teacher::updateOrCreate(
+                    ['code' => $t['code']], // Dùng Mã GV làm gốc, nếu trùng sẽ cập nhật
+                    [
+                        'name' => $t['name'],
+                        'max_slots_week' => $t['max_slots_week'] ?? 15,
+                    ]
+                );
+                $count++;
+            }
+        }
+        return back()->with('success', "🎉 Đã import thành công $count Giáo viên!");
+    }
 }

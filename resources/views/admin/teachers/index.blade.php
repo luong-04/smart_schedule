@@ -21,6 +21,13 @@
                 </button>
             </div>
             
+            <form action="{{ route('teachers.import') }}" method="POST" id="importFormTeachers" class="hidden">
+                @csrf <input type="hidden" name="import_data" id="importDataTeachers">
+            </form>
+            <input type="file" id="excelFileTeachers" class="hidden" accept=".xlsx, .xls" onchange="handleImport(event, 'teachers')">
+            <button onclick="document.getElementById('excelFileTeachers').click()" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-500 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-200 hover:bg-emerald-600 transition-all shrink-0">
+                <span class="material-symbols-outlined text-[16px]">upload_file</span> Import
+            </button>
             <a href="{{ route('teachers.create') }}" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all shrink-0">
                 <span class="material-symbols-outlined text-[16px]">person_add</span> Thêm giáo viên
             </a>

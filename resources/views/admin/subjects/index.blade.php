@@ -5,9 +5,20 @@
 <div class="bg-white rounded-[2rem] shadow-sm border border-blue-50 overflow-hidden">
     <div class="p-6 border-b border-slate-50 flex justify-between items-center">
         <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Danh sách môn học</h3>
-        <a href="{{ route('subjects.create') }}" class="bg-blue-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
-            <span class="material-symbols-outlined text-sm">add</span> Thêm môn học
-        </a>
+        
+        <div class="flex items-center gap-3">
+            <form action="{{ route('subjects.import') }}" method="POST" id="importFormSubjects" class="hidden">
+                @csrf <input type="hidden" name="import_data" id="importDataSubjects">
+            </form>
+            <input type="file" id="excelFileSubjects" class="hidden" accept=".xlsx, .xls" onchange="handleImport(event, 'subjects')">
+            <button onclick="document.getElementById('excelFileSubjects').click()" class="bg-emerald-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">upload_file</span> Import
+            </button>
+
+            <a href="{{ route('subjects.create') }}" class="bg-blue-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">add</span> Thêm môn học
+            </a>
+        </div>
     </div>
     
     <div class="overflow-x-auto">

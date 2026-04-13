@@ -43,16 +43,19 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
     // 2. NHÓM GIÁO VIÊN
     Route::middleware(['can:quan_ly_giao_vien'])->group(function () {
+        Route::post('teachers/import', [TeacherController::class, 'import'])->name('teachers.import');
         Route::resource('teachers', TeacherController::class);
     });
 
     // 3. NHÓM MÔN HỌC
     Route::middleware(['can:quan_ly_mon_hoc'])->group(function () {
+        Route::post('subjects/import', [SubjectController::class, 'import'])->name('subjects.import');
         Route::resource('subjects', SubjectController::class);
     });
 
     // 4. NHÓM LỚP HỌC & PHÒNG HỌC
     Route::middleware(['can:quan_ly_lop_hoc'])->group(function () {
+        Route::post('classrooms/import', [ClassroomController::class, 'import'])->name('classrooms.import');
         Route::resource('classrooms', ClassroomController::class);
         Route::resource('room-types', RoomTypeController::class);
         Route::resource('rooms', RoomController::class);

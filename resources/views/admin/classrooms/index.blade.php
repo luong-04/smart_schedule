@@ -4,20 +4,55 @@
 @section('content')
 
 @php
-    // Tự động gom nhóm danh sách lớp học theo Khối
+    // Tự động gom nhóm danh sách lớp học theo Khối (10, 11, 12)
     $groupedClassrooms = $classrooms->groupBy('grade');
 @endphp
 
-<div x-data="{ activeGrade: 10 }" class="space-y-6 max-w-6xl mx-auto">
+<div x-data="{ activeGrade: 10, activeBlock: 'all' }" class="space-y-4 max-w-6xl mx-auto">
     
-    <div class="bg-white p-2 rounded-[2rem] border border-slate-100 flex gap-2 shadow-sm">
-        @foreach([10, 11, 12] as $grade)
-        <button @click="activeGrade = {{ $grade }}" 
-                :class="activeGrade === {{ $grade }} ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'"
-                class="flex-1 py-3.5 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all">
-            Khối lớp {{ $grade }}
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="bg-white p-2 rounded-[2rem] border border-slate-100 flex gap-2 shadow-sm w-full md:w-auto">
+            @foreach([10, 11, 12] as $grade)
+            <button @click="activeGrade = {{ $grade }}" 
+                    :class="activeGrade === {{ $grade }} ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'"
+                    class="flex-1 px-8 py-3.5 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all">
+                Khối lớp {{ $grade }}
+            </button>
+            @endforeach
+        </div>
+
+        <div>
+            <form action="{{ route('classrooms.import') }}" method="POST" id="importFormClassrooms" class="hidden">
+                @csrf <input type="hidden" name="import_data" id="importDataClassrooms">
+            </form>
+            <input type="file" id="excelFileClassrooms" class="hidden" accept=".xlsx, .xls" onchange="handleImport(event, 'classrooms')">
+            <button onclick="document.getElementById('excelFileClassrooms').click()" class="bg-emerald-500 text-white px-6 py-3.5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]">upload_file</span> Import Lớp học
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2 mb-6">
+        <button @click="activeBlock = 'all'" 
+                :class="activeBlock === 'all' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
+                class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
+            Tất cả các lớp
         </button>
-        @endforeach
+        <button @click="activeBlock = 'KHTN'" 
+                :class="activeBlock === 'KHTN' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
+                class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
+            Khoa học Tự nhiên
+        </button>
+        <button @click="activeBlock = 'KHXH'" 
+                :class="activeBlock === 'KHXH' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
+                class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
+            Khoa học Xã hội
+        </button>
+        <button @click="activeBlock = 'Cơ bản'" 
+                :class="activeBlock === 'Cơ bản' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
+                class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
+            Cơ bản / Khác
+        </button>
     </div>
 
     @foreach([10, 11, 12] as $grade)
@@ -31,7 +66,7 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Danh sách lớp - Khối {{ $grade }}</h3>
-                        <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Quản lý phân ca và Giáo viên chủ nhiệm</p>
+                        <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Quản lý Tổ hợp, Phân ca và GVCN</p>
                     </div>
                 </div>
                 <a href="{{ route('classrooms.create') }}" class="bg-blue-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
@@ -43,7 +78,7 @@
                 <table class="w-full text-left">
                     <thead class="bg-white text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                         <tr>
-                            <th class="px-8 py-5">Tên lớp</th>
+                            <th class="px-8 py-5">Tên lớp / Tổ hợp</th>
                             <th class="px-6 py-5 text-center">Ca học</th>
                             <th class="px-6 py-5">Giáo viên Chủ nhiệm</th>
                             <th class="px-8 py-5 text-right">Thao tác</th>
@@ -53,10 +88,14 @@
                         @php $classesInGrade = $groupedClassrooms->get($grade) ?? collect(); @endphp
                         
                         @forelse($classesInGrade as $c)
-                        <tr class="hover:bg-blue-50/30 transition-all group">
+                        <tr x-show="activeBlock === 'all' || activeBlock === '{{ $c->block ?? 'Cơ bản' }}'" 
+                            class="hover:bg-blue-50/30 transition-all group">
                             
-                            <td class="px-8 py-5 font-black text-blue-700 uppercase text-sm tracking-wider">
+                            <td class="px-8 py-5 font-black text-blue-700 uppercase text-sm tracking-wider flex items-center gap-3">
                                 Lớp {{ $c->name }}
+                                <span class="text-[9px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg border border-blue-100 tracking-widest">
+                                    {{ $c->block ?? 'Cơ bản' }}
+                                </span>
                             </td>
                             
                             <td class="px-6 py-5 text-center">

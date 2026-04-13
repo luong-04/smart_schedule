@@ -16,7 +16,8 @@ class Classroom extends Model
         'name',
         'grade',
         'shift',
-        'homeroom_teacher'
+        'homeroom_teacher',
+        'block'
     ];
 
     // Một lớp có nhiều phân công giảng dạy

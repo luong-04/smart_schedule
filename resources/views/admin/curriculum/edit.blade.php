@@ -23,14 +23,26 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Số tiết / Tuần</label>
-                    <input type="number" name="slots_per_week" value="{{ $curriculum->slots_per_week }}" required min="1" max="20"
-                        class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Tổ hợp (Ban)</label>
+                    <select name="block" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500">
+                        <option value="KHTN" {{ $curriculum->block == 'KHTN' ? 'selected' : '' }}>Khoa học Tự nhiên</option>
+                        <option value="KHXH" {{ $curriculum->block == 'KHXH' ? 'selected' : '' }}>Khoa học Xã hội</option>
+                        <option value="Cơ bản" {{ $curriculum->block == 'Cơ bản' ? 'selected' : '' }}>Cơ bản / Khác</option>
+                    </select>
                 </div>
             </div>
 
-            <div class="pt-6 flex justify-end">
-                <button type="submit" class="bg-blue-600 text-white font-bold px-12 py-4 rounded-2xl shadow-xl shadow-blue-200">Cập nhật thay đổi</button>
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Số tiết / Tuần</label>
+                <input type="number" name="slots_per_week" value="{{ $curriculum->slots_per_week }}" required min="1" max="20"
+                    class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner">
+            </div>
+
+            <div class="pt-6 flex justify-between items-center border-t border-slate-50 mt-8">
+                <a href="{{ route('curriculum.index') }}" class="text-slate-400 text-xs font-bold uppercase tracking-widest hover:text-slate-600">Quay lại</a>
+                <button type="submit" class="bg-blue-600 text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all">
+                    Cập nhật
+                </button>
             </div>
         </form>
     </div>

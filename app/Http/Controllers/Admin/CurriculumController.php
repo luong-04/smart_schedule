@@ -33,18 +33,20 @@ class CurriculumController extends Controller
         $data = $request->validate([
             'subject_id' => 'required|exists:subjects,id',
             'grade' => 'required|integer|in:10,11,12',
+            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', // Đã bổ sung lưu Tổ hợp
             'slots_per_week' => 'required|integer|min:1|max:20',
         ], [
             'subject_id.required' => 'Vui lòng chọn môn học.',
             'slots_per_week.min' => 'Số tiết phải ít nhất là 1.'
         ]);
 
-        // Kiểm tra xem đã tồn tại định mức cho môn này ở khối này chưa
+        // Kiểm tra xem đã tồn tại định mức cho môn này ở KHỐI và TỔ HỢP này chưa
         $exists = SubjectConfiguration::where('subject_id', $data['subject_id'])
                                      ->where('grade', $data['grade'])
+                                     ->where('block', $data['block']) // Kiểm tra tổ hợp
                                      ->exists();
         if ($exists) {
-            return back()->with('error', 'Môn học này đã được định mức cho khối này rồi!');
+            return back()->with('error', 'Môn học này đã được định mức cho Khối và Tổ hợp này rồi!');
         }
 
         SubjectConfiguration::create($data);
@@ -64,6 +66,7 @@ class CurriculumController extends Controller
         $data = $request->validate([
             'subject_id' => 'required|exists:subjects,id',
             'grade' => 'required|integer|in:10,11,12',
+            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', // Đã bổ sung cập nhật Tổ hợp
             'slots_per_week' => 'required|integer|min:1|max:20',
         ]);
 

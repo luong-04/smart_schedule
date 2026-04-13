@@ -62,7 +62,11 @@ class ScheduleController extends Controller
         $assignFlag = $settings['assign_gvcn_flag_salute'] ?? 0;
         $assignMeeting = $settings['assign_gvcn_class_meeting'] ?? 0;
         
+        // ĐÃ SỬA TẠI ĐÂY: Thêm fallback 'Cơ bản' để chống lỗi sập trang nếu lớp cũ chưa có Tổ hợp
+        $blockName = $classroom->block ?? 'Cơ bản'; 
+
         $curriculums = SubjectConfiguration::where('grade', $classroom->grade)
+            ->where('block', $blockName) // Đã bắt logic Tổ hợp
             ->pluck('slots_per_week', 'subject_id')->all();
 
         $validAssignments = collect();
@@ -196,10 +200,15 @@ class ScheduleController extends Controller
             }
         }
         
+        // ĐÃ SỬA TẠI ĐÂY: Thêm fallback 'Cơ bản' để check chống hack
+        $blockName = $classroom->block ?? 'Cơ bản';
+
         foreach ($assignmentCounts as $asId => $count) {
              $asmt = Assignment::with('subject')->find($asId);
              $config = SubjectConfiguration::where('subject_id', $asmt->subject_id)
-                           ->where('grade', $classroom->grade)->first();
+                           ->where('grade', $classroom->grade)
+                           ->where('block', $blockName) // Đã bắt logic Tổ hợp
+                           ->first();
              if (!$config || $count > $config->slots_per_week) {
                   return response()->json(['status' => 'error', 'message' => "Vượt định mức: Môn {$asmt->subject->name} chỉ được phép xếp tối đa {$config->slots_per_week} tiết/tuần cho khối {$classroom->grade}!"]);
              }

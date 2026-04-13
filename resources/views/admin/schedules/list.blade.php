@@ -40,7 +40,7 @@
                             {{ $class->name }}
                         </div>
                         <div>
-                            <h3 class="text-sm font-black text-slate-800 uppercase">LỚP {{ $class->name }} (KHỐI {{ $class->grade }})</h3>
+                            <h3 class="text-sm font-black text-slate-800 uppercase">LỚP {{ $class->name }} (KHỐI {{ $class->grade }} - {{ $class->block ?? 'Cơ bản' }})</h3>
                             <p class="text-[11px] text-slate-500 font-bold mt-0.5">GVCN: <span class="text-blue-600">{{ $class->homeroom_teacher ?? 'Chưa cập nhật' }}</span></p>
                         </div>
                     </div>
@@ -52,7 +52,7 @@
 
                 <div x-show="expandedClass === {{ $class->id }}" x-transition class="border-t border-slate-100 bg-[#f8f9fa] p-6 md:p-8">
                     <div class="flex justify-end gap-3 mb-6 no-print">
-                        <button onclick="exportExcel('class-{{ $class->id }}', '{{ $class->name }}', '{{ $settings['school_year'] ?? '2024 - 2025' }}', '{{ $class->homeroom_teacher ?? 'Chưa cập nhật' }}', 'class')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/30">
+                        <button onclick="exportExcel('class-{{ $class->id }}', '{{ $class->name }}', '{{ $settings['school_year'] ?? '2024 - 2025' }}', '{{ $class->homeroom_teacher ?? 'Chưa cập nhật' }}', 'class', '{{ $class->block ?? 'Cơ bản' }}')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/30">
                             <span class="material-symbols-outlined text-sm">table_view</span> Tải Excel
                         </button>
                         <button onclick="exportNative('class-{{ $class->id }}', '{{ $class->name }}', 'class')" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-500/30">
@@ -65,7 +65,7 @@
                             <h2 class="text-sm font-black text-slate-600 uppercase">{{ $settings['school_name'] ?? 'TRƯỜNG CHƯA CÀI ĐẶT' }}</h2>
                             <h1 class="text-2xl font-black text-blue-700 uppercase tracking-widest mt-2">THỜI KHÓA BIỂU</h1>
                             <div class="flex justify-center gap-6 mt-3 text-xs font-bold text-slate-800 uppercase">
-                                <p>Lớp: <span class="text-blue-700 text-sm">{{ $class->name }}</span></p>
+                                <p>Lớp: <span class="text-blue-700 text-sm">{{ $class->name }} ({{ $class->block ?? 'Cơ bản' }})</span></p>
                                 <p>Năm học: {{ $settings['school_year'] ?? '2024 - 2025' }}</p>
                             </div>
                             <p class="text-xs font-bold text-slate-600 mt-2 uppercase">Giáo viên chủ nhiệm: <span class="text-blue-700">{{ $class->homeroom_teacher ?? 'Chưa cập nhật' }}</span></p>
@@ -324,8 +324,8 @@
         }, 1000);
     }
 
-    // Hàm Xuất Excel Dùng chung cho cả Lớp và Giáo Viên
-    function exportExcel(elementId, targetName, schoolYear, extraInfo, viewType) {
+    // ĐÃ CẬP NHẬT: Thêm biến 'block' vào hàm exportExcel
+    function exportExcel(elementId, targetName, schoolYear, extraInfo, viewType, block = '') {
         let tableClone = document.querySelector('#pdf-content-' + elementId + ' table').cloneNode(true);
         
         tableClone.querySelectorAll('td, th').forEach(cell => {
@@ -352,7 +352,9 @@
 
         let schoolName = "{{ $settings['school_name'] ?? 'TRƯỜNG CHƯA CÀI ĐẶT' }}";
         let mainTitle = viewType === 'class' ? `THỜI KHÓA BIỂU LỚP ${targetName}` : `THỜI KHÓA BIỂU GIẢNG DẠY - GV: ${targetName}`;
-        let subTitle = viewType === 'class' ? `Giáo viên chủ nhiệm: ${extraInfo}` : `Mã giáo viên: ${extraInfo}`;
+        
+        // ĐÃ CẬP NHẬT: Hiển thị thêm Tổ hợp trong file Excel
+        let subTitle = viewType === 'class' ? `Giáo viên chủ nhiệm: ${extraInfo} | Tổ hợp: ${block}` : `Mã giáo viên: ${extraInfo}`;
 
         let headerHtml = `
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">

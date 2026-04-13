@@ -50,7 +50,7 @@
                 <h2 class="text-sm font-bold text-slate-800 tracking-tight">Xếp thời khóa biểu</h2>
                 <select onchange="window.location.href='?class_id='+this.value" class="bg-transparent border-none p-0 text-xs font-black text-slate-500 uppercase tracking-widest focus:ring-0 cursor-pointer outline-none hover:text-primary transition-colors">
                     @foreach($classes as $class)
-                        <option value="{{ $class->id }}" {{ $selectedClassId == $class->id ? 'selected' : '' }}>Lớp {{ $class->name }} - Khối {{ $class->grade }}</option>
+                        <option value="{{ $class->id }}" {{ $selectedClassId == $class->id ? 'selected' : '' }}>Lớp {{ $class->name }} - Khối {{ $class->grade }} ({{ $class->block ?? 'Cơ bản' }})</option>
                     @endforeach
                 </select>
             </div>
@@ -397,7 +397,6 @@
             
             pendingItem.className = "matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 transition-all overflow-hidden";
             
-            // HTML BỌC CHỮ KHI CÓ PHÒNG (Cho phép rớt dòng)
             pendingItem.innerHTML = `
                 <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary shrink-0"></div>
                 <div class="w-full flex flex-col items-center justify-center px-1 min-w-0 overflow-hidden">
@@ -530,7 +529,6 @@
                     
                     item.className = "matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 transition-all overflow-hidden";
                     
-                    // HTML BỌC CHỮ KHI KHÔNG CÓ PHÒNG (Cho phép rớt dòng)
                     item.innerHTML = `
                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary shrink-0"></div>
                         <div class="w-full flex flex-col items-center justify-center px-1 min-w-0 overflow-hidden">

@@ -263,5 +263,57 @@
         window.clockInterval = setInterval(updateClock, 1000);
         updateClock();
     </script>
+    <!--logic xử lý import excel lớp học, giáo viên, môn học -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        function handleImport(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => { 
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                let parsedData = [];
+                
+                // Xử lý Excel cho Giáo Viên
+                if (type === 'teachers') {
+                    parsedData = jsonData.map(row => ({
+                        name: row['Họ và Tên'] || row['Name'] || row['Tên'] || '',
+                        code: row['Mã GV'] || row['Mã'] || row['Code'] || '',
+                        max_slots_week: row['Định mức'] || row['Số tiết'] || 15
+                    }));
+                } 
+                // Xử lý Excel cho Lớp học
+                else if (type === 'classrooms') {
+                    parsedData = jsonData.map(row => ({
+                        name: row['Tên lớp'] || row['Lớp'] || '',
+                        grade: row['Khối'] || row['Khối lớp'] || '',
+                        shift: row['Ca học'] || row['Ca'] || 'morning',
+                        homeroom_teacher: row['GVCN'] || row['Giáo viên chủ nhiệm'] || null
+                    }));
+                } 
+                // Xử lý Excel cho Môn học
+                else if (type === 'subjects') {
+                    parsedData = jsonData.map(row => ({
+                        name: row['Tên môn'] || row['Môn'] || '',
+                        type: row['Phân loại'] || row['Loại'] || 'Lý thuyết'
+                    }));
+                }
+
+                // Đẩy vào form ẩn và tự động Submit
+                if(parsedData.length > 0) {
+                    document.getElementById('importData' + type.charAt(0).toUpperCase() + type.slice(1)).value = JSON.stringify(parsedData);
+                    document.getElementById('importForm' + type.charAt(0).toUpperCase() + type.slice(1)).submit();
+                } else {
+                    alert("File Excel trống hoặc không đúng định dạng các cột yêu cầu!");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
 </body>
 </html>

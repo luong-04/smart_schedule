@@ -7,69 +7,82 @@ use App\Models\Teacher;
 use App\Models\Subject;
 use App\Models\Classroom;
 use App\Models\Assignment;
+use App\Models\SubjectConfiguration;
 use Illuminate\Http\Request;
 
 class TeacherController extends Controller
 {
     public function index() {
-        // Lấy danh sách giáo viên kèm số lượng lớp đang dạy
-        $teachers = Teacher::withCount('assignments')->get();
-        return view('admin.teachers.index', compact('teachers'));
+        $teachers = Teacher::with(['assignments.classroom', 'assignments.subject'])->get();
+
+        foreach ($teachers as $t) {
+            $totalAssigned = 0;
+            foreach ($t->assignments as $as) {
+                $config = SubjectConfiguration::where('subject_id', $as->subject_id)
+                    ->where('grade', $as->classroom->grade)
+                    ->where('block', $as->classroom->block)
+                    ->first();
+                $totalAssigned += $config ? $config->slots_per_week : 0;
+            }
+            $t->total_assigned_slots = $totalAssigned;
+        }
+
+        $groupedTeachers = $teachers->groupBy('department');
+        return view('admin.teachers.index', compact('groupedTeachers'));
+    }
+
+    // Xử lý xóa nhiều qua checkbox
+    public function bulkDelete(Request $request) {
+        $ids = $request->input('ids');
+        if ($ids && is_array($ids)) {
+            Teacher::whereIn('id', $ids)->delete();
+            return back()->with('success', 'Đã xóa các giáo viên được chọn!');
+        }
+        return back()->with('error', 'Vui lòng chọn ít nhất 1 giáo viên!');
     }
 
     public function create() {
-        $subjects = Subject::all();
-        $classrooms = Classroom::all();
-        return view('admin.teachers.create', compact('subjects', 'classrooms'));
+        return view('admin.teachers.create', [
+            'subjects' => Subject::all(),
+            'classrooms' => Classroom::all()
+        ]);
     }
 
     public function store(Request $request) {
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|unique:teachers,code',
+            'department' => 'required|string', // Thêm Tổ chuyên môn
             'max_slots_week' => 'required|integer|min:1',
-            'off_days' => 'nullable|array',
         ]);
-
-        // 1. Tạo giáo viên
-        $teacher = Teacher::create($data);
-
-        // 2. Nếu có chọn lớp & môn ngay lúc tạo, thực hiện phân công luôn
-        if ($request->filled('class_id') && $request->filled('subject_id')) {
-            Assignment::create([
-                'teacher_id' => $teacher->id,
-                'class_id' => $request->class_id,
-                'subject_id' => $request->subject_id,
-            ]);
-        }
-
-        return redirect()->route('teachers.index')->with('success', 'Đã thêm giáo viên và thực hiện phân công!');
+        Teacher::create($data);
+        return redirect()->route('teachers.index')->with('success', 'Đã thêm giáo viên thành công!');
     }
 
-    public function edit(Teacher $teacher)
-    {
-        $subjects = Subject::all();
-        $classrooms = Classroom::all();
-        $teacher->load('assignments.subject', 'assignments.classroom');
-        return view('admin.teachers.edit', compact('teacher', 'subjects', 'classrooms'));
+    public function edit(Teacher $teacher) {
+        return view('admin.teachers.edit', [
+            'teacher' => $teacher->load('assignments.subject', 'assignments.classroom'),
+            'subjects' => Subject::all(),
+            'classrooms' => Classroom::all()
+        ]);
     }
 
     public function update(Request $request, Teacher $teacher) {
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|unique:teachers,code,' . $teacher->id,
+            'department' => 'required|string', // Thêm Tổ chuyên môn
             'max_slots_week' => 'required|integer|min:1',
-            'off_days' => 'nullable|array', // Cập nhật lịch nghỉ
         ]);
-
         $teacher->update($data);
-        return redirect()->route('teachers.index')->with('success', 'Đã cập nhật hồ sơ giáo viên!');
+        return redirect()->route('teachers.index')->with('success', 'Đã cập nhật hồ sơ!');
     }
 
     public function destroy(Teacher $teacher) {
         $teacher->delete();
         return back()->with('success', 'Đã xóa giáo viên!');
     }
+
     public function import(Request $request) {
         $request->validate(['import_data' => 'required|string']);
         $teachers = json_decode($request->import_data, true);
@@ -77,15 +90,48 @@ class TeacherController extends Controller
         foreach ($teachers as $t) {
             if (!empty($t['name']) && !empty($t['code'])) {
                 Teacher::updateOrCreate(
-                    ['code' => $t['code']], // Dùng Mã GV làm gốc, nếu trùng sẽ cập nhật
+                    ['code' => $t['code']],
                     [
                         'name' => $t['name'],
-                        'max_slots_week' => $t['max_slots_week'] ?? 15,
+                        'department' => $t['department'] ?? 'Chưa phân tổ',
+                        'max_slots_week' => $t['max_slots_week'] ?? 17,
                     ]
                 );
                 $count++;
             }
         }
         return back()->with('success', "🎉 Đã import thành công $count Giáo viên!");
+    }
+    public function importAssignments(Request $request) {
+        $request->validate(['import_data' => 'required|string']);
+        $data = json_decode($request->import_data, true);
+        $count = 0;
+        $errors = [];
+    
+        foreach ($data as $row) {
+            // Tìm giáo viên theo Mã
+            $teacher = Teacher::where('code', trim($row['teacher_code']))->first();
+            // Tìm lớp theo Tên (VD: 10A1)
+            $class = Classroom::where('name', trim($row['class_name']))->first();
+            // Tìm môn theo Tên (VD: Toán học)
+            $subject = Subject::where('name', trim($row['subject_name']))->first();
+    
+            if ($teacher && $class && $subject) {
+                Assignment::updateOrCreate([
+                    'teacher_id' => $teacher->id,
+                    'class_id' => $class->id,
+                    'subject_id' => $subject->id,
+                ]);
+                $count++;
+            } else {
+                $errors[] = "Không khớp: GV {$row['teacher_code']} - Lớp {$row['class_name']} - Môn {$row['subject_name']}";
+            }
+        }
+    
+        if (count($errors) > 0) {
+            return back()->with('warning', "Đã gán $count phân công. Một số dòng bị lỗi: " . implode(', ', array_slice($errors, 0, 5)) . "...");
+        }
+    
+        return back()->with('success', "🎉 Đã tự động phân công thành công $count lớp cho giáo viên!");
     }
 }

@@ -23,7 +23,7 @@ class ClassroomController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'grade' => 'required|integer|in:10,11,12',
-            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', // Thêm Tổ hợp
+            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', 
             'shift' => 'required|in:morning,afternoon',
             'homeroom_teacher' => 'nullable|string',
         ]);
@@ -41,7 +41,7 @@ class ClassroomController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'grade' => 'required|integer|in:10,11,12',
-            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', // Thêm Tổ hợp
+            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', 
             'shift' => 'required|in:morning,afternoon',
             'homeroom_teacher' => 'nullable|string',
         ]);
@@ -53,6 +53,16 @@ class ClassroomController extends Controller
     public function destroy(Classroom $classroom) {
         $classroom->delete();
         return redirect()->route('classrooms.index')->with('success', 'Đã xóa lớp!');
+    }
+
+    // TÍNH NĂNG MỚI: Xóa nhiều lớp cùng lúc
+    public function bulkDelete(Request $request) {
+        $ids = $request->input('ids');
+        if ($ids && is_array($ids)) {
+            Classroom::whereIn('id', $ids)->delete();
+            return back()->with('success', 'Đã xóa thành công ' . count($ids) . ' lớp học!');
+        }
+        return back()->with('error', 'Vui lòng chọn ít nhất 1 lớp học để xóa!');
     }
 
     public function import(Request $request) {
@@ -67,7 +77,7 @@ class ClassroomController extends Controller
                     [
                         'shift' => $shift,
                         'homeroom_teacher' => $c['homeroom_teacher'] ?? null,
-                        'block' => $c['block'] ?? $c['Tổ hợp'] ?? 'Cơ bản' // Đọc Tổ hợp từ Excel
+                        'block' => $c['block'] ?? $c['Tổ hợp'] ?? 'Cơ bản' 
                     ]
                 );
                 $count++;

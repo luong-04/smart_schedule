@@ -2,11 +2,20 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SubjectConfiguration extends Model
 {
-    protected $fillable = ['subject_id', 'grade', 'slots_per_week'];
+    use HasFactory;
+
+    // BỔ SUNG 'block' VÀO MẢNG NÀY
+    protected $fillable = [
+        'subject_id',
+        'grade',
+        'block',
+        'slots_per_week',
+    ];
 
     public function subject()
     {

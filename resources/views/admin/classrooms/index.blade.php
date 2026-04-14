@@ -4,12 +4,18 @@
 @section('content')
 
 @php
-    // Tự động gom nhóm danh sách lớp học theo Khối (10, 11, 12)
     $groupedClassrooms = $classrooms->groupBy('grade');
 @endphp
 
-<div x-data="{ activeGrade: 10, activeBlock: 'all' }" class="space-y-4 max-w-6xl mx-auto">
+<div x-data="{ activeGrade: 10, activeBlock: 'all', selectedClasses: [] }" class="space-y-4 max-w-6xl mx-auto">
     
+    <form action="{{ route('classrooms.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden">
+        @csrf @method('DELETE')
+        <template x-for="id in selectedClasses" :key="id">
+            <input type="hidden" name="ids[]" :value="id">
+        </template>
+    </form>
+
     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
         <div class="bg-white p-2 rounded-[2rem] border border-slate-100 flex gap-2 shadow-sm w-full md:w-auto">
             @foreach([10, 11, 12] as $grade)
@@ -25,7 +31,7 @@
             <form action="{{ route('classrooms.import') }}" method="POST" id="importFormClassrooms" class="hidden">
                 @csrf <input type="hidden" name="import_data" id="importDataClassrooms">
             </form>
-            <input type="file" id="excelFileClassrooms" class="hidden" accept=".xlsx, .xls" onchange="handleImport(event, 'classrooms')">
+            <input type="file" id="excelFileClassrooms" class="hidden" accept=".xlsx, .xls" onchange="handleImportClassrooms(event)">
             <button onclick="document.getElementById('excelFileClassrooms').click()" class="bg-emerald-500 text-white px-6 py-3.5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all flex items-center gap-2">
                 <span class="material-symbols-outlined text-[16px]">upload_file</span> Import Lớp học
             </button>
@@ -59,7 +65,7 @@
     <div x-show="activeGrade === {{ $grade }}" x-transition style="display: none;">
         <div class="bg-white rounded-[2.5rem] shadow-sm border border-blue-50 overflow-hidden">
             
-            <div class="p-6 md:p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+            <div class="p-6 md:p-8 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
                 <div class="flex items-center gap-4">
                     <div class="p-3 bg-blue-100 text-blue-600 rounded-2xl shadow-inner">
                         <span class="material-symbols-outlined">meeting_room</span>
@@ -69,29 +75,60 @@
                         <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Quản lý Tổ hợp, Phân ca và GVCN</p>
                     </div>
                 </div>
-                <a href="{{ route('classrooms.create') }}" class="bg-blue-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">add</span> Thêm lớp
-                </a>
+                
+                <div class="flex items-center gap-3">
+                    <button x-show="selectedClasses.length > 0" 
+                            @click="if(confirm('CẢNH BÁO: Bạn sắp xóa ' + selectedClasses.length + ' lớp học. Thao tác này sẽ xóa toàn bộ thời khóa biểu của các lớp đó. Bạn có chắc chắn không?')) document.getElementById('bulkDeleteForm').submit()"
+                            x-transition
+                            class="bg-red-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-600 transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">delete_sweep</span> Xóa (<span x-text="selectedClasses.length"></span>) lớp
+                    </button>
+
+                    <a href="{{ route('classrooms.create') }}" class="bg-blue-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">add</span> Thêm lớp
+                    </a>
+                </div>
             </div>
             
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead class="bg-white text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                         <tr>
-                            <th class="px-8 py-5">Tên lớp / Tổ hợp</th>
+                            @php 
+                                $classesInGrade = $groupedClassrooms->get($grade) ?? collect(); 
+                                $allIdsJson = $classesInGrade->pluck('id')->toJson();
+                            @endphp
+                            <th class="px-6 py-5 w-12 text-center">
+                                <input type="checkbox" 
+                                    @change="
+                                        let allIds = {{ $allIdsJson }};
+                                        if($event.target.checked) {
+                                            selectedClasses = [...new Set([...selectedClasses, ...allIds])];
+                                        } else {
+                                            selectedClasses = selectedClasses.filter(id => !allIds.includes(id));
+                                        }
+                                    "
+                                    :checked="{{ $classesInGrade->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedClasses.includes(id))"
+                                    class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
+                            </th>
+                            <th class="px-4 py-5">Tên lớp / Tổ hợp</th>
                             <th class="px-6 py-5 text-center">Ca học</th>
                             <th class="px-6 py-5">Giáo viên Chủ nhiệm</th>
                             <th class="px-8 py-5 text-right">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50 text-sm">
-                        @php $classesInGrade = $groupedClassrooms->get($grade) ?? collect(); @endphp
-                        
                         @forelse($classesInGrade as $c)
                         <tr x-show="activeBlock === 'all' || activeBlock === '{{ $c->block ?? 'Cơ bản' }}'" 
-                            class="hover:bg-blue-50/30 transition-all group">
+                            class="hover:bg-blue-50/30 transition-all group"
+                            :class="selectedClasses.includes({{ $c->id }}) ? 'bg-blue-50/50' : ''">
                             
-                            <td class="px-8 py-5 font-black text-blue-700 uppercase text-sm tracking-wider flex items-center gap-3">
+                            <td class="px-6 py-5 text-center">
+                                <input type="checkbox" value="{{ $c->id }}" x-model="selectedClasses" 
+                                       class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer transition-all">
+                            </td>
+
+                            <td class="px-4 py-5 font-black text-blue-700 uppercase text-sm tracking-wider flex items-center gap-3">
                                 Lớp {{ $c->name }}
                                 <span class="text-[9px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg border border-blue-100 tracking-widest">
                                     {{ $c->block ?? 'Cơ bản' }}
@@ -134,7 +171,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="4" class="px-8 py-20 text-center">
+                            <td colspan="5" class="px-8 py-20 text-center">
                                 <span class="material-symbols-outlined text-6xl text-slate-200 mb-3 block">meeting_room</span>
                                 <p class="text-xs font-black uppercase tracking-widest text-slate-400">Chưa có lớp học nào thuộc khối {{ $grade }}</p>
                                 <a href="{{ route('classrooms.create') }}" class="text-[10px] font-bold text-blue-500 hover:text-blue-600 underline mt-2 block">Nhấn vào đây để thêm mới</a>
@@ -148,4 +185,41 @@
     </div>
     @endforeach
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+    function handleImportClassrooms(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => { 
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+            
+            // "Dịch" các cột tiếng Việt sang đúng tên biến mà PHP cần
+            let parsedData = jsonData.map(row => ({
+                name: row['Tên lớp'] || row['Lớp'] || row['name'] || '',
+                grade: row['Khối'] || row['Khối lớp'] || row['grade'] || '',
+                shift: row['Ca học'] || row['Ca'] || row['shift'] || 'morning',
+                homeroom_teacher: row['GVCN'] || row['Giáo viên chủ nhiệm'] || row['homeroom_teacher'] || null,
+                block: row['Tổ hợp'] || row['Ban'] || row['block'] || 'Cơ bản'
+            }));
+
+            // Lọc bỏ các dòng trống
+            parsedData = parsedData.filter(item => item.name !== '' && item.grade !== '');
+
+            if(parsedData.length > 0) {
+                document.getElementById('importDataClassrooms').value = JSON.stringify(parsedData);
+                document.getElementById('importFormClassrooms').submit();
+            } else {
+                alert("File Excel trống hoặc không tìm thấy cột 'Tên lớp' và 'Khối'!");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+</script>
+
 @endsection

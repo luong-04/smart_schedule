@@ -36,7 +36,10 @@ class ScheduleController extends Controller
 
     public function index(Request $request)
     {
-        $classes = Classroom::all();
+        // ---> ĐÃ SỬA: Sắp xếp ngay từ lúc lấy dữ liệu từ Database
+        // Ưu tiên 1: grade (Khối 10 -> 12)
+        // Ưu tiên 2: name (Tên lớp A -> Z)
+        $classes = Classroom::orderBy('grade', 'asc')->orderBy('name', 'asc')->get();
         
         // ---> ĐÃ SỬA: Chặn lỗi 404 khi Database chưa có lớp học nào <---
         if ($classes->isEmpty()) {
@@ -45,6 +48,7 @@ class ScheduleController extends Controller
         }
         // ------------------------------------------------------------------
 
+        // Biến $classes->first() bây giờ chắc chắn 100% sẽ luôn là lớp 10A1 (hoặc lớp đầu tiên của khối 10)
         $selectedClassId = $request->get('class_id', $classes->first()?->id);
         $classroom = Classroom::findOrFail($selectedClassId);
     

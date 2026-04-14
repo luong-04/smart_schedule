@@ -23,22 +23,26 @@
             <div>
                 <p class="text-[11px] font-black text-amber-800 uppercase tracking-widest mb-1">Lưu ý quan trọng</p>
                 <p class="text-xs text-amber-700 font-medium leading-relaxed">
-                    Mọi thay đổi về <b>Họ tên, Mã GV, Định mức</b> hoặc <b>Lịch nghỉ</b> chỉ có hiệu lực sau khi bạn nhấn nút <b class="text-amber-800 uppercase">"Lưu hồ sơ giáo viên"</b> ở cuối khung này. 
+                    Mọi thay đổi về <b>Họ tên, Mã GV, Tổ, Định mức</b> hoặc <b>Lịch nghỉ</b> chỉ có hiệu lực sau khi bạn nhấn nút <b class="text-amber-800 uppercase">"Lưu hồ sơ giáo viên"</b>. 
                     <br><i>(Phần gán lớp học ở phía dưới sẽ được lưu tự động theo từng dòng riêng biệt).</i>
                 </p>
             </div>
         </div>
 
         <div class="grid grid-cols-12 gap-6 mb-8">
-            <div class="col-span-12 md:col-span-4">
+            <div class="col-span-12 md:col-span-3">
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Họ và tên</label>
                 <input type="text" name="name" value="{{ $teacher->name }}" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-inner transition-all">
             </div>
-            <div class="col-span-12 md:col-span-4">
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Mã định danh (ID)</label>
+            <div class="col-span-12 md:col-span-3">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Mã định danh</label>
                 <input type="text" name="code" value="{{ $teacher->code }}" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-inner uppercase transition-all">
             </div>
-            <div class="col-span-12 md:col-span-4">
+            <div class="col-span-12 md:col-span-3">
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Tổ chuyên môn</label>
+                <input type="text" name="department" value="{{ $teacher->department }}" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-inner transition-all">
+            </div>
+            <div class="col-span-12 md:col-span-3">
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Định mức tiết/tuần</label>
                 <input type="number" name="max_slots_week" value="{{ $teacher->max_slots_week }}" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-inner transition-all">
             </div>
@@ -68,7 +72,6 @@
     </form>
 
     <div class="grid grid-cols-12 gap-6">
-        
         <div class="col-span-12 md:col-span-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 h-fit">
             <h3 class="text-xs font-black text-slate-700 uppercase tracking-widest mb-6">Thêm phân công mới</h3>
             <form action="{{ route('assignments.store') }}" method="POST" class="space-y-4">

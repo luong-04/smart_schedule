@@ -42,15 +42,23 @@
 
 <div class="flex flex-col h-[calc(100vh-100px)]">
     <div class="bg-white p-4 rounded-t-[2rem] border-b border-slate-200 flex justify-between items-center shrink-0">
-        <div class="flex items-center gap-4">
+    <div class="flex items-center gap-4">
             <div class="bg-blue-50/50 p-2 rounded-xl text-primary flex items-center justify-center border border-blue-100">
                 <span class="material-symbols-outlined">grid_view</span>
             </div>
             <div>
                 <h2 class="text-sm font-bold text-slate-800 tracking-tight">Xếp thời khóa biểu</h2>
                 <select onchange="window.location.href='?class_id='+this.value" class="bg-transparent border-none p-0 text-xs font-black text-slate-500 uppercase tracking-widest focus:ring-0 cursor-pointer outline-none hover:text-primary transition-colors">
-                    @foreach($classes as $class)
-                        <option value="{{ $class->id }}" {{ $selectedClassId == $class->id ? 'selected' : '' }}>Lớp {{ $class->name }} - Khối {{ $class->grade }} ({{ $class->block ?? 'Cơ bản' }})</option>
+                    @php
+                        // Sắp xếp chuẩn: Khối (10->12) trước, Tên lớp (A->Z) sau
+                        $sortedClasses = $classes->sortBy(function($c) {
+                            return sprintf('%02d-%s', $c->grade, $c->name);
+                        });
+                    @endphp
+                    @foreach($sortedClasses as $class)
+                        <option value="{{ $class->id }}" {{ $selectedClassId == $class->id ? 'selected' : '' }}>
+                            Lớp {{ $class->name }} - Khối {{ $class->grade }} ({{ $class->block ?? 'Cơ bản' }})
+                        </option>
                     @endforeach
                 </select>
             </div>

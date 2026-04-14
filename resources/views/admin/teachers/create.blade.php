@@ -6,6 +6,7 @@
         @csrf
         <div class="grid grid-cols-12 gap-6">
             <div class="col-span-12 md:col-span-8 space-y-6">
+                
                 <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
                     <h3 class="text-xs font-black text-slate-700 uppercase tracking-widest mb-8 flex items-center gap-2">
                         <span class="material-symbols-outlined text-blue-600">badge</span> Thông tin hồ sơ
@@ -15,13 +16,19 @@
                             <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Mã giáo viên</label>
                             <input type="text" name="code" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner uppercase">
                         </div>
+                        
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Tổ chuyên môn</label>
+                            <input type="text" name="department" value="Chưa phân tổ" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner">
+                        </div>
+
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Họ và tên giáo viên</label>
+                            <input type="text" name="name" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner">
+                        </div>
                         <div class="col-span-2 md:col-span-1">
                             <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Định mức tiết/Tuần</label>
                             <input type="number" name="max_slots_week" value="18" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner">
-                        </div>
-                        <div class="col-span-2">
-                            <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Họ và tên giáo viên</label>
-                            <input type="text" name="name" required class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner">
                         </div>
                     </div>
                 </div>

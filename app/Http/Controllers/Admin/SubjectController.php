@@ -11,7 +11,6 @@ class SubjectController extends Controller
 {
     // 1. Trang danh sách
     public function index() {
-        // Load kèm thông tin loại phòng để hiển thị
         $subjects = Subject::with('roomType')->orderBy('name', 'asc')->get();
         return view('admin.subjects.index', compact('subjects'));
     }
@@ -30,7 +29,6 @@ class SubjectController extends Controller
             'room_type_id' => 'nullable|exists:room_types,id'
         ]);
 
-        // Nếu là môn Lý thuyết thì tự động hủy loại phòng (cho chắc chắn)
         if ($data['type'] == 'theory') {
             $data['room_type_id'] = null;
         }
@@ -38,8 +36,8 @@ class SubjectController extends Controller
         Subject::create($data);
         return redirect()->route('subjects.index')->with('success', 'Đã thêm môn học mới!');
     }
-    
-    // 4. Trang chỉnh sửa
+
+    // 4. Trang sửa dữ liệu
     public function edit(Subject $subject) {
         $roomTypes = RoomType::all();
         return view('admin.subjects.edit', compact('subject', 'roomTypes'));
@@ -66,6 +64,18 @@ class SubjectController extends Controller
         $subject->delete();
         return redirect()->route('subjects.index')->with('success', 'Đã xóa môn học!');
     }
+
+    // 7. TÍNH NĂNG MỚI: XÓA NHIỀU
+    public function bulkDelete(Request $request) {
+        $ids = $request->input('ids');
+        if ($ids && is_array($ids)) {
+            Subject::whereIn('id', $ids)->delete();
+            return back()->with('success', 'Đã xóa thành công ' . count($ids) . ' môn học!');
+        }
+        return back()->with('error', 'Vui lòng chọn ít nhất 1 môn học để xóa!');
+    }
+
+    // 8. Import
     public function import(Request $request) {
         $request->validate(['import_data' => 'required|string']);
         $subjects = json_decode($request->import_data, true);
@@ -77,7 +87,7 @@ class SubjectController extends Controller
                     ['name' => $s['name']],
                     [
                         'type' => $type,
-                        'room_type_id' => null // Import tự động đặt là phòng thường (Lý thuyết)
+                        'room_type_id' => null
                     ]
                 );
                 $count++;

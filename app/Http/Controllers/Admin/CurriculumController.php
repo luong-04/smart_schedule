@@ -33,7 +33,7 @@ class CurriculumController extends Controller
         $data = $request->validate([
             'subject_id' => 'required|exists:subjects,id',
             'grade' => 'required|integer|in:10,11,12',
-            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', // Đã bổ sung lưu Tổ hợp
+            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', 
             'slots_per_week' => 'required|integer|min:1|max:20',
         ], [
             'subject_id.required' => 'Vui lòng chọn môn học.',
@@ -43,7 +43,7 @@ class CurriculumController extends Controller
         // Kiểm tra xem đã tồn tại định mức cho môn này ở KHỐI và TỔ HỢP này chưa
         $exists = SubjectConfiguration::where('subject_id', $data['subject_id'])
                                      ->where('grade', $data['grade'])
-                                     ->where('block', $data['block']) // Kiểm tra tổ hợp
+                                     ->where('block', $data['block']) 
                                      ->exists();
         if ($exists) {
             return back()->with('error', 'Môn học này đã được định mức cho Khối và Tổ hợp này rồi!');
@@ -66,7 +66,7 @@ class CurriculumController extends Controller
         $data = $request->validate([
             'subject_id' => 'required|exists:subjects,id',
             'grade' => 'required|integer|in:10,11,12',
-            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', // Đã bổ sung cập nhật Tổ hợp
+            'block' => 'required|string|in:KHTN,KHXH,Cơ bản', 
             'slots_per_week' => 'required|integer|min:1|max:20',
         ]);
 
@@ -74,10 +74,61 @@ class CurriculumController extends Controller
         return redirect()->route('curriculum.index')->with('success', 'Đã cập nhật định mức!');
     }
 
-    // Xóa định mức
+    // Xóa 1 định mức
     public function destroy(SubjectConfiguration $curriculum)
     {
         $curriculum->delete();
         return back()->with('success', 'Đã xóa định mức!');
+    }
+
+    // TÍNH NĂNG MỚI: XÓA NHIỀU ĐỊNH MỨC CÙNG LÚC
+    public function bulkDelete(Request $request) 
+    {
+        $ids = $request->input('ids');
+        if ($ids && is_array($ids)) {
+            SubjectConfiguration::whereIn('id', $ids)->delete();
+            return back()->with('success', 'Đã xóa thành công ' . count($ids) . ' định mức chương trình học!');
+        }
+        return back()->with('error', 'Vui lòng chọn ít nhất 1 định mức để xóa!');
+    }
+    //IMPORT ĐỊNH MỨC TỪ EXCEL
+    public function import(Request $request) 
+    {
+        $request->validate(['import_data' => 'required|string']);
+        $configs = json_decode($request->import_data, true);
+        $count = 0;
+        $errorSubjects = []; // Mảng lưu các môn bị sai tên
+        
+        foreach ($configs as $c) {
+            if (!empty($c['subject_name']) && !empty($c['grade']) && !empty($c['block'])) {
+                
+                // Tìm môn học bằng LIKE để tránh lỗi dư khoảng trắng
+                $subjectName = trim($c['subject_name']);
+                $subject = Subject::where('name', 'LIKE', '%' . $subjectName . '%')->first();
+                
+                if ($subject) {
+                    SubjectConfiguration::updateOrCreate(
+                        [
+                            'subject_id' => $subject->id,
+                            'grade' => $c['grade'],
+                            'block' => $c['block']
+                        ],
+                        [
+                            'slots_per_week' => $c['slots'] ?? 2
+                        ]
+                    );
+                    $count++;
+                } else {
+                    $errorSubjects[] = $subjectName; // Ghi nhận môn tìm không thấy
+                }
+            }
+        }
+
+        if (count($errorSubjects) > 0) {
+            $errStr = implode(', ', array_unique($errorSubjects));
+            return back()->with('error', "Import được $count dòng. NHƯNG bỏ qua các môn không có trong hệ thống: $errStr. Vui lòng sửa tên file Excel cho giống tên trong web!");
+        }
+
+        return back()->with('success', "🎉 Đã import thành công $count định mức chương trình học!");
     }
 }

@@ -45,6 +45,16 @@ class RoomController extends Controller
 
     public function destroy(Room $room) {
         $room->delete();
-        return back()->with('success', 'Đã xóa phòng!');
+        return redirect()->route('rooms.index')->with('success', 'Đã xóa phòng!');
+    }
+
+    // TÍNH NĂNG MỚI: XÓA NHIỀU PHÒNG HỌC
+    public function bulkDelete(Request $request) {
+        $ids = $request->input('ids');
+        if ($ids && is_array($ids)) {
+            Room::whereIn('id', $ids)->delete();
+            return back()->with('success', 'Đã xóa thành công ' . count($ids) . ' phòng học!');
+        }
+        return back()->with('error', 'Vui lòng chọn ít nhất 1 phòng học để xóa!');
     }
 }

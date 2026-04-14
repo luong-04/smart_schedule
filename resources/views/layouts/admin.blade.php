@@ -278,17 +278,8 @@
                 const jsonData = XLSX.utils.sheet_to_json(firstSheet);
                 
                 let parsedData = [];
-                
-                // Xử lý Excel cho Giáo Viên
-                if (type === 'teachers') {
-                    parsedData = jsonData.map(row => ({
-                        name: row['Họ và Tên'] || row['Name'] || row['Tên'] || '',
-                        code: row['Mã GV'] || row['Mã'] || row['Code'] || '',
-                        max_slots_week: row['Định mức'] || row['Số tiết'] || 15
-                    }));
-                } 
                 // Xử lý Excel cho Lớp học
-                else if (type === 'classrooms') {
+                if (type === 'classrooms') {
                     parsedData = jsonData.map(row => ({
                         name: row['Tên lớp'] || row['Lớp'] || '',
                         grade: row['Khối'] || row['Khối lớp'] || '',

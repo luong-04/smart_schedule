@@ -40,10 +40,13 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('/dashboard', [ScheduleController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/schedules/list', [ScheduleController::class, 'list'])->name('schedules.list');
     Route::get('/schedules/view/{class_id}', [ScheduleController::class, 'show'])->name('schedules.show');
+    Route::get('/schedules/print-all-classes', [ScheduleController::class, 'printAll'])->name('schedules.printAll');
 
     // 2. NHÓM GIÁO VIÊN
     Route::middleware(['can:quan_ly_giao_vien'])->group(function () {
         Route::post('teachers/import', [TeacherController::class, 'import'])->name('teachers.import');
+        Route::post('assignments/import', [TeacherController::class, 'importAssignments'])->name('assignments.import');
+        Route::delete('teachers/bulk-delete', [TeacherController::class, 'bulkDelete'])->name('teachers.bulkDelete');
         Route::resource('teachers', TeacherController::class);
     });
 
@@ -51,14 +54,18 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::middleware(['can:quan_ly_mon_hoc'])->group(function () {
         Route::post('subjects/import', [SubjectController::class, 'import'])->name('subjects.import');
         Route::resource('subjects', SubjectController::class);
+        Route::delete('subjects/bulk-delete', [SubjectController::class, 'bulkDelete'])->name('subjects.bulkDelete');
     });
 
     // 4. NHÓM LỚP HỌC & PHÒNG HỌC
     Route::middleware(['can:quan_ly_lop_hoc'])->group(function () {
         Route::post('classrooms/import', [ClassroomController::class, 'import'])->name('classrooms.import');
+        Route::delete('classrooms/bulk-delete', [ClassroomController::class, 'bulkDelete'])->name('classrooms.bulkDelete');
         Route::resource('classrooms', ClassroomController::class);
         Route::resource('room-types', RoomTypeController::class);
         Route::resource('rooms', RoomController::class);
+        Route::delete('room-types/bulk-delete', [RoomTypeController::class, 'bulkDelete'])->name('room-types.bulkDelete');
+        Route::delete('rooms/bulk-delete', [RoomController::class, 'bulkDelete'])->name('rooms.bulkDelete');
     });
 
     // 5. NHÓM XẾP LỊCH (Phân công, Ma trận, Chương trình)
@@ -70,7 +77,9 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         Route::get('/matrix', [ScheduleController::class, 'index'])->name('matrix.index');
         Route::post('/matrix/save', [ScheduleController::class, 'save'])->name('admin.schedules.save');
 
+        Route::delete('curriculum/bulk-delete', [CurriculumController::class, 'bulkDelete'])->name('curriculum.bulkDelete');
         Route::resource('curriculum', CurriculumController::class);
+        Route::post('curriculum/import', [CurriculumController::class, 'import'])->name('curriculum.import');
     });
 
     // 6. NHÓM GIÁM THỊ

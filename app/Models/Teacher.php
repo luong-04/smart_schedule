@@ -12,6 +12,7 @@ class Teacher extends Model
     protected $fillable = [
         'name',
         'code',
+        'department',
         'max_slots_week',
         'off_days'
     ];
@@ -35,4 +36,5 @@ class Teacher extends Model
         
         return $max - $used;
     }
+    
 }

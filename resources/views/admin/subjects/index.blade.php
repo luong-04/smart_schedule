@@ -2,11 +2,26 @@
 @section('title', 'Danh mục Môn học')
 
 @section('content')
-<div class="bg-white rounded-[2rem] shadow-sm border border-blue-50 overflow-hidden">
-    <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+<div x-data="{ selectedSubjects: [] }" class="bg-white rounded-[2rem] shadow-sm border border-blue-50 overflow-hidden">
+    
+    <form action="{{ route('subjects.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden">
+        @csrf @method('DELETE')
+        <template x-for="id in selectedSubjects" :key="id">
+            <input type="hidden" name="ids[]" :value="id">
+        </template>
+    </form>
+
+    <div class="p-6 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Danh sách môn học</h3>
         
         <div class="flex items-center gap-3">
+            <button x-show="selectedSubjects.length > 0" 
+                    @click="if(confirm('CẢNH BÁO: Bạn sẽ xóa ' + selectedSubjects.length + ' môn học. Thao tác này có thể ảnh hưởng đến TKB đang xếp. Có chắc chắn xóa?')) document.getElementById('bulkDeleteForm').submit()"
+                    x-transition
+                    class="bg-red-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-600 transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">delete_sweep</span> Xóa (<span x-text="selectedSubjects.length"></span>)
+            </button>
+
             <form action="{{ route('subjects.import') }}" method="POST" id="importFormSubjects" class="hidden">
                 @csrf <input type="hidden" name="import_data" id="importDataSubjects">
             </form>
@@ -25,7 +40,23 @@
         <table class="w-full text-left border-collapse">
             <thead class="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 <tr>
-                    <th class="px-8 py-5">Tên môn học</th>
+                    @php 
+                        $allIdsJson = $subjects->pluck('id')->toJson();
+                    @endphp
+                    <th class="px-6 py-5 w-12 text-center">
+                        <input type="checkbox" 
+                            @change="
+                                let allIds = {{ $allIdsJson }};
+                                if($event.target.checked) {
+                                    selectedSubjects = [...new Set([...selectedSubjects, ...allIds])];
+                                } else {
+                                    selectedSubjects = selectedSubjects.filter(id => !allIds.includes(id));
+                                }
+                            "
+                            :checked="{{ $subjects->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedSubjects.includes(id))"
+                            class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
+                    </th>
+                    <th class="px-4 py-5">Tên môn học</th>
                     <th class="px-6 py-5 text-center">Phân loại</th>
                     <th class="px-6 py-5 text-center">Yêu cầu phòng</th>
                     <th class="px-8 py-5 text-right">Thao tác</th>
@@ -33,8 +64,15 @@
             </thead>
             <tbody class="divide-y divide-slate-50 text-sm">
                 @forelse($subjects as $s)
-                <tr class="hover:bg-blue-50/30 transition-all group">
-                    <td class="px-8 py-5 font-bold text-slate-700">{{ $s->name }}</td>
+                <tr class="hover:bg-blue-50/30 transition-all group"
+                    :class="selectedSubjects.includes({{ $s->id }}) ? 'bg-blue-50/50' : ''">
+                    
+                    <td class="px-6 py-5 text-center">
+                        <input type="checkbox" value="{{ $s->id }}" x-model="selectedSubjects" 
+                               class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer transition-all">
+                    </td>
+
+                    <td class="px-4 py-5 font-bold text-slate-700">{{ $s->name }}</td>
                     
                     <td class="px-6 py-5 text-center">
                         <span class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase {{ $s->type == 'theory' ? 'bg-green-100 text-green-600' : 'bg-purple-100 text-purple-600' }}">
@@ -68,7 +106,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="4" class="px-8 py-16 text-center">
+                    <td colspan="5" class="px-8 py-16 text-center">
                         <span class="material-symbols-outlined text-5xl text-slate-200 mb-3">menu_book</span>
                         <p class="text-xs font-black uppercase tracking-widest text-slate-400">Chưa có môn học nào</p>
                     </td>

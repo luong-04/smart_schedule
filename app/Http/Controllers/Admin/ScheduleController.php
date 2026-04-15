@@ -14,8 +14,20 @@ use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
 {
+    /**
+     * Helper: Lấy tên lịch động từ Settings (thay vì hardcode 'Học kỳ 1')
+     */
+    private function getScheduleName(): string
+    {
+        $semester = Setting::getVal('semester', 'Học kỳ 1');
+        $schoolYear = Setting::getVal('school_year', '2024-2025');
+        return $semester . ' - ' . $schoolYear;
+    }
+
     public function dashboard()
     {
+        $scheduleName = $this->getScheduleName();
+
         $stats = [
             'teachers'    => Teacher::count(),
             'classrooms'  => Classroom::count(),
@@ -23,7 +35,8 @@ class ScheduleController extends Controller
             'assignments' => Assignment::count()
         ];
         
-        $recentSchedules = Schedule::with('assignment.classroom')
+        $recentSchedules = Schedule::where('schedule_name', $scheduleName)
+            ->with('assignment.classroom')
             ->latest('updated_at')
             ->get()
             ->unique(function ($item) {
@@ -36,9 +49,9 @@ class ScheduleController extends Controller
 
     public function index(Request $request)
     {
+        $scheduleName = $this->getScheduleName();
+
         // ---> ĐÃ SỬA: Sắp xếp ngay từ lúc lấy dữ liệu từ Database
-        // Ưu tiên 1: grade (Khối 10 -> 12)
-        // Ưu tiên 2: name (Tên lớp A -> Z)
         $classes = Classroom::orderBy('grade', 'asc')->orderBy('name', 'asc')->get();
         
         // ---> ĐÃ SỬA: Chặn lỗi 404 khi Database chưa có lớp học nào <---
@@ -46,9 +59,7 @@ class ScheduleController extends Controller
             return redirect()->route('classrooms.index')
                              ->with('error', 'Hệ thống yêu cầu: Bạn phải tạo ít nhất 1 Lớp học trước khi vào tính năng Xếp lịch!');
         }
-        // ------------------------------------------------------------------
 
-        // Biến $classes->first() bây giờ chắc chắn 100% sẽ luôn là lớp 10A1 (hoặc lớp đầu tiên của khối 10)
         $selectedClassId = $request->get('class_id', $classes->first()?->id);
         $classroom = Classroom::findOrFail($selectedClassId);
     
@@ -56,7 +67,9 @@ class ScheduleController extends Controller
             ->where('class_id', $selectedClassId)
             ->get();
     
-        $schedules = Schedule::where('schedule_name', 'Học kỳ 1')
+        // ĐÃ SỬA: Chỉ lấy lịch của lớp hiện tại (thay vì toàn trường)
+        $schedules = Schedule::where('schedule_name', $scheduleName)
+            ->whereHas('assignment', fn($q) => $q->where('class_id', $selectedClassId))
             ->with(['assignment.subject', 'assignment.teacher', 'room'])
             ->get();
     
@@ -79,10 +92,13 @@ class ScheduleController extends Controller
         $teacherOtherDays = [];
         $roomBusySlots = []; 
         
-        $otherSchedules = Schedule::where('schedule_name', 'Học kỳ 1')
+        // ĐÃ SỬA: Chỉ select cột cần thiết cho otherSchedules (giảm tải dữ liệu)
+        $otherSchedules = Schedule::where('schedule_name', $scheduleName)
             ->whereHas('assignment', function($q) use ($selectedClassId) {
                 $q->where('class_id', '!=', $selectedClassId);
-            })->get();
+            })
+            ->with(['assignment:id,teacher_id,class_id'])
+            ->get(['id', 'assignment_id', 'room_id', 'day_of_week', 'period']);
 
         foreach($otherSchedules as $sch) {
             $tId = $sch->assignment->teacher_id;
@@ -100,16 +116,39 @@ class ScheduleController extends Controller
             }
         }
 
+        // ĐÃ SỬA: Pre-load counts thay vì query N+1 trong vòng lặp
+        // Đếm tổng tiết đã xếp cho mỗi giáo viên (toàn trường)
+        $teacherUsedCounts = Schedule::where('schedule_name', $scheduleName)
+            ->join('assignments', 'schedules.assignment_id', '=', 'assignments.id')
+            ->selectRaw('assignments.teacher_id, COUNT(*) as total')
+            ->groupBy('assignments.teacher_id')
+            ->pluck('total', 'teacher_id')
+            ->all();
+
+        // Đếm số tiết đã xếp cho mỗi assignment (lớp hiện tại)
+        $assignmentUsedCounts = Schedule::where('schedule_name', $scheduleName)
+            ->whereIn('assignment_id', $allAssignments->pluck('id'))
+            ->selectRaw('assignment_id, COUNT(*) as total')
+            ->groupBy('assignment_id')
+            ->pluck('total', 'assignment_id')
+            ->all();
+
+        // Đếm lớp GVCN cho mỗi giáo viên
+        $gvcnCounts = [];
+        $teacherNames = $allAssignments->pluck('teacher.name', 'teacher_id')->unique();
+        foreach ($teacherNames as $tId => $tName) {
+            $gvcnCounts[$tId] = Classroom::where('homeroom_teacher', $tName)->count();
+        }
+
         foreach($allAssignments as $as) {
             if (!isset($curriculums[$as->subject_id])) continue;
             
             $maxSubjectSlots = $curriculums[$as->subject_id];
 
-            $teacherUsed = Schedule::whereHas('assignment', function($q) use ($as) {
-                $q->where('teacher_id', $as->teacher_id);
-            })->count();
+            // ĐÃ SỬA: Dùng pre-loaded counts thay vì query trong loop
+            $teacherUsed = $teacherUsedCounts[$as->teacher_id] ?? 0;
             
-            $gvcnClassCount = Classroom::where('homeroom_teacher', $as->teacher->name)->count();
+            $gvcnClassCount = $gvcnCounts[$as->teacher_id] ?? 0;
             if ($gvcnClassCount > 0) {
                 if ($assignFlag) $teacherUsed += $gvcnClassCount;
                 if ($assignMeeting) $teacherUsed += $gvcnClassCount;
@@ -117,7 +156,7 @@ class ScheduleController extends Controller
             
             $as->teacher_remaining = max(0, $as->teacher->max_slots_week - $teacherUsed);
 
-            $subjectUsed = Schedule::where('assignment_id', $as->id)->count();
+            $subjectUsed = $assignmentUsedCounts[$as->id] ?? 0;
             $as->remaining_subject_slots = max(0, $maxSubjectSlots - $subjectUsed);
 
             $as->actual_remaining = min($as->teacher_remaining, $as->remaining_subject_slots);
@@ -135,10 +174,31 @@ class ScheduleController extends Controller
 
     public function save(Request $request) 
     {
+        // ĐÃ SỬA: Thêm Backend Validation
+        $request->validate([
+            'class_id' => 'required|integer|exists:classes,id',
+            'schedules' => 'required|array|max:60',
+            'schedules.*.assignment_id' => 'required|integer',
+            'schedules.*.day_of_week' => 'required|integer|between:2,7',
+            'schedules.*.period' => 'required|integer|between:1,10',
+        ]);
+
+        $scheduleName = $this->getScheduleName();
         $classId = $request->input('class_id');
         $schedules = $request->input('schedules'); 
         $classroom = Classroom::findOrFail($classId);
         $settings = Setting::pluck('value', 'key')->all();
+
+        // ĐÃ SỬA: Chống IDOR - validate tất cả assignment_id phải thuộc class_id
+        $validAssignmentIds = Assignment::where('class_id', $classId)->pluck('id')->toArray();
+        foreach ($schedules as $item) {
+            if (!in_array($item['assignment_id'], $validAssignmentIds)) {
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => 'Dữ liệu không hợp lệ: Phân công không thuộc lớp này!'
+                ]);
+            }
+        }
     
         $shiftStr = strtolower($classroom->shift ?? 'morning');
         
@@ -150,8 +210,19 @@ class ScheduleController extends Controller
         $teacherDayPeriods = []; 
         $assignmentCounts = []; 
     
+        // ĐÃ SỬA: Pre-load tất cả assignments cần thiết 1 lần
+        $assignmentIds = collect($schedules)->pluck('assignment_id')->unique()->toArray();
+        $allAssignments = Assignment::with(['teacher', 'subject'])
+            ->whereIn('id', $assignmentIds)
+            ->get()
+            ->keyBy('id');
+
         foreach ($schedules as $item) {
-            $assignment = Assignment::with('teacher', 'subject')->findOrFail($item['assignment_id']);
+            $assignment = $allAssignments[$item['assignment_id']] ?? null;
+            if (!$assignment) {
+                return response()->json(['status' => 'error', 'message' => 'Phân công không tồn tại!']);
+            }
+
             $teacherId = $assignment->teacher_id;
             $d = $item['day_of_week'];
             $p = $item['period'];
@@ -171,7 +242,8 @@ class ScheduleController extends Controller
             $teacherDayPeriods[$teacherId][$d][] = $p;
     
             if ($checkTeacherConflict) {
-                $conflict = Schedule::where('day_of_week', $d)->where('period', $p)
+                $conflict = Schedule::where('schedule_name', $scheduleName)
+                    ->where('day_of_week', $d)->where('period', $p)
                     ->whereHas('assignment', function($q) use ($teacherId, $classId) {
                         $q->where('teacher_id', $teacherId)->where('class_id', '!=', $classId);
                     })->with(['assignment.classroom'])->first();
@@ -185,7 +257,8 @@ class ScheduleController extends Controller
             }
 
             if ($checkRoomConflict && $roomId) {
-                $roomConflict = Schedule::where('day_of_week', $d)->where('period', $p)->where('room_id', $roomId)
+                $roomConflict = Schedule::where('schedule_name', $scheduleName)
+                    ->where('day_of_week', $d)->where('period', $p)->where('room_id', $roomId)
                     ->whereHas('assignment', function($q) use ($classId) {
                         $q->where('class_id', '!=', $classId);
                     })->with(['room', 'assignment.classroom'])->first();
@@ -207,26 +280,32 @@ class ScheduleController extends Controller
         // ĐÃ SỬA TẠI ĐÂY: Thêm fallback 'Cơ bản' để check chống hack
         $blockName = $classroom->block ?? 'Cơ bản';
 
+        // ĐÃ SỬA: Pre-load configs thay vì query trong loop
+        $configs = SubjectConfiguration::where('grade', $classroom->grade)
+            ->where('block', $blockName)
+            ->pluck('slots_per_week', 'subject_id')
+            ->all();
+
         foreach ($assignmentCounts as $asId => $count) {
-             $asmt = Assignment::with('subject')->find($asId);
-             $config = SubjectConfiguration::where('subject_id', $asmt->subject_id)
-                           ->where('grade', $classroom->grade)
-                           ->where('block', $blockName) // Đã bắt logic Tổ hợp
-                           ->first();
-             if (!$config || $count > $config->slots_per_week) {
-                  return response()->json(['status' => 'error', 'message' => "Vượt định mức: Môn {$asmt->subject->name} chỉ được phép xếp tối đa {$config->slots_per_week} tiết/tuần cho khối {$classroom->grade}!"]);
+             $asmt = $allAssignments[$asId] ?? null;
+             if (!$asmt) continue;
+             
+             $maxSlots = $configs[$asmt->subject_id] ?? null;
+             if (!$maxSlots || $count > $maxSlots) {
+                  return response()->json(['status' => 'error', 'message' => "Vượt định mức: Môn {$asmt->subject->name} chỉ được phép xếp tối đa {$maxSlots} tiết/tuần cho khối {$classroom->grade}!"]);
              }
         }
     
         foreach ($teacherDayPeriods as $tId => $days) {
             $daysThisClass = array_keys($days);
-            $daysOtherClasses = Schedule::whereHas('assignment', function($q) use ($tId, $classId) {
-                $q->where('teacher_id', $tId)->where('class_id', '!=', $classId);
-            })->pluck('day_of_week')->toArray();
+            $daysOtherClasses = Schedule::where('schedule_name', $scheduleName)
+                ->whereHas('assignment', function($q) use ($tId, $classId) {
+                    $q->where('teacher_id', $tId)->where('class_id', '!=', $classId);
+                })->pluck('day_of_week')->toArray();
             
             $totalUniqueDays = count(array_unique(array_merge($daysThisClass, $daysOtherClasses)));
             if ($totalUniqueDays > $maxDaysPerWeek) {
-                $teacher = Teacher::find($tId);
+                $teacher = $allAssignments->first(fn($a) => $a->teacher_id == $tId)?->teacher;
                 return response()->json([
                     'status' => 'error', 
                     'message' => "Giới hạn hệ thống: GV {$teacher->name} vượt quá số ngày dạy tối đa trong tuần (Đang xếp: {$totalUniqueDays} ngày, Cho phép: {$maxDaysPerWeek} ngày)."
@@ -246,7 +325,7 @@ class ScheduleController extends Controller
                     }
                 }
                 if ($maxFound > $maxConsecutive) {
-                    $teacher = Teacher::find($tId);
+                    $teacher = $allAssignments->first(fn($a) => $a->teacher_id == $tId)?->teacher;
                     return response()->json([
                         'status' => 'error', 
                         'message' => "Vi phạm cấu hình: GV {$teacher->name} dạy liên tiếp {$maxFound} tiết vào Thứ {$day} (Giới hạn hệ thống là {$maxConsecutive} tiết)!"
@@ -255,12 +334,14 @@ class ScheduleController extends Controller
             }
         }
     
-        Schedule::whereHas('assignment', function($q) use ($classId) {
-            $q->where('class_id', $classId);
-        })->delete();
+        // Xóa lịch cũ của lớp (chỉ trong cùng schedule_name)
+        Schedule::where('schedule_name', $scheduleName)
+            ->whereHas('assignment', function($q) use ($classId) {
+                $q->where('class_id', $classId);
+            })->delete();
     
         foreach ($schedules as $item) {
-            Schedule::create($item + ['schedule_name' => 'Học kỳ 1']);
+            Schedule::create($item + ['schedule_name' => $scheduleName]);
         }
     
         return response()->json(['status' => 'success']);
@@ -268,16 +349,48 @@ class ScheduleController extends Controller
 
     public function list()
     {
+        $scheduleName = $this->getScheduleName();
+
         $classes = Classroom::orderBy('grade')->orderBy('name')->get();
         $groupedClasses = $classes->groupBy('grade');
         $teachers = Teacher::orderBy('name')->get();
         
-        $schedules = Schedule::where('schedule_name', 'Học kỳ 1')
+        $schedules = Schedule::where('schedule_name', $scheduleName)
             ->with(['assignment.subject', 'assignment.teacher', 'assignment.classroom', 'room'])
             ->get();
             
         $settings = Setting::pluck('value', 'key')->all();
 
         return view('admin.schedules.list', compact('groupedClasses', 'classes', 'teachers', 'schedules', 'settings'));
+    }
+
+    public function show($class_id)
+    {
+        $scheduleName = $this->getScheduleName();
+
+        $classroom = Classroom::findOrFail($class_id);
+        $settings = Setting::pluck('value', 'key')->all();
+
+        $schedules = Schedule::where('schedule_name', $scheduleName)
+            ->whereHas('assignment', fn($q) => $q->where('class_id', $class_id))
+            ->with(['assignment.subject', 'assignment.teacher', 'room'])
+            ->get();
+
+        return view('admin.schedules.show', compact('classroom', 'schedules', 'settings'));
+    }
+
+    public function printAll()
+    {
+        $scheduleName = $this->getScheduleName();
+
+        $classes = Classroom::orderBy('grade')->orderBy('name')->get();
+        $groupedClasses = $classes->groupBy('grade');
+        $settings = Setting::pluck('value', 'key')->all();
+
+        $schedules = Schedule::where('schedule_name', $scheduleName)
+            ->with(['assignment.subject', 'assignment.teacher', 'assignment.classroom', 'room'])
+            ->get();
+
+        return view('admin.schedules.list', compact('groupedClasses', 'classes', 'schedules', 'settings'));
     }
 }

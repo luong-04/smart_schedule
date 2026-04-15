@@ -7,11 +7,11 @@
     <title>@yield('title', 'Hệ thống Quản lý TKB')</title>
     <link rel="icon" type="image/png" href="https://ui-avatars.com/api/?name=S&background=886cc0&color=fff&rounded=true">
     
+    
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://unpkg.com/idiomorph/dist/idiomorph-ext.min.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
@@ -38,7 +38,7 @@
     </style>
 </head>
 
-<body hx-boost="true" class="bg-[#f6f6f8] text-slate-900 antialiased overflow-x-hidden">
+<body hx-boost="true" hx-ext="morph" hx-swap="morph:outerHTML" class="bg-[#f6f6f8] text-slate-900 antialiased overflow-x-hidden">
     <div class="flex min-h-screen">
         
         <aside class="w-[20%] bg-[#F0F7FF] border-r border-slate-200 flex flex-col p-6 gap-6 sticky top-0 h-screen shrink-0">
@@ -52,7 +52,7 @@
                         {{ \App\Models\Setting::getVal('school_name', 'TRƯỜNG CHƯA CÀI ĐẶT') }}
                     </h1>
                     <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">
-                        Năm học: {{ \App\Models\Setting::getVal('school_year', '2024-2025') }}
+                        {{ \App\Models\Setting::getVal('semester', 'Học kỳ 1') }} • {{ \App\Models\Setting::getVal('school_year', '2024-2025') }}
                     </p>
                 </div>
             </div>
@@ -121,14 +121,14 @@
                             <span class="material-symbols-outlined {{ request()->routeIs('curriculum.*') ? 'text-blue-600' : 'text-slate-400' }}">history_edu</span>
                             <span class="text-sm">Chương trình học</span>
                         </a>
-                        <a href="{{ route('matrix.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('matrix.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                        <a href="{{ route('matrix.index') }}" hx-boost="false" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('matrix.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
                             <span class="material-symbols-outlined {{ request()->routeIs('matrix.*') ? 'text-blue-600' : 'text-slate-400' }}">grid_on</span>
                             <span class="text-sm">Ma trận TKB</span>
                         </a>
                         @endcan
 
                         @can('quan_ly_giam_thi')
-                        <a href="{{ route('admin.proctors.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('admin.proctors.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
+                        <a href="{{ route('admin.proctors.index') }}" hx-boost="false" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('admin.proctors.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
                             <span class="material-symbols-outlined {{ request()->routeIs('admin.proctors.*') ? 'text-blue-600' : 'text-slate-400' }}">badge</span>
                             <span class="text-sm">Phân công Giám thị</span>
                         </a>
@@ -206,39 +206,70 @@
     </div>
 
     <script>
-        // Cấu hình NProgress chạy khi click đổi trang
-        document.addEventListener('htmx:configRequest', function() { NProgress.start(); });
+        // Cấu hình NProgress chạy khi click đổi trang (Native fallback khi không dùng hx-boost)
+        // Delay tiến trình để không hiển thị thanh load nếu trả về quá nhanh
+        let nprogressTimer;
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('a[href]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    const href = link.getAttribute('href');
+                    const target = link.getAttribute('target');
+                    if (href && href !== '#' && !href.startsWith('javascript:') && target !== '_blank' && !e.ctrlKey && !e.metaKey) {
+                        clearTimeout(nprogressTimer);
+                        nprogressTimer = setTimeout(() => NProgress.start(), 150);
+                    }
+                });
+            });
+        });
+        
+        // HTMX config (hiển thị loading khi HTMX gọi AJAX)
+        document.addEventListener('htmx:configRequest', function() { 
+            clearTimeout(nprogressTimer);
+            nprogressTimer = setTimeout(() => NProgress.start(), 150); 
+        });
         
         // ===========================================================================
-        // BÍ QUYẾT XỬ LÝ THANH CUỘN DÀNH RIÊNG CHO HTMX (hx-boost)
+        // BÍ QUYẾT XỬ LÝ THANH CUỘN DÀNH RIÊNG CHO HTMX & RELOAD
+        // Sử dụng event scroll thay vì beforeSwap để chớp lấy vị trí mới nhất một cách mượt mà
         // ===========================================================================
+        const sidebarNav = document.getElementById('sidebar-nav');
+        if (sidebarNav) {
+            sidebarNav.addEventListener('scroll', function() {
+                localStorage.setItem('sidebar_scroll_position', sidebarNav.scrollTop);
+            });
+        }
 
-        // 1. NGAY TRƯỚC KHI HTMX XÓA NỘI DUNG CŨ: Chụp lại vị trí cuộn
-        document.addEventListener('htmx:beforeSwap', function(evt) {
-            const sidebar = document.getElementById('sidebar-nav');
-            if (sidebar) {
-                localStorage.setItem('sidebar_scroll_position', sidebar.scrollTop);
+        // Lưu lại vị trí khi load lại toàn trang
+        window.addEventListener('beforeunload', function() {
+            const sb = document.getElementById('sidebar-nav');
+            if (sb) {
+                localStorage.setItem('sidebar_scroll_position', sb.scrollTop);
             }
         });
 
-        // 2. NGAY SAU KHI HTMX ĐẮP NỘI DUNG MỚI VÀO: Phục hồi vị trí cuộn
-        document.addEventListener('htmx:afterSettle', function() {
+        // Phục hồi khi load trang hoặc morph
+        function restoreSidebarScroll() {
+            const sidebar = document.getElementById('sidebar-nav');
+            const pos = localStorage.getItem('sidebar_scroll_position');
+            if (sidebar && pos !== null) {
+                sidebar.scrollTop = parseInt(pos, 10);
+            }
+        }
+
+        // 1. Phục hồi sau khi morph
+        document.addEventListener('htmx:afterSettle', function(evt) {
+            clearTimeout(nprogressTimer);
             NProgress.done();
-            const sidebar = document.getElementById('sidebar-nav');
-            const pos = localStorage.getItem('sidebar_scroll_position');
-            if (sidebar && pos !== null) {
-                sidebar.scrollTop = parseInt(pos, 10);
+            restoreSidebarScroll();
+            
+            // Xử lý Alpine sau khi morph vì body thay đổi cấu trúc
+            if (window.Alpine) {
+                // Alpine sẽ tự nhận diện DOM thông qua MutationObserver
             }
         });
 
-        // 3. Phục hồi cho lần đầu tiên tải trang (Bấm F5)
-        window.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.getElementById('sidebar-nav');
-            const pos = localStorage.getItem('sidebar_scroll_position');
-            if (sidebar && pos !== null) {
-                sidebar.scrollTop = parseInt(pos, 10);
-            }
-        });
+        // 2. Phục hồi cho lần tải đầu tiên (F5)
+        window.addEventListener('DOMContentLoaded', restoreSidebarScroll);
         // ===========================================================================
 
         // Logic Đồng hồ (Được tối ưu để không bị lỗi khi chuyển trang bằng AJAX)

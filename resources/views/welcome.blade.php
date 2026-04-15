@@ -6,7 +6,9 @@
 
     // Lấy thông tin cấu hình cơ bản từ Admin
     $schoolName = Setting::getVal('school_name', 'TRƯỜNG CHƯA CÀI ĐẶT');
-    $schoolYear = Setting::getVal('school_year', '2024 - 2025');
+    $schoolYear = Setting::getVal('school_year', '2024-2025');
+    $semester = Setting::getVal('semester', 'Học kỳ 1');
+    $scheduleName = $semester . ' - ' . $schoolYear;
     $principal = Setting::getVal('principal_name', 'Đang cập nhật');
     $vicePrincipal = Setting::getVal('vice_principal_name', 'Đang cập nhật');
     
@@ -29,7 +31,7 @@
         $classroom = Classroom::where('name', $searchQuery)->first();
         
         if ($classroom) {
-            $schedules = Schedule::where('schedule_name', 'Học kỳ 1')
+            $schedules = Schedule::where('schedule_name', $scheduleName)
                 ->whereHas('assignment', function($query) use ($classroom) {
                     $query->where('class_id', $classroom->id);
                 })
@@ -49,7 +51,7 @@
                               ->first();
                               
             if ($teacher) {
-                $schedules = Schedule::where('schedule_name', 'Học kỳ 1')
+                $schedules = Schedule::where('schedule_name', $scheduleName)
                     ->whereHas('assignment', function($query) use ($teacher) {
                         $query->where('teacher_id', $teacher->id);
                     })
@@ -72,12 +74,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     <style>body { font-family: 'Lexend', sans-serif; }</style>
+    <script>
+        // ESCAPE HATCH: Nếu phát hiện trang chủ bị load nhầm dưới dạng thẻ cục bộ của HTMX (do cache cũ), thoát ra ngay.
+        if (window.htmx) { window.location.reload(); }
+    </script>
 </head>
 <body class="bg-[#F0F7FF] min-h-screen flex flex-col">
     <header class="p-6 flex justify-between items-center bg-white shadow-sm border-b border-blue-50">
         <div>
             <h1 class="text-2xl font-black text-blue-700 uppercase tracking-tight">{{ $schoolName }}</h1>
-            <p class="text-xs font-bold text-slate-400 uppercase mt-1">Niên khóa: {{ $schoolYear }}</p>
+            <p class="text-xs font-bold text-slate-400 uppercase mt-1">{{ $semester }} • Niên khóa: {{ $schoolYear }}</p>
         </div>
         <a href="{{ route('admin.dashboard') }}" class="bg-slate-800 text-white px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 hover:bg-slate-900 transition-all flex items-center gap-2">
             Đăng nhập Quản lý

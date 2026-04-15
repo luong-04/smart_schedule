@@ -17,8 +17,15 @@
                     <input type="text" name="school_name" value="{{ $settings['school_name'] ?? '' }}" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner" placeholder="VD: THPT Chuyên ABC">
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Niên khóa / Học kỳ</label>
-                    <input type="text" name="school_year" value="{{ $settings['school_year'] ?? '' }}" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner" placeholder="VD: 2024 - 2025 (Học kỳ 1)">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Niên khóa</label>
+                    <input type="text" name="school_year" value="{{ $settings['school_year'] ?? '' }}" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner" placeholder="VD: 2024-2025">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Học kỳ hiện tại</label>
+                    <select name="semester" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500 shadow-inner font-bold">
+                        <option value="Học kỳ 1" {{ ($settings['semester'] ?? 'Học kỳ 1') == 'Học kỳ 1' ? 'selected' : '' }}>Học kỳ 1</option>
+                        <option value="Học kỳ 2" {{ ($settings['semester'] ?? '') == 'Học kỳ 2' ? 'selected' : '' }}>Học kỳ 2</option>
+                    </select>
                 </div>
                 <div class="space-y-2">
                     <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Hiệu trưởng (Ký tên)</label>

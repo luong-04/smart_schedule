@@ -21,9 +21,9 @@ class ProctorController extends Controller
         $request->validate([
             'exam_name' => 'required|string',
             'start_date' => 'required|date',
-            'total_days' => 'required|integer|min:1',
-            'rooms_per_day' => 'required|integer|min:1',
-            'import_data' => 'required|string' 
+            'total_days' => 'required|integer|min:1|max:30',
+            'rooms_per_day' => 'required|integer|min:1|max:200',
+            'import_data' => 'required|string|max:500000' 
         ]);
 
         $proctorsList = json_decode($request->import_data, true);
@@ -43,38 +43,49 @@ class ProctorController extends Controller
             'rooms_per_day' => $request->rooms_per_day,
         ]);
 
-        $examProctors = [];
+        $examProctorsData = [];
+        $now = Carbon::now();
         foreach ($proctorsList as $p) {
-            $examProctors[] = ExamProctor::create([
+            $examProctorsData[] = [
                 'exam_id' => $exam->id,
-                'proctor_name' => $p['name'],
+                'proctor_name' => collect(explode(' ', $p['name']))->map(fn($w) => ucfirst(mb_strtolower($w)))->implode(' '),
                 'proctor_code' => $p['code'] ?? null,
-                'department' => $p['department'] ?? 'Chưa cập nhật'
-            ]);
+                'department' => $p['department'] ?? 'Chưa cập nhật',
+                'created_at' => $now,
+                'updated_at' => $now
+            ];
         }
+        
+        // Tối ưu 1: Batch Insert bảng Giám thị, tránh N+1 Query
+        foreach (array_chunk($examProctorsData, 200) as $chunk) {
+            ExamProctor::insert($chunk);
+        }
+        
+        // Lấy lại danh sách models để tính toán
+        $examProctors = ExamProctor::where('exam_id', $exam->id)->get();
 
         $startDate = Carbon::parse($exam->start_date);
         $proctorRoomsHistory = []; 
         $proctorPairsHistory = []; 
+        $proctorAssignmentsData = [];
 
         for ($day = 0; $day < $exam->total_days; $day++) {
             $currentDate = $startDate->copy()->addDays($day);
-            // MẢNG QUAN TRỌNG: Lưu những ai đã gác trong ngày hôm nay
             $assignedToday = []; 
 
             for ($room = 1; $room <= $exam->rooms_per_day; $room++) {
                 $roomName = 'Phòng ' . str_pad($room, 2, '0', STR_PAD_LEFT);
                 $roomProctors = []; 
 
+                // Tối ưu 2: Shuffle array 1 lần duy nhất trước khi phân vào thư viện thay vì loop hàng nghìn lần
+                $availableProctors = $examProctors->shuffle();
+
                 foreach (['GT1', 'GT2'] as $role) {
-                    $availableProctors = collect($examProctors)->shuffle();
                     $selectedProctor = null;
 
                     foreach ($availableProctors as $proctor) {
-                        // LUẬT THÉP: 1 Người không bao giờ gác 2 phòng trong 1 ngày
                         if (in_array($proctor->id, $assignedToday)) continue;
 
-                        // Áp dụng ràng buộc nếu được BẬT
                         if ($constraintDept) {
                             $sameDept = false;
                             foreach ($roomProctors as $rp) {
@@ -85,10 +96,8 @@ class ProctorController extends Controller
                             if ($sameDept) continue;
                         }
 
-                        if ($constraintRoom) {
-                            if (isset($proctorRoomsHistory[$proctor->id]) && in_array($roomName, $proctorRoomsHistory[$proctor->id])) {
-                                continue;
-                            }
+                        if ($constraintRoom && isset($proctorRoomsHistory[$proctor->id]) && in_array($roomName, $proctorRoomsHistory[$proctor->id])) {
+                            continue;
                         }
 
                         if ($constraintPair) {
@@ -103,12 +112,10 @@ class ProctorController extends Controller
                             if ($pairedBefore) continue;
                         }
 
-                        // Nếu qua hết các bài test -> Chọn người này
                         $selectedProctor = $proctor;
                         break;
                     }
 
-                    // Fallback: Nếu quá thiếu giám thị, chỉ cần đảm bảo người đó CHƯA GÁC HÔM NAY là được xếp vào cho đủ phòng
                     if (!$selectedProctor) {
                         foreach ($availableProctors as $proctor) {
                             if (!in_array($proctor->id, $assignedToday)) {
@@ -118,18 +125,19 @@ class ProctorController extends Controller
                     }
 
                     if ($selectedProctor) {
-                        ProctorAssignment::create([
+                        // Tối ưu 3: gom log thay vì create single model (Tránh N*M queries)
+                        $proctorAssignmentsData[] = [
                             'exam_id' => $exam->id,
                             'exam_proctor_id' => $selectedProctor->id,
                             'assign_date' => $currentDate->format('Y-m-d'),
                             'role' => $role,
-                            'room_name' => $roomName
-                        ]);
+                            'room_name' => $roomName,
+                            'created_at' => $now,
+                            'updated_at' => $now
+                        ];
 
-                        // Đánh dấu đã gác hôm nay
                         $assignedToday[] = $selectedProctor->id;
                         
-                        // Cập nhật lịch sử để so sánh cho các ngày sau
                         foreach ($roomProctors as $rp) {
                             $proctorPairsHistory[$selectedProctor->id][] = $rp->id;
                             $proctorPairsHistory[$rp->id][] = $selectedProctor->id;
@@ -139,6 +147,11 @@ class ProctorController extends Controller
                     }
                 }
             }
+        }
+        
+        // Tối ưu 4: Batch Insert Assignment
+        foreach (array_chunk($proctorAssignmentsData, 200) as $chunk) {
+            ProctorAssignment::insert($chunk);
         }
 
         return redirect()->route('admin.proctors.index', ['auto_load_exam' => $exam->id])

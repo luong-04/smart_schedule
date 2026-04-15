@@ -3,7 +3,6 @@
 @section('content')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 <style>
     .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; } 
@@ -148,7 +147,7 @@
     </div>
 
     <div x-show="activeTab === 'setup'" style="display: none;" class="print-hidden">
-        <form action="{{ route('admin.proctors.assign') }}" method="POST" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <form action="{{ route('admin.proctors.assign') }}" method="POST" hx-boost="false" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             @csrf
             <input type="hidden" name="import_data" :value="JSON.stringify(proctors)">
 
@@ -391,8 +390,8 @@
 </div>
 
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('proctorManager', () => ({
+    function proctorManager() {
+        return {
             activeTab: '{{ request()->has("auto_load_exam") ? "history" : "setup" }}',
             proctors: [],
             newProctorName: '',
@@ -427,8 +426,8 @@
                 };
                 reader.readAsArrayBuffer(file);
             }
-        }));
-    });
+        };
+    }
 
     let fullHistoryData = {}; 
     let currentDatesList = [];

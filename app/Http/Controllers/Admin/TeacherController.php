@@ -15,13 +15,16 @@ class TeacherController extends Controller
     public function index() {
         $teachers = Teacher::with(['assignments.classroom', 'assignments.subject'])->get();
 
+        // ĐÃ SỬA: Pre-load toàn bộ SubjectConfiguration 1 lần thay vì query N+1 trong loop
+        $configs = SubjectConfiguration::all()->keyBy(function($c) {
+            return $c->subject_id . '-' . $c->grade . '-' . $c->block;
+        });
+
         foreach ($teachers as $t) {
             $totalAssigned = 0;
             foreach ($t->assignments as $as) {
-                $config = SubjectConfiguration::where('subject_id', $as->subject_id)
-                    ->where('grade', $as->classroom->grade)
-                    ->where('block', $as->classroom->block)
-                    ->first();
+                $key = $as->subject_id . '-' . ($as->classroom->grade ?? '') . '-' . ($as->classroom->block ?? 'Cơ bản');
+                $config = $configs->get($key);
                 $totalAssigned += $config ? $config->slots_per_week : 0;
             }
             $t->total_assigned_slots = $totalAssigned;
@@ -84,8 +87,14 @@ class TeacherController extends Controller
     }
 
     public function import(Request $request) {
-        $request->validate(['import_data' => 'required|string']);
+        // ĐÃ SỬA: Thêm giới hạn kích thước để chống DoS
+        $request->validate(['import_data' => 'required|string|max:500000']);
         $teachers = json_decode($request->import_data, true);
+        
+        // Validate JSON hợp lệ và giới hạn số lượng
+        if (!is_array($teachers) || count($teachers) > 500) {
+            return back()->with('error', 'Dữ liệu import không hợp lệ hoặc vượt quá 500 dòng!');
+        }
         $count = 0;
         foreach ($teachers as $t) {
             if (!empty($t['name']) && !empty($t['code'])) {
@@ -103,8 +112,14 @@ class TeacherController extends Controller
         return back()->with('success', "🎉 Đã import thành công $count Giáo viên!");
     }
     public function importAssignments(Request $request) {
-        $request->validate(['import_data' => 'required|string']);
+        // ĐÃ SỬA: Thêm giới hạn kích thước để chống DoS
+        $request->validate(['import_data' => 'required|string|max:500000']);
         $data = json_decode($request->import_data, true);
+        
+        // Validate JSON hợp lệ và giới hạn số lượng
+        if (!is_array($data) || count($data) > 1000) {
+            return back()->with('error', 'Dữ liệu import không hợp lệ hoặc vượt quá 1000 dòng!');
+        }
         $count = 0;
         $errors = [];
     

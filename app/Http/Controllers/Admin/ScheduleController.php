@@ -12,13 +12,15 @@ use App\Models\Room;
 use App\Models\Setting;
 use App\Models\SubjectConfiguration;
 use App\Services\ScheduleValidationService;
+use App\Services\ScheduleDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ScheduleController extends Controller
 {
     public function __construct(
-        private ScheduleValidationService $validator
+        private ScheduleValidationService $validator,
+        private ScheduleDataService $dataService
     ) {}
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -119,87 +121,9 @@ class ScheduleController extends Controller
             ->pluck('slots_per_week', 'subject_id')
             ->all();
 
-        // Pre-load các lớp khác của giáo viên để kiểm tra conflict
-        $otherSchedules = Schedule::where('schedule_name', $scheduleName)
-            ->whereHas('assignment', function ($q) use ($selectedClassId) {
-                $q->where('class_id', '!=', $selectedClassId);
-            })
-            ->with(['assignment:id,teacher_id,class_id'])
-            ->get(['id', 'assignment_id', 'room_id', 'day_of_week', 'period']);
-
-        $teacherBusySlots = [];
-        $teacherOtherDays = [];
-        $roomBusySlots    = [];
-
-        foreach ($otherSchedules as $sch) {
-            $tId = $sch->assignment->teacher_id;
-            $rId = $sch->room_id;
-
-            $teacherBusySlots[$tId][] = $sch->day_of_week . '-' . $sch->period;
-
-            if (!isset($teacherOtherDays[$tId])) $teacherOtherDays[$tId] = [];
-            if (!in_array($sch->day_of_week, $teacherOtherDays[$tId])) {
-                $teacherOtherDays[$tId][] = $sch->day_of_week;
-            }
-
-            if ($rId) {
-                $roomBusySlots[$rId][] = $sch->day_of_week . '-' . $sch->period;
-            }
-        }
-
-        // Pre-load counts để tránh N+1
-        $teacherUsedCounts = Schedule::where('schedule_name', $scheduleName)
-            ->join('assignments', 'schedules.assignment_id', '=', 'assignments.id')
-            ->selectRaw('assignments.teacher_id, COUNT(*) as total')
-            ->groupBy('assignments.teacher_id')
-            ->pluck('total', 'teacher_id')
-            ->all();
-
-        $assignmentUsedCounts = Schedule::where('schedule_name', $scheduleName)
-            ->whereIn('assignment_id', $allAssignments->pluck('id'))
-            ->selectRaw('assignment_id, COUNT(*) as total')
-            ->groupBy('assignment_id')
-            ->pluck('total', 'assignment_id')
-            ->all();
-
-        // Đếm lớp GVCN (dùng quan hệ qua ID thay vì query tên — nhưng vì DB lưu tên,
-        // ta vẫn phải query theo tên. Đã gom vào 1 query thay vì N queries)
-        $teacherNames = $allAssignments->pluck('teacher.name', 'teacher_id')->unique();
-        $gvcnCounts   = [];
-        if ($teacherNames->isNotEmpty()) {
-            $homeroomCounts = Classroom::whereIn('homeroom_teacher', $teacherNames->values())
-                ->selectRaw('homeroom_teacher, COUNT(*) as cnt')
-                ->groupBy('homeroom_teacher')
-                ->pluck('cnt', 'homeroom_teacher')
-                ->all();
-
-            foreach ($teacherNames as $tId => $tName) {
-                $gvcnCounts[$tId] = $homeroomCounts[$tName] ?? 0;
-            }
-        }
-
-        $validAssignments = collect();
-        foreach ($allAssignments as $as) {
-            if (!isset($curriculums[$as->subject_id])) continue;
-
-            $maxSubjectSlots = $curriculums[$as->subject_id];
-            $teacherUsed     = $teacherUsedCounts[$as->teacher_id] ?? 0;
-            $gvcnClassCount  = $gvcnCounts[$as->teacher_id] ?? 0;
-
-            if ($gvcnClassCount > 0) {
-                if ($assignFlag)   $teacherUsed += $gvcnClassCount;
-                if ($assignMeeting) $teacherUsed += $gvcnClassCount;
-            }
-
-            $as->teacher_remaining       = max(0, $as->teacher->max_slots_week - $teacherUsed);
-            $subjectUsed                 = $assignmentUsedCounts[$as->id] ?? 0;
-            $as->remaining_subject_slots = max(0, $maxSubjectSlots - $subjectUsed);
-            $as->actual_remaining        = min($as->teacher_remaining, $as->remaining_subject_slots);
-
-            $validAssignments->push($as);
-        }
-
-        $assignments = $validAssignments;
+        [$teacherBusySlots, $teacherOtherDays, $roomBusySlots] = $this->dataService->getBusySlots($scheduleName, $selectedClassId);
+        $counts = $this->dataService->getUsedCounts($scheduleName, $allAssignments);
+        $assignments = $this->dataService->buildValidAssignments($allAssignments, $curriculums, $counts, $settings);
 
         return view('admin.schedules.index', compact(
             'classes', 'assignments', 'schedules', 'selectedClassId', 'classroom',

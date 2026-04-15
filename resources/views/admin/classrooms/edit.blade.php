@@ -39,10 +39,10 @@
 
             <div>
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block">Giáo viên chủ nhiệm</label>
-                <select name="homeroom_teacher" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500">
+                <select name="homeroom_teacher_id" class="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500">
                     <option value="">-- Không phân công --</option>
                     @foreach($teachers as $teacher)
-                        <option value="{{ $teacher->name }}" {{ $classroom->homeroom_teacher == $teacher->name ? 'selected' : '' }}>
+                        <option value="{{ $teacher->id }}" {{ $classroom->homeroom_teacher_id == $teacher->id ? 'selected' : '' }}>
                             {{ $teacher->name }}
                         </option>
                     @endforeach

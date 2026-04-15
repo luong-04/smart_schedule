@@ -33,7 +33,7 @@ class Classroom extends Model
         'name',
         'grade',
         'shift',
-        'homeroom_teacher',
+        'homeroom_teacher_id',
         'block'
     ];
 
@@ -52,11 +52,10 @@ class Classroom extends Model
     }
 
     /**
-     * Quan hệ tới GVCN thông qua tên (vì DB lưu tên, không lưu ID)
-     * Lưu ý: Đây là workaround — nếu có trùng tên GV, cần thêm teacher_id
+     * Quan hệ tới GVCN thông qua ID chuẩn
      */
     public function homeroomTeacher()
     {
-        return $this->belongsTo(Teacher::class, 'homeroom_teacher', 'name');
+        return $this->belongsTo(Teacher::class, 'homeroom_teacher_id');
     }
 }

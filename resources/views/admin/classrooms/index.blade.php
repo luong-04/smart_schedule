@@ -142,10 +142,10 @@
                             </td>
                             
                             <td class="px-6 py-5 font-bold text-slate-600">
-                                @if($c->homeroom_teacher)
+                                @if($c->homeroom_teacher_id)
                                     <span class="flex items-center gap-2">
                                         <span class="material-symbols-outlined text-emerald-500 text-lg">person_check</span>
-                                        {{ $c->homeroom_teacher }}
+                                        {{ $c->homeroomTeacher->name ?? '' }}
                                     </span>
                                 @else
                                     <span class="flex items-center gap-2 text-slate-400 italic text-xs">

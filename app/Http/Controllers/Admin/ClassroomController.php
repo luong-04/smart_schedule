@@ -25,7 +25,7 @@ class ClassroomController extends Controller
             'grade' => 'required|integer|in:10,11,12',
             'block' => 'required|string|in:KHTN,KHXH,Cơ bản', 
             'shift' => 'required|in:morning,afternoon',
-            'homeroom_teacher' => 'nullable|string',
+            'homeroom_teacher_id' => 'nullable|exists:teachers,id',
         ]);
 
         Classroom::create($data);
@@ -43,7 +43,7 @@ class ClassroomController extends Controller
             'grade' => 'required|integer|in:10,11,12',
             'block' => 'required|string|in:KHTN,KHXH,Cơ bản', 
             'shift' => 'required|in:morning,afternoon',
-            'homeroom_teacher' => 'nullable|string',
+            'homeroom_teacher_id' => 'nullable|exists:teachers,id',
         ]);
 
         $classroom->update($data);
@@ -72,11 +72,19 @@ class ClassroomController extends Controller
         foreach ($classrooms as $c) {
             if (!empty($c['name']) && !empty($c['grade'])) {
                 $shift = (strtolower($c['shift'] ?? '') === 'chiều' || strtolower($c['shift'] ?? '') === 'afternoon') ? 'afternoon' : 'morning';
+                
+                // Map teacher name to ID
+                $teacherId = null;
+                if (!empty($c['homeroom_teacher'])) {
+                    $teacher = Teacher::where('name', $c['homeroom_teacher'])->first();
+                    $teacherId = $teacher ? $teacher->id : null;
+                }
+
                 Classroom::updateOrCreate(
                     ['name' => $c['name'], 'grade' => $c['grade']],
                     [
                         'shift' => $shift,
-                        'homeroom_teacher' => $c['homeroom_teacher'] ?? null,
+                        'homeroom_teacher_id' => $teacherId,
                         'block' => $c['block'] ?? $c['Tổ hợp'] ?? 'Cơ bản' 
                     ]
                 );

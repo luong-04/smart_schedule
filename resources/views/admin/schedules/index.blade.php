@@ -146,11 +146,15 @@
 
                     <div class="divide-y divide-slate-100 bg-[#f8f9fa]">
                         @php
-                            $shiftStr = strtolower($classroom->shift ?? 'morning');
-                            $fDay = $settings[$shiftStr.'_flag_day'] ?? 2;
-                            $fPer = $settings[$shiftStr.'_flag_period'] ?? ($shiftStr == 'morning' ? 1 : 10);
-                            $mDay = $settings[$shiftStr.'_meeting_day'] ?? 7;
-                            $mPer = $settings[$shiftStr.'_meeting_period'] ?? ($shiftStr == 'morning' ? 5 : 10);
+                            // DRY: Các biến này được tính 1 lần ở Controller, không cần tính lại ở đây
+                            $fDay = $shiftVars['flagDay'];
+                            $fPer = $shiftVars['flagPeriod'];
+                            $mDay = $shiftVars['meetDay'];
+                            $mPer = $shiftVars['meetPeriod'];
+                            // DRY: Tính 1 lần trước vòng lặp — không cần lặp 60 lần (6 ngày × 10 tiết)
+                            $assignFlag    = $settings['assign_gvcn_flag_salute']   ?? 0;
+                            $assignMeeting = $settings['assign_gvcn_class_meeting'] ?? 0;
+                            $gvcnName      = $classroom->homeroom_teacher;
                         @endphp
 
                         @for($p=1; $p<=10; $p++)
@@ -171,20 +175,17 @@
                             
                             @for($d=2; $d<=7; $d++)
                                 @php
-                                    $isFlagSalute = ($d == $fDay && $p == $fPer);
+                                    $isFlagSalute   = ($d == $fDay && $p == $fPer);
                                     $isClassMeeting = ($d == $mDay && $p == $mPer);
-                                    $isFixed = $isFlagSalute || $isClassMeeting;
-                                    $fixedLabel = $isFlagSalute ? 'CHÀO CỜ' : 'SINH HOẠT';
-                                    $current = $schedules->where('day_of_week', $d)->where('period', $p)->where('assignment.class_id', $selectedClassId)->first();
-                                    
-                                    $assignFlag = $settings['assign_gvcn_flag_salute'] ?? 0;
-                                    $assignMeeting = $settings['assign_gvcn_class_meeting'] ?? 0;
-                                    $gvcnName = $classroom->homeroom_teacher;
-                                    $showGvcn = ($isFlagSalute && $assignFlag) || ($isClassMeeting && $assignMeeting);
+                                    $isFixed        = $isFlagSalute || $isClassMeeting;
+                                    $fixedLabel     = $isFlagSalute ? 'CHÀO CỜ' : 'SINH HOẠT';
+                                    $current        = $schedules->where('day_of_week', $d)->where('period', $p)->where('assignment.class_id', $selectedClassId)->first();
+                                    // $assignFlag, $assignMeeting, $gvcnName đã được khai báo bên ngoài vòng lặp
+                                    $showGvcn       = ($isFlagSalute && $assignFlag) || ($isClassMeeting && $assignMeeting);
 
-                                    $fixedBg = $isFlagSalute ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200';
-                                    $fixedText = $isFlagSalute ? 'text-rose-600' : 'text-emerald-600';
-                                    $fixedGvcnBg = $isFlagSalute ? 'bg-rose-100/80 text-rose-800' : 'bg-emerald-100/80 text-emerald-800';
+                                    $fixedBg     = $isFlagSalute ? 'bg-rose-50 border-rose-200'       : 'bg-emerald-50 border-emerald-200';
+                                    $fixedText   = $isFlagSalute ? 'text-rose-600'                    : 'text-emerald-600';
+                                    $fixedGvcnBg = $isFlagSalute ? 'bg-rose-100/80 text-rose-800'     : 'bg-emerald-100/80 text-emerald-800';
                                 @endphp
                                 
                                 <div class="p-1.5 border-r last:border-r-0 border-slate-200 h-[85px] flex items-center justify-center relative bg-white">

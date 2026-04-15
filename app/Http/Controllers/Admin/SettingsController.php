@@ -37,6 +37,10 @@ class SettingsController extends Controller
             Setting::updateOrCreate(['key' => $key], ['value' => $value]);
         }
 
+        // Xóa toàn bộ cache settings sau khi cập nhật
+        // (SettingObserver cũng xóa từng key, nhưng clearAllCache đảm bảo không bỏ sót)
+        \App\Models\Setting::clearAllCache();
+
         return back()->with('success', 'Hệ thống đã cập nhật cấu hình mới nhất!');
     }
 }

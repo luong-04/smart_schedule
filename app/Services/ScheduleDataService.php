@@ -104,6 +104,19 @@ class ScheduleDataService
             $as->remaining_subject_slots = max(0, $maxSubjectSlots - $subjectUsed);
             $as->actual_remaining        = min($as->teacher_remaining, $as->remaining_subject_slots);
 
+            // Xác định "điểm nghẽn" để hiển thị UI minh bạch
+            if ($as->actual_remaining === 0) {
+                if ($as->teacher_remaining <= 0 && $as->remaining_subject_slots > 0) {
+                    $as->bottleneck = 'teacher';
+                } elseif ($as->remaining_subject_slots <= 0 && $as->teacher_remaining > 0) {
+                    $as->bottleneck = 'subject';
+                } else {
+                    $as->bottleneck = 'both';
+                }
+            } else {
+                $as->bottleneck = 'none';
+            }
+
             $validAssignments->push($as);
         }
 

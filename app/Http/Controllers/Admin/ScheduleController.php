@@ -45,10 +45,12 @@ class ScheduleController extends Controller
     private function getShiftVars(Classroom $classroom, array $settings): array
     {
         $shiftStr   = strtolower($classroom->shift ?? 'morning');
-        $flagDay    = $settings[$shiftStr . '_flag_day']    ?? 2;
-        $flagPeriod = $settings[$shiftStr . '_flag_period'] ?? ($shiftStr === 'morning' ? 1 : 10);
-        $meetDay    = $settings[$shiftStr . '_meeting_day']    ?? 7;
-        $meetPeriod = $settings[$shiftStr . '_meeting_period'] ?? ($shiftStr === 'morning' ? 5 : 10);
+        $isMorning  = ($shiftStr === 'morning');
+
+        $flagDay    = $settings[$shiftStr . '_flag_day']    ?? Setting::DEFAULT_FLAG_DAY;
+        $flagPeriod = $settings[$shiftStr . '_flag_period'] ?? ($isMorning ? Setting::DEFAULT_FLAG_PER_M : Setting::DEFAULT_FLAG_PER_A);
+        $meetDay    = $settings[$shiftStr . '_meeting_day']    ?? Setting::DEFAULT_MEET_DAY;
+        $meetPeriod = $settings[$shiftStr . '_meeting_period'] ?? ($isMorning ? Setting::DEFAULT_MEET_PER_M : Setting::DEFAULT_MEET_PER_A);
 
         return compact('shiftStr', 'flagDay', 'flagPeriod', 'meetDay', 'meetPeriod');
     }
@@ -113,8 +115,8 @@ class ScheduleController extends Controller
         // ── DRY: Tính toán shiftVars 1 lần ở Controller, truyền xuống View ──
         $shiftVars  = $this->getShiftVars($classroom, $settings);
 
-        // Dùng Classroom::BLOCK_CO_BAN constant thay hardcode string
-        $blockName  = $classroom->block ?? Classroom::BLOCK_CO_BAN;
+        // Dùng accessor block_name thay vì thuộc tính trực tiếp để đảm bảo fallback an toàn
+        $blockName  = $classroom->block_name;
 
         $curriculums = SubjectConfiguration::where('grade', $classroom->grade)
             ->where('block', $blockName)
@@ -178,26 +180,35 @@ class ScheduleController extends Controller
             return response()->json(['status' => 'error', 'message' => $error['message']]);
         }
 
-        // ── DB Transaction: Chống mất dữ liệu khi lỗi giữa chừng ───────────
+        // ── DB Transaction: Chống mất dữ liệu và Race Condition ───────────
         try {
             DB::transaction(function () use ($scheduleName, $classId, $schedules, $allAssignments) {
-                // Khóa các assignments của lớp để chống Race condition
-                Assignment::where('class_id', $classId)->lockForUpdate()->get();
+                // 1. Khóa các lịch hiện tại của lớp ở mức cursor DB để ngăn vừa xóa vừa thêm trùng lặp
+                Schedule::where('schedule_name', $scheduleName)
+                    ->whereHas('assignment', function ($q) use ($classId) {
+                        $q->where('class_id', $classId);
+                    })
+                    ->lockForUpdate()
+                    ->get();
 
-                // Xóa lịch cũ của lớp trong cùng học kỳ
+                // 2. Xóa lịch cũ
                 Schedule::where('schedule_name', $scheduleName)
                     ->whereHas('assignment', function ($q) use ($classId) {
                         $q->where('class_id', $classId);
                     })
                     ->delete();
 
-                // Tạo lịch mới hàng loạt
+                // 3. Tạo lịch mới hàng loạt
                 foreach ($schedules as $item) {
-                    $teacherId = $allAssignments[$item['assignment_id']]->teacher_id;
-                    Schedule::create($item + [
-                        'schedule_name' => $scheduleName,
-                        'teacher_id' => $teacherId
-                    ]);
+                    // Lấy teacher_id trực tiếp từ Assignment đã load từ DB (sync dữ liệu chuẩn)
+                    $realAssignment = $allAssignments->get($item['assignment_id']);
+                    
+                    if ($realAssignment) {
+                        Schedule::create($item + [
+                            'schedule_name' => $scheduleName,
+                            'teacher_id'    => $realAssignment->teacher_id
+                        ]);
+                    }
                 }
             });
         } catch (\Throwable $e) {

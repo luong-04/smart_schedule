@@ -6,58 +6,54 @@ use App\Models\Schedule;
 use App\Models\Assignment;
 use App\Models\Classroom;
 use App\Models\SubjectConfiguration;
+use App\Models\Room;
 
 /**
  * Service Layer cho toàn bộ logic kiểm tra ràng buộc khi lưu lịch.
- * Tách biệt business logic ra khỏi ScheduleController.
  */
 class ScheduleValidationService
 {
+    public function __construct(private Room $room) {}
+
     /**
      * Kiểm tra tất cả ràng buộc cho một tập hợp lịch trước khi lưu.
      *
-     * @param array  $schedules       Mảng lịch từ request [{assignment_id, day_of_week, period, room_id}]
-     * @param int    $classId         ID lớp học
-     * @param array  $allAssignments  Collection assignment đã load sẵn (keyBy id)
-     * @param array  $settings        Mảng settings [key => value]
-     * @param string $scheduleName    Tên học kỳ hiện tại
-     * @param string $shiftStr        'morning' hoặc 'afternoon'
+     * @param array     $schedules       Mảng lịch từ request [{assignment_id, day_of_week, period, room_id}]
+     * @param Classroom $classroom       Đối tượng lớp học đang được xếp lịch
+     * @param array     $allAssignments  Collection assignment đã load sẵn (keyBy id)
+     * @param array     $settings        Mảng settings [key => value]
+     * @param string    $scheduleName    Tên học kỳ hiện tại
+     * @param string    $shiftStr        'morning' hoặc 'afternoon'
      *
      * @return array|null  null nếu hợp lệ, mảng ['message' => '...'] nếu có lỗi
      */
     public function validate(
         array $schedules,
-        int $classId,
+        Classroom $classroom,
         $allAssignments,
         array $settings,
         string $scheduleName,
         string $shiftStr
     ): ?array {
         // Tính toán các tiết cố định từ settings
-        $flagDay    = $settings[$shiftStr . '_flag_day']    ?? 2;
-        $flagPeriod = $settings[$shiftStr . '_flag_period'] ?? ($shiftStr === 'morning' ? 1 : 10);
-        $meetDay    = $settings[$shiftStr . '_meeting_day']    ?? 7;
-        $meetPeriod = $settings[$shiftStr . '_meeting_period'] ?? ($shiftStr === 'morning' ? 5 : 10);
+        $isMorning  = ($shiftStr === 'morning');
+        $flagDay    = $settings[$shiftStr . '_flag_day']    ?? \App\Models\Setting::DEFAULT_FLAG_DAY;
+        $flagPeriod = $settings[$shiftStr . '_flag_period'] ?? ($isMorning ? \App\Models\Setting::DEFAULT_FLAG_PER_M : \App\Models\Setting::DEFAULT_FLAG_PER_A);
+        $meetDay    = $settings[$shiftStr . '_meeting_day']    ?? \App\Models\Setting::DEFAULT_MEET_DAY;
+        $meetPeriod = $settings[$shiftStr . '_meeting_period'] ?? ($isMorning ? \App\Models\Setting::DEFAULT_MEET_PER_M : \App\Models\Setting::DEFAULT_MEET_PER_A);
 
         $maxConsecutive      = (int) ($settings['max_consecutive_slots'] ?? 3);
         $maxDaysPerWeek      = (int) ($settings['max_days_per_week']     ?? 6);
         $checkTeacherConflict = (bool) ($settings['check_teacher_conflict'] ?? false);
         $checkRoomConflict    = (bool) ($settings['check_room_conflict']    ?? false);
 
-        // Map để gom lịch theo giáo viên: [teacherId => [day => [periods]]]
+        // Map để gom lịch theo giáo viên trong request này: [teacherId => [day => [periods]]]
         $teacherDayPeriods = [];
-        // Map đếm số tiết theo assignment: [assignmentId => count]
+        // Map đếm số tiết theo assignment trong request: [assignmentId => count]
         $assignmentCounts = [];
 
-        // Eager load các dữ liệu cần thiết trước vòng lặp để tránh N+1 Query
-        $otherSchedules = Schedule::where('schedule_name', $scheduleName)
-            ->whereHas('assignment', function ($q) use ($classId) {
-                $q->where('class_id', '!=', $classId);
-            })
-            ->with(['assignment.classroom', 'room'])
-            ->get();
-            
-        $allRooms = \App\Models\Room::all()->keyBy('id');
+        // Load rooms một lần dùng cho check loại phòng
+        $allRooms = $this->room->all()->keyBy('id');
 
         foreach ($schedules as $item) {
             $assignment = $allAssignments[$item['assignment_id']] ?? null;
@@ -84,7 +80,7 @@ class ScheduleValidationService
 
             // ── 3. Kiểm tra trùng lịch giáo viên (với lớp khác) ─────────────
             if ($checkTeacherConflict) {
-                if ($error = $this->validateTeacherConflict($otherSchedules, $teacherId, $d, $p, $assignment)) {
+                if ($error = $this->validateTeacherConflict($scheduleName, $classroom->id, $teacherId, $d, $p, $assignment)) {
                     return $error;
                 }
             }
@@ -92,7 +88,7 @@ class ScheduleValidationService
             // ── 4. Kiểm tra trùng phòng học ───────────────────────────────────
             if ($roomId) {
                 if ($checkRoomConflict) {
-                    if ($error = $this->validateRoomConflict($otherSchedules, $roomId, $d, $p)) {
+                    if ($error = $this->validateRoomConflict($scheduleName, $classroom->id, $roomId, $d, $p)) {
                         return $error;
                     }
                 }
@@ -111,13 +107,13 @@ class ScheduleValidationService
         }
 
         // ── 5. Kiểm tra vượt định mức tiết môn ───────────────────────────────
-        if ($error = $this->validateSlotLimits($assignmentCounts, $allAssignments, $classId, $settings)) {
+        if ($error = $this->validateSlotLimits($assignmentCounts, $allAssignments, $classroom, $settings)) {
             return $error;
         }
 
         // ── 6. Kiểm tra tiết liên tiếp + số ngày dạy tối đa ─────────────────
         foreach ($teacherDayPeriods as $tId => $days) {
-            if ($error = $this->validateMaxDays($otherSchedules, $tId, $days, $allAssignments, $maxDaysPerWeek)) {
+            if ($error = $this->validateMaxDays($scheduleName, $classroom->id, $tId, $days, $allAssignments, $maxDaysPerWeek)) {
                 return $error;
             }
             if ($error = $this->validateConsecutiveSlots($tId, $days, $allAssignments, $maxConsecutive)) {
@@ -159,13 +155,19 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra giáo viên bị trùng lịch với lớp khác sử dụng Collection Memory
+     * Kiểm tra giáo viên bị trùng lịch với lớp khác (Sử dụng DB query mượt mà hơn cho array lớn)
      */
-    private function validateTeacherConflict($otherSchedules, int $teacherId, int $d, int $p, $assignment): ?array
+    private function validateTeacherConflict(string $scheduleName, int $classId, int $teacherId, int $d, int $p, $assignment): ?array
     {
-        $conflict = $otherSchedules->first(function ($s) use ($teacherId, $d, $p) {
-            return $s->day_of_week == $d && $s->period == $p && $s->assignment->teacher_id == $teacherId;
-        });
+        $conflict = Schedule::where('schedule_name', $scheduleName)
+            ->where('day_of_week', $d)
+            ->where('period', $p)
+            ->whereHas('assignment', function ($q) use ($teacherId, $classId) {
+                $q->where('teacher_id', $teacherId)
+                  ->where('class_id', '!=', $classId);
+            })
+            ->with('assignment.classroom')
+            ->first();
 
         if ($conflict) {
             return [
@@ -176,13 +178,19 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra phòng học bị trùng với lớp khác sử dụng Collection Memory
+     * Kiểm tra phòng học bị trùng với lớp khác (Sử dụng DB query)
      */
-    private function validateRoomConflict($otherSchedules, $roomId, int $d, int $p): ?array
+    private function validateRoomConflict(string $scheduleName, int $classId, $roomId, int $d, int $p): ?array
     {
-        $roomConflict = $otherSchedules->first(function ($s) use ($roomId, $d, $p) {
-            return $s->day_of_week == $d && $s->period == $p && $s->room_id == $roomId;
-        });
+        $roomConflict = Schedule::where('schedule_name', $scheduleName)
+            ->where('day_of_week', $d)
+            ->where('period', $p)
+            ->where('room_id', $roomId)
+            ->whereHas('assignment', function ($q) use ($classId) {
+                $q->where('class_id', '!=', $classId);
+            })
+            ->with(['assignment.classroom', 'room'])
+            ->first();
 
         if ($roomConflict) {
             return [
@@ -195,10 +203,9 @@ class ScheduleValidationService
     /**
      * Kiểm tra không vượt quá định mức tiết/tuần của môn học theo lớp
      */
-    private function validateSlotLimits(array $assignmentCounts, $allAssignments, int $classId, array $settings): ?array
+    private function validateSlotLimits(array $assignmentCounts, $allAssignments, Classroom $classroom, array $settings): ?array
     {
-        $classroom = Classroom::find($classId);
-        $blockName = $classroom->block_name; // dùng accessor
+        $blockName = $classroom->block_name;
 
         $configs = SubjectConfiguration::where('grade', $classroom->grade)
             ->where('block', $blockName)
@@ -222,14 +229,20 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra số ngày dạy tối đa trong tuần của giáo viên (toàn trường) sử dụng Collection Memory
+     * Kiểm tra số ngày dạy tối đa trong tuần của giáo viên (Sử dụng DB query hiệu năng cao)
      */
-    private function validateMaxDays($otherSchedules, int $tId, array $days, $allAssignments, int $maxDaysPerWeek): ?array
+    private function validateMaxDays(string $scheduleName, int $classId, int $tId, array $days, $allAssignments, int $maxDaysPerWeek): ?array
     {
         $daysThisClass    = array_keys($days);
-        $daysOtherClasses = $otherSchedules->filter(function ($s) use ($tId) {
-            return $s->assignment->teacher_id == $tId;
-        })->pluck('day_of_week')->unique()->toArray();
+        
+        $daysOtherClasses = Schedule::where('schedule_name', $scheduleName)
+            ->whereHas('assignment', function ($q) use ($tId, $classId) {
+                $q->where('teacher_id', $tId)
+                  ->where('class_id', '!=', $classId);
+            })
+            ->pluck('day_of_week')
+            ->unique()
+            ->toArray();
 
         $totalUniqueDays = count(array_unique(array_merge($daysThisClass, $daysOtherClasses)));
         if ($totalUniqueDays > $maxDaysPerWeek) {

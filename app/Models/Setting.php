@@ -13,6 +13,14 @@ class Setting extends Model
      * Thời gian cache settings (giây) — 6 tiếng
      */
     const CACHE_TTL = 21600;
+    
+    // Hằng số mặc định cho các tiết cố định
+    const DEFAULT_FLAG_DAY    = 2;  // Thứ 2
+    const DEFAULT_FLAG_PER_M  = 1;  // Tiết 1 sáng
+    const DEFAULT_FLAG_PER_A  = 10; // Tiết 10 chiều
+    const DEFAULT_MEET_DAY    = 7;  // Thứ 7
+    const DEFAULT_MEET_PER_M  = 5;  // Tiết 5 sáng
+    const DEFAULT_MEET_PER_A  = 10; // Tiết 10 chiều
 
     /**
      * Prefix cho cache key

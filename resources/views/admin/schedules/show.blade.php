@@ -32,7 +32,7 @@
             </div>
             
             <h1 class="text-xl font-black text-slate-800 uppercase tracking-widest">THỜI KHÓA BIỂU LỚP {{ $classroom->name }}</h1>
-            <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">Khối {{ $classroom->grade }} ({{ $classroom->block ?? 'Cơ bản' }}) • {{ $classroom->shift == 'morning' ? 'Ca Sáng' : 'Ca Chiều' }} • GVCN: {{ $classroom->homeroomTeacher?->name ?? 'Chưa phân công' }}</p>
+            <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">Khối {{ $classroom->grade }} ({{ $classroom->block_name }}) • {{ $classroom->shift == 'morning' ? 'Ca Sáng' : 'Ca Chiều' }} • GVCN: {{ $classroom->homeroomTeacher?->name ?? 'Chưa phân công' }}</p>
         </div>
 
         <table class="w-full text-center border-collapse">

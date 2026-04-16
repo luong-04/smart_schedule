@@ -66,14 +66,14 @@
 
             @php $classGroup = $groupedClasses->get($grade) ?? collect(); @endphp
             @forelse($classGroup as $class)
-            <div x-show="activeBlock === 'all' || activeBlock === '{{ $class->block ?? 'Cơ bản' }}'" class="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:border-blue-300 transition-colors">
+            <div x-show="activeBlock === 'all' || activeBlock === '{{ $class->block_name }}'" class="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:border-blue-300 transition-colors">
                 
                 <div @click="expandedClass = expandedClass === {{ $class->id }} ? null : {{ $class->id }}" 
                      class="p-5 flex justify-between items-center cursor-pointer bg-white hover:bg-blue-50/30 transition-colors no-print">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center font-black text-lg">{{ $class->name }}</div>
                         <div>
-                            <h3 class="text-sm font-black text-slate-800 uppercase">LỚP {{ $class->name }} ({{ $class->block ?? 'Cơ bản' }})</h3>
+                            <h3 class="text-sm font-black text-slate-800 uppercase">LỚP {{ $class->name }} ({{ $class->block_name }})</h3>
                             <p class="text-[11px] text-slate-500 font-bold">GVCN: <span class="teacher-name-data">{{ $class->homeroomTeacher?->name ?? 'Chưa cập nhật' }}</span></p>
                         </div>
                     </div>
@@ -96,7 +96,7 @@
                         <h2 style="font-size: 14px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $settings['school_name'] ?? 'TRƯỜNG CHƯA CÀI ĐẶT' }}</h2>
                         <h1 style="font-size: 24px; font-weight: 900; color: #1d4ed8; margin: 5px 0; text-transform: uppercase;">THỜI KHÓA BIỂU</h1>
                         <p style="font-size: 12px; font-weight: 700; color: #1f2937; margin: 5px 0;">
-                            LỚP: <span class="class-name-data">{{ $class->name }}</span> ({{ $class->block ?? 'Cơ bản' }}) | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
+                            LỚP: <span class="class-name-data">{{ $class->name }}</span> ({{ $class->block_name }}) | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
                         </p>
                         <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">GVCN: {{ $class->homeroomTeacher?->name ?? 'Chưa cập nhật' }}</p>
                     </div>

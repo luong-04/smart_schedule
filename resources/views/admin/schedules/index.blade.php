@@ -55,11 +55,9 @@
                             return sprintf('%02d-%s', $c->grade, $c->name);
                         });
                     @endphp
-                    @foreach($sortedClasses as $class)
                         <option value="{{ $class->id }}" {{ $selectedClassId == $class->id ? 'selected' : '' }}>
-                            Lớp {{ $class->name }} - Khối {{ $class->grade }} ({{ $class->block ?? 'Cơ bản' }})
+                            Lớp {{ $class->name }} - Khối {{ $class->grade }} ({{ $class->block_name }})
                         </option>
-                    @endforeach
                 </select>
             </div>
         </div>
@@ -113,8 +111,15 @@
                                 <span class="subject-badge text-xs font-black {{ $as->remaining_subject_slots <= 0 ? 'text-rose-500' : 'text-emerald-600' }}">{{ $as->remaining_subject_slots }}</span>
                             </div>
                         </div>
-                        <span class="slot-badge text-xs font-black {{ $as->actual_remaining <= 0 ? 'text-rose-500' : 'text-emerald-500' }}">
-                            {{ $as->actual_remaining > 0 ? sprintf("%02d", $as->actual_remaining) : 'HẾT' }}
+                        <span class="slot-badge text-[10px] font-black {{ $as->actual_remaining <= 0 ? 'text-rose-500 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100' : 'text-emerald-500' }}">
+                            @if($as->actual_remaining > 0)
+                                {{ sprintf("%02d", $as->actual_remaining) }}
+                            @else
+                                @if($as->bottleneck == 'teacher') HẾT ĐM GV
+                                @elseif($as->bottleneck == 'subject') HẾT TIẾT MÔN
+                                @else HẾT TIẾT
+                                @endif
+                            @endif
                         </span>
                     </div>
                 </div>

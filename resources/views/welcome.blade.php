@@ -1,297 +1,309 @@
-@php
-    use App\Models\Setting;
-    use App\Models\Classroom;
-    use App\Models\Teacher;
-    use App\Models\Schedule;
-
-    // Lấy thông tin cấu hình cơ bản từ Admin
-    $schoolName = Setting::getVal('school_name', 'TRƯỜNG CHƯA CÀI ĐẶT');
-    $schoolYear = Setting::getVal('school_year', '2024-2025');
-    $semester = Setting::getVal('semester', 'Học kỳ 1');
-    $scheduleName = $semester . ' - ' . $schoolYear;
-    $principal = Setting::getVal('principal_name', 'Đang cập nhật');
-    $vicePrincipal = Setting::getVal('vice_principal_name', 'Đang cập nhật');
-    
-    // LẤY THÊM THÔNG TIN LIÊN HỆ ĐỂ HIỂN THỊ Ở FOOTER
-    $schoolAddress = Setting::getVal('school_address', 'Chưa cập nhật địa chỉ');
-    $schoolPhone = Setting::getVal('school_phone', 'Chưa cập nhật SĐT');
-    $schoolEmail = Setting::getVal('school_email', 'Chưa cập nhật Email');
-    
-    // Thuật toán tra cứu thông minh
-    $searchQuery = request('q');
-    $classroom = null;
-    $teacher = null;
-    $schedules = collect();
-    $gvcnClasses = collect();
-
-    $assignFlag = Setting::getVal('assign_gvcn_flag_salute', 0);
-    $assignMeeting = Setting::getVal('assign_gvcn_class_meeting', 0);
-
-    if ($searchQuery) {
-        $classroom = Classroom::where('name', $searchQuery)->first();
-        
-        if ($classroom) {
-            $schedules = Schedule::where('schedule_name', $scheduleName)
-                ->whereHas('assignment', function($query) use ($classroom) {
-                    $query->where('class_id', $classroom->id);
-                })
-                ->with(['assignment.subject', 'assignment.teacher', 'room'])
-                ->get();
-                
-            $shiftStr = strtolower($classroom->shift ?? 'morning');
-            $fDay = Setting::getVal($shiftStr.'_flag_day', 2);
-            $fPer = Setting::getVal($shiftStr.'_flag_period', ($shiftStr == 'morning' ? 1 : 10));
-            $mDay = Setting::getVal($shiftStr.'_meeting_day', 7);
-            $mPer = Setting::getVal($shiftStr.'_meeting_period', ($shiftStr == 'morning' ? 5 : 10));
-            
-            $gvcnName = $classroom->homeroom_teacher;
-        } else {
-            $teacher = Teacher::where('code', $searchQuery)
-                              ->orWhere('name', 'LIKE', '%' . $searchQuery . '%')
-                              ->first();
-                              
-            if ($teacher) {
-                $schedules = Schedule::where('schedule_name', $scheduleName)
-                    ->whereHas('assignment', function($query) use ($teacher) {
-                        $query->where('teacher_id', $teacher->id);
-                    })
-                    ->with(['assignment.subject', 'assignment.classroom', 'room'])
-                    ->get();
-                
-                $gvcnClasses = Classroom::where('homeroom_teacher', $teacher->name)->get();
-            }
-        }
-    }
-@endphp
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tra cứu TKB - {{ $schoolName }}</title>
+    
+    <!-- Meta Tags cho SEO -->
+    <meta name="description" content="Hệ thống tra cứu Thời khóa biểu của {{ $schoolName }} năm học {{ $schoolYear }}. Hiện đại, nhanh chóng và chính xác.">
+    <meta name="keywords" content="thời khóa biểu, tra cứu tkb, {{ $schoolName }}, giáo dục">
+    <meta property="og:title" content="Tra cứu TKB - {{ $schoolName }}">
+    <meta property="og:description" content="Tra cứu lịch học và giảng dạy nhanh nhất.">
+    
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-    <style>body { font-family: 'Lexend', sans-serif; }</style>
-    <script>
-        // ESCAPE HATCH: Nếu phát hiện trang chủ bị load nhầm dưới dạng thẻ cục bộ của HTMX (do cache cũ), thoát ra ngay.
-        if (window.htmx) { window.location.reload(); }
-    </script>
+    
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-soft: rgba(37, 99, 235, 0.1);
+            --accent: #10b981;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+        }
+
+        body { 
+            display: flex;
+            flex-direction: column;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        /* Đảm bảo chân trang không bị nhảy lên */
+        main {
+            flex: 1 0 auto;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 16px 0 rgba(31, 38, 135, 0.04);
+        }
+
+        .gradient-text {
+            background: linear-gradient(to right, #2563eb, #1e40af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .search-container {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .search-container:focus-within {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.1), 0 10px 10px -5px rgba(37, 99, 235, 0.04);
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-area { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; margin: 0 !important; }
+            body { background: white !important; }
+            .glass-card { background: white !important; backdrop-filter: none !important; border: none !important; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* TKB Table Styling - CHUẨN ADMIN */
+        .print-table { border-collapse: collapse; border: 2px solid black; }
+        .print-table th { background: #f1f5f9; border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; text-align: center; }
+        .print-table td { border: 1px solid black; text-align: center; vertical-align: middle; padding: 4px; }
+    </style>
 </head>
-<body class="bg-[#F0F7FF] min-h-screen flex flex-col">
-    <header class="p-6 flex justify-between items-center bg-white shadow-sm border-b border-blue-50">
-        <div>
-            <h1 class="text-2xl font-black text-blue-700 uppercase tracking-tight">{{ $schoolName }}</h1>
-            <p class="text-xs font-bold text-slate-400 uppercase mt-1">{{ $semester }} • Niên khóa: {{ $schoolYear }}</p>
+<body class="selection:bg-blue-100">
+    
+    <!-- Header -->
+    <header class="sticky top-0 z-50 glass-card px-6 py-4 border-b border-blue-100 flex justify-between items-center no-print">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 rounded-2xl p-2.5 text-white shadow-lg shadow-blue-200">
+                 <span class="material-symbols-outlined text-2xl">school</span>
+            </div>
+            <div>
+                <h1 class="text-lg font-black tracking-tight text-blue-900 uppercase leading-tight">{{ $schoolName }}</h1>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ $semester }} • Niên khóa {{ $schoolYear }}</p>
+            </div>
         </div>
-        <a href="{{ route('admin.dashboard') }}" class="bg-slate-800 text-white px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 hover:bg-slate-900 transition-all flex items-center gap-2">
-            Đăng nhập Quản lý
-        </a>
+        
+        <div class="flex items-center gap-4">
+            <a href="{{ route('admin.dashboard') }}" class="group relative px-6 py-2.5 rounded-2xl bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest overflow-hidden transition-all hover:pr-10">
+                <span class="relative z-10">Quản trị viên</span>
+                <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all text-sm">arrow_forward</span>
+            </a>
+        </div>
     </header>
 
-    <main class="max-w-6xl mx-auto pt-10 md:pt-16 px-4 flex-1 w-full">
-        <div class="text-center mb-10">
-            <h2 class="text-3xl md:text-4xl font-black text-slate-800 mb-6">Tra cứu Thời khóa biểu</h2>
-            
-            <form action="{{ url('/') }}" method="GET" class="relative max-w-2xl mx-auto group">
-                <input type="text" name="q" value="{{ request('q') }}" placeholder="Nhập tên lớp (10A1) hoặc Mã GV (GV01)..." 
-                    class="w-full p-5 md:p-6 pl-8 pr-32 md:pr-40 bg-white rounded-[2rem] shadow-xl shadow-blue-100/50 border border-blue-50 focus:border-blue-300 focus:ring-4 focus:ring-blue-100 text-base md:text-lg font-bold text-slate-700 transition-all outline-none">
-                <button type="submit" class="absolute right-3 top-3 bottom-3 bg-blue-600 text-white px-6 md:px-8 rounded-[1.5rem] text-sm font-black uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-md shadow-blue-200 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-lg hidden md:block">search</span> Tra cứu
+    <main class="w-full max-w-6xl mx-auto px-4 py-8 md:py-12 flex-grow">
+        
+        <!-- Hero Section -->
+        <div class="text-center mb-10 fade-in">
+            <h2 class="text-3xl md:text-5xl font-black text-slate-800 mb-6 tracking-tight leading-tight">
+                Hệ Thống <span class="gradient-text">Tra Cứu TKB</span>
+            </h2>
+
+            <form action="{{ url('/') }}" method="GET" class="search-container relative max-w-2xl mx-auto group no-print">
+                <input type="text" name="q" value="{{ $searchQuery }}" placeholder="Nhập tên lớp (10A1) hoặc tên Giáo viên..." 
+                    class="w-full p-5 pl-14 pr-40 bg-white rounded-[2.5rem] shadow-xl shadow-blue-100/40 border-2 border-transparent focus:border-blue-300 outline-none text-base font-semibold text-slate-700 placeholder:text-slate-300 transition-all">
+                <span class="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors">search</span>
+                <button type="submit" class="absolute right-2.5 top-2.5 bottom-2.5 bg-blue-600 text-white px-8 rounded-full text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95">
+                    Tìm Kiếm
                 </button>
             </form>
         </div>
 
-        @if(request()->has('q'))
-            @if($classroom || $teacher)
-                
-                @php
-                    $viewType = $classroom ? 'class' : 'teacher';
-                    $targetId = $classroom ? $classroom->id : $teacher->id;
-                    $targetName = $classroom ? $classroom->name : $teacher->name;
-                    $targetExtra = $classroom ? ($gvcnName ?? 'Chưa cập nhật') : $teacher->code;
-                @endphp
+        @if($searchQuery)
+            <div class="fade-in">
+                @if($classroom || $teacher)
+                    @php
+                        $targetType = $classroom ? 'class' : 'teacher';
+                        $targetId   = $classroom ? $classroom->id : $teacher->id;
+                        $targetName = $classroom ? $classroom->name : $teacher->name;
+                        $targetFull = $classroom ? "LỚP $classroom->name" : "GV: $teacher->name";
+                        $extraInfo  = $classroom ? "GVCN: $gvcnName" : "Mã GV: " . ($teacher->code ?? 'N/A');
+                    @endphp
 
-                <div class="flex justify-end gap-3 mb-4 max-w-5xl mx-auto no-print">
-                    <button onclick="exportExcel('{{ $viewType }}-{{ $targetId }}', '{{ $targetName }}', '{{ $schoolYear }}', '{{ $targetExtra }}', '{{ $viewType }}')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/30">
-                        <span class="material-symbols-outlined text-sm">table_view</span> Tải Excel
-                    </button>
-                    <button onclick="exportNative('{{ $viewType }}-{{ $targetId }}', '{{ $targetName }}', '{{ $viewType }}')" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-500/30">
-                        <span class="material-symbols-outlined text-sm">print</span> In / Tải PDF
-                    </button>
-                </div>
-
-                <div id="pdf-content-{{ $viewType }}-{{ $targetId }}" class="print-area bg-white rounded-[2rem] shadow-sm p-6 md:p-8 border border-blue-50 max-w-5xl mx-auto">
-                     
-                     <div class="text-center mb-6 border-b-2 border-slate-800 pb-5 print-header">
-                        <h2 class="text-sm font-black text-slate-600 uppercase">{{ $schoolName }}</h2>
-                        <h1 class="text-xl md:text-2xl font-black text-blue-700 uppercase tracking-widest mt-1.5">THỜI KHÓA BIỂU {{ $teacher ? 'GIẢNG DẠY' : '' }}</h1>
-                        
-                        <div class="flex justify-center gap-5 mt-2 text-[11px] font-bold text-slate-800 uppercase">
-                            <p>{{ $classroom ? 'Lớp:' : 'Giáo viên:' }} <span class="text-blue-700 text-xs">{{ $targetName }}</span></p>
-                            <p>Năm học: {{ $schoolYear }}</p>
+                    <!-- UI Controls -->
+                    <div class="flex justify-between items-end mb-6 max-w-5xl mx-auto no-print">
+                        <div class="flex items-center gap-3">
+                            <span class="bg-blue-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">KẾT QUẢ</span>
+                            <h3 class="text-xl font-black text-slate-800 uppercase">{{ $targetName }}</h3>
                         </div>
-                        <p class="text-[10px] font-bold text-slate-600 mt-1.5 uppercase">
-                            {{ $classroom ? 'Giáo viên chủ nhiệm:' : 'Mã giáo viên:' }} 
-                            <span class="text-blue-700">{{ $targetExtra }}</span>
-                        </p>
+                        <div class="flex gap-2">
+                            <button onclick="exportWord('{{ $targetType }}-{{ $targetId }}', '{{ $targetName }}')" class="bg-blue-700 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-blue-800 transition-all shadow-lg">
+                                <span class="material-symbols-outlined text-sm">article</span> Tải File Word
+                            </button>
+                            <button onclick="exportNative('pdf-content-{{ $targetType }}-{{ $targetId }}')" class="bg-slate-800 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-black transition-all shadow-lg">
+                                <span class="material-symbols-outlined text-sm">print</span> In / Tải PDF
+                            </button>
+                        </div>
                     </div>
-                     
-                     <table class="w-full border-collapse border-2 border-slate-800 print-table">
-                        <thead>
-                            <tr class="bg-slate-100">
-                                <th class="border border-slate-800 p-2 w-12 md:w-16 text-center text-[10px] font-black text-slate-600 uppercase">Tiết</th>
-                                @foreach(['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'] as $thu)
-                                    <th class="border border-slate-800 p-2 text-center text-[11px] font-black text-slate-700 uppercase w-[15%]">{{ $thu }}</th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for($p=1; $p<=10; $p++)
-                                @if($p == 6)
-                                <tr>
-                                    <td colspan="7" class="border-y-2 border-slate-800 bg-slate-50 p-1.5 text-center text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">Nghỉ trưa / Đổi ca</td>
-                                </tr>
-                                @endif
-                                <tr>
-                                    <td class="border border-slate-300 p-1.5 text-center font-black text-slate-600 bg-slate-50/50 text-[11px]">{{ $p }}</td>
-                                    
+
+                    <!-- Result Card - MẪU CHUẨN ADMIN -->
+                    <div id="pdf-content-{{ $targetType }}-{{ $targetId }}" class="print-area bg-white rounded-[2rem] p-6 md:p-10 border border-slate-200 max-w-5xl mx-auto mb-10 shadow-sm overflow-x-auto">
+                        
+                        <!-- Header identical to admin -->
+                        <div class="print-header-pdf" style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
+                            <h2 style="font-size: 14px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $schoolName }}</h2>
+                            <h1 style="font-size: 24px; font-weight: 900; color: #1d4ed8; margin: 5px 0; text-transform: uppercase;">THỜI KHÓA BIỂU{{ $teacher ? ' GIÁO VIÊN' : '' }}</h1>
+                            <p style="font-size: 12px; font-weight: 700; color: #1f2937; margin: 5px 0;">
+                                {{ $classroom ? 'LỚP: ' .  $targetName : 'HỌ TÊN: ' . $targetName }} | NĂM HỌC: {{ $schoolYear }}
+                            </p>
+                            <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">
+                                {{ $extraInfo }} 
+                                @if($teacher && $teacher->subject) | MÔN: {{ $teacher->subject->name }} @endif
+                            </p>
+                        </div>
+
+                        <table class="w-full print-table" style="width: 100%; border-collapse: collapse; border: 2px solid black;">
+                            <thead>
+                                <tr style="background-color: #f1f5f9;">
+                                    <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; width: 60px; text-align: center;">Tiết</th>
                                     @for($d=2; $d<=7; $d++)
-                                        @php
-                                            $cell = $schedules->where('day_of_week', $d)->where('period', $p)->first();
-                                            
-                                            $isFixedClass = false;
-                                            $fixedLabelClass = '';
-                                            $showGvcnClass = false;
-
-                                            if ($classroom) {
-                                                $isFlagSalute = ($d == $fDay && $p == $fPer);
-                                                $isClassMeeting = ($d == $mDay && $p == $mPer);
-                                                $isFixedClass = $isFlagSalute || $isClassMeeting;
-                                                $fixedLabelClass = $isFlagSalute ? 'CHÀO CỜ' : 'SINH HOẠT';
-                                                $showGvcnClass = ($isFlagSalute && $assignFlag) || ($isClassMeeting && $assignMeeting);
-                                            }
-
-                                            $gvcnSlotTeacher = null;
-                                            if ($teacher && !$cell && $gvcnClasses->count() > 0) {
-                                                foreach($gvcnClasses as $c) {
-                                                    $sShift = strtolower($c->shift ?? 'morning');
-                                                    $tfDay = Setting::getVal($sShift.'_flag_day', 2);
-                                                    $tfPer = Setting::getVal($sShift.'_flag_period', ($sShift == 'morning' ? 1 : 10));
-                                                    $tmDay = Setting::getVal($sShift.'_meeting_day', 7);
-                                                    $tmPer = Setting::getVal($sShift.'_meeting_period', ($sShift == 'morning' ? 5 : 10));
-                                                    
-                                                    if ($assignFlag && $d == $tfDay && $p == $tfPer) {
-                                                        $gvcnSlotTeacher = ['label' => 'CHÀO CỜ', 'class' => $c->name];
-                                                        break;
-                                                    }
-                                                    if ($assignMeeting && $d == $tmDay && $p == $tmPer) {
-                                                        $gvcnSlotTeacher = ['label' => 'SINH HOẠT', 'class' => $c->name];
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        @endphp
-                                        
-                                        <td class="border border-slate-300 p-1 text-center h-[60px] align-middle {{ ($isFixedClass || $gvcnSlotTeacher) ? 'bg-slate-50' : 'bg-white' }}">
-                                            
-                                            @if($classroom)
-                                                @if($isFixedClass)
-                                                    <div class="text-[10px] font-black text-slate-400 tracking-widest">{{ $fixedLabelClass }}</div>
-                                                    @if($showGvcnClass && !empty($gvcnName))
-                                                        <div class="text-[8px] font-bold text-slate-400 mt-0.5">{{ $gvcnName }}</div>
-                                                    @endif
-                                                @elseif($cell)
-                                                    <div class="text-[11px] font-black text-blue-700 uppercase subject-txt">{{ $cell->assignment->subject->name }}</div>
-                                                    <div class="text-[9px] text-slate-600 font-bold mt-0.5 teacher-txt">GV: {{ $cell->assignment->teacher->name }}</div>
-                                                    @if($cell->room_id)
-                                                        <div class="text-[8px] text-orange-700 bg-orange-100 font-bold uppercase inline-block px-1 py-0.5 rounded mt-0.5 room-tag">P: {{ $cell->room->name }}</div>
-                                                    @endif
-                                                @endif
-                                            
-                                            @elseif($teacher)
-                                                @if($cell)
-                                                    <div class="text-[11px] font-black text-blue-700 uppercase subject-txt">{{ $cell->assignment->subject->name }}</div>
-                                                    <div class="text-[9px] text-slate-600 font-bold mt-0.5 teacher-txt">Lớp: {{ $cell->assignment->classroom->name }}</div>
-                                                    @if($cell->room_id)
-                                                        <div class="text-[8px] text-orange-700 bg-orange-100 font-bold uppercase inline-block px-1 py-0.5 rounded mt-0.5 room-tag">P: {{ $cell->room->name }}</div>
-                                                    @endif
-                                                @elseif($gvcnSlotTeacher)
-                                                    <div class="text-[10px] font-black text-slate-400 tracking-widest">{{ $gvcnSlotTeacher['label'] }}</div>
-                                                    <div class="text-[8px] font-bold text-slate-400 mt-0.5">Lớp: {{ $gvcnSlotTeacher['class'] }}</div>
-                                                @endif
-                                            @endif
-                                        </td>
+                                    <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; text-align: center;">Thứ {{ $d }}</th>
                                     @endfor
                                 </tr>
-                            @endfor
-                        </tbody>
-                     </table>
-                </div>
-            @else
-                <div class="bg-white rounded-[2.5rem] shadow-sm p-12 border border-rose-100 text-center max-w-2xl mx-auto mt-10">
-                    <span class="material-symbols-outlined text-6xl text-rose-200 mb-4 block">search_off</span>
-                    <h3 class="text-lg font-black text-slate-800 uppercase tracking-widest mb-2">Không tìm thấy dữ liệu</h3>
-                    <p class="text-sm font-medium text-slate-500">Hệ thống không tìm thấy Lớp hoặc Giáo viên nào có mã "<span class="text-rose-500 font-bold">{{ request('q') }}</span>". Vui lòng kiểm tra lại!</p>
-                </div>
-            @endif
+                            </thead>
+                            <tbody>
+                                @for($p=1; $p<=10; $p++)
+                                    @if($p == 6)
+                                    <tr style="height: 25px;"><td colspan="7" style="border: 1px solid black; background-color: #f8f9fa; text-align: center; font-size: 11px; font-weight: 900; text-transform: uppercase; font-style: italic;">Nghỉ trưa / Chuyển ca</td></tr>
+                                    @endif
+                                    <tr style="height: 50px;">
+                                        <td style="border: 1px solid black; text-align: center; font-weight: 900; font-size: 13px; background-color: #f8f9fa;">{{ $p }}</td>
+                                        @for($d=2; $d<=7; $d++)
+                                            @php
+                                                $cell = $schedules->where('day_of_week', $d)->where('period', $p)->first();
+                                                
+                                                // Xử lý Chào cờ / Sinh hoạt
+                                                $isFixed = false;
+                                                $fixedLabel = '';
+                                                if ($classroom) {
+                                                    $isFlagSalute = ($d == $shiftVars['fDay'] && $p == $shiftVars['fPer']);
+                                                    $isClassMeeting = ($d == $shiftVars['mDay'] && $p == $shiftVars['mPer']);
+                                                    $isFixed = $isFlagSalute || $isClassMeeting;
+                                                    $fixedLabel = $isFlagSalute ? 'CHÀO CỜ' : 'SINH HOẠT';
+                                                }
+
+                                                // Xử lý GV chủ nhiệm (khi xem TKB Giáo viên)
+                                                $isHomeroomFixed = false;
+                                                $homeroomLabel = '';
+                                                $homeroomClassName = '';
+                                                if ($teacher && !$cell && $gvcnClasses->isNotEmpty()) {
+                                                    foreach($gvcnClasses as $c) {
+                                                        $sShift = strtolower($c->shift ?? 'morning');
+                                                        $tfDay = Setting::getVal($sShift.'_flag_day', 2);
+                                                        $tfPer = Setting::getVal($sShift.'_flag_period', ($sShift == 'morning' ? 1 : 10));
+                                                        $tmDay = Setting::getVal($sShift.'_meeting_day', 7);
+                                                        $tmPer = Setting::getVal($sShift.'_meeting_period', ($sShift == 'morning' ? 5 : 10));
+
+                                                        if ($assignFlag && $d == $tfDay && $p == $tfPer) { $isHomeroomFixed = true; $homeroomLabel = 'CHÀO CỜ'; $homeroomClassName = $c->name; break; }
+                                                        if ($assignMeeting && $d == $tmDay && $p == $tmPer) { $isHomeroomFixed = true; $homeroomLabel = 'SINH HOẠT'; $homeroomClassName = $c->name; break; }
+                                                    }
+                                                }
+                                            @endphp
+
+                                            <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ ($isFixed || $isHomeroomFixed) ? '#f8f9fa' : '#ffffff' }}; padding: 4px;">
+                                                @if($isFixed)
+                                                    <span style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</span>
+                                                @elseif($isHomeroomFixed)
+                                                    <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                                                        <span style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $homeroomLabel }}</span>
+                                                        <span style="font-size: 10px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClassName }}</span>
+                                                    </div>
+                                                @elseif($cell)
+                                                    <div style="display: flex; flex-direction: column; line-height: 1.1;">
+                                                        <span style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase;">{{ $classroom ? $cell->assignment->subject->name : "LỚP " . $cell->assignment->classroom->name }}</span>
+                                                        <span style="font-size: 10px; font-weight: 700; color: #4b5563;">{{ $classroom ? $cell->assignment->teacher->name : $cell->assignment->subject->name }}</span>
+                                                        @if($cell->room_id)
+                                                            <span style="font-size: 9px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</span>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            </td>
+                                        @endfor
+                                    </tr>
+                                @endfor
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <!-- No results -->
+                    <div class="bg-white rounded-[3rem] p-16 border-2 border-dashed border-slate-200 text-center max-w-2xl mx-auto shadow-sm">
+                        <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <span class="material-symbols-outlined text-4xl">search_off</span>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-2 uppercase">Không tìm thấy</h3>
+                        <p class="text-slate-500 font-medium">Không tìm thấy kết quả cho: "<span class="text-rose-600 font-bold uppercase">{{ $searchQuery }}</span>"</p>
+                        <a href="{{ url('/') }}" class="inline-block mt-8 text-blue-600 font-bold text-sm">Quay lại trang chủ</a>
+                    </div>
+                @endif
+            </div>
         @endif
     </main>
 
-    <footer class="mt-20 p-10 bg-white border-t border-slate-200 text-center mt-auto">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8 text-xs font-bold text-slate-500 uppercase tracking-widest">
-            <div class="flex flex-col items-center gap-2">
-                <span class="material-symbols-outlined text-blue-500 text-2xl">location_on</span>
-                <p>{{ $schoolAddress }}</p>
-            </div>
-            <div class="flex flex-col items-center gap-2">
-                <span class="material-symbols-outlined text-emerald-500 text-2xl">call</span>
-                <p>{{ $schoolPhone }}</p>
-            </div>
-            <div class="flex flex-col items-center gap-2">
-                <span class="material-symbols-outlined text-amber-500 text-2xl">mail</span>
-                <p>{{ $schoolEmail }}</p>
-            </div>
-        </div>
-        
-        <div class="pt-6 border-t border-slate-100">
-            <p class="font-black text-slate-400 uppercase tracking-widest text-[10px]">
-                Hệ thống tra cứu Thời khóa biểu {{ $schoolName }} <br>
-                Ban Giám Hiệu - Hiệu trưởng: {{ $principal }} | Hiệu phó: {{ $vicePrincipal }}
+    <!-- Footer -->
+    <footer class="w-full bg-white border-t border-slate-200 py-10 px-6 no-print flex-shrink-0">
+        <div class="max-w-6xl mx-auto text-center">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
+                &copy; {{ date('Y') }} {{ $schoolName }} <br>
+                Hiệu trưởng: {{ $principal }} | Hiệu phó: {{ $vicePrincipal }}
             </p>
         </div>
     </footer>
 
     <script>
-        function exportNative(elementId, targetName, viewType) {
-            const content = document.getElementById('pdf-content-' + elementId).innerHTML;
-            const newWindow = window.open('', '_blank');
-            const title = viewType === 'class' ? `TKB_Lop_${targetName}` : `TKB_GV_${targetName}`;
+        function exportWord(elementId, targetName) {
+            const element = document.getElementById(`pdf-content-${elementId}`);
+            if (!element) return alert("Không tìm thấy nội dung!");
+            
+            const content = element.innerHTML;
+            const finalHtml = generateWordTemplate(content);
+            
+            const blob = new Blob(['\ufeff', finalHtml], { type: 'application/msword' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `TKB_${targetName}.doc`;
+            link.click();
+        }
 
+        function generateWordTemplate(content) {
+            return `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset="utf-8"><style>
+                    @page WordSection1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 0.5in 0.5in 0.5in 0.5in; }
+                    div.WordSection1 { page: WordSection1; }
+                    table { border-collapse: collapse; width: 100%; border: 1pt solid black !important; }
+                    th, td { border: 1pt solid black !important; padding: 5px; text-align: center; font-family: 'Arial', sans-serif; }
+                </style></head>
+                <body><div class="WordSection1">${content}</div></body></html>
+            `;
+        }
+
+        function exportNative(elementId) {
+            const content = document.getElementById(elementId).innerHTML;
+            const newWindow = window.open('', '_blank');
             newWindow.document.write(`
-                <!DOCTYPE html>
-                <html lang="vi">
+                <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>${title}</title>
+                    <title>In Thời Khóa Biểu</title>
                     <script src="https://cdn.tailwindcss.com"><\/script>
                     <style>
-                        @page { size: A4 landscape; margin: 8mm; }
-                        body { 
-                            background: white; 
-                            -webkit-print-color-adjust: exact !important; 
-                            print-color-adjust: exact !important; 
-                            font-family: ui-sans-serif, system-ui, sans-serif; 
-                        }
-                        .shadow-sm { box-shadow: none !important; }
-                        .rounded-\\[2rem\\] { border-radius: 0 !important; border: none !important; }
-                        .p-6, .md\\:p-8 { padding: 0 !important; }
-                        .print-header { margin-bottom: 10px !important; padding-bottom: 10px !important; }
-                        .print-table th, .print-table td { padding: 4px !important; }
-                        .h-\\[60px\\] { height: 40px !important; }
-                        table { page-break-inside: avoid; }
-                        tr { page-break-inside: avoid; page-break-after: auto; }
+                        @page { size: A4 landscape; margin: 0; }
+                        body { background: white; -webkit-print-color-adjust: exact !important; padding: 10mm; font-family: sans-serif; }
+                        .print-table th, .print-table td { border: 1px solid black !important; }
                     </style>
                 </head>
                 <body>
@@ -299,72 +311,13 @@
                 </body>
                 </html>
             `);
-
             newWindow.document.close();
             
             setTimeout(() => {
                 newWindow.focus();
                 newWindow.print();
-                setTimeout(() => { newWindow.close(); }, 500);
+                newWindow.close();
             }, 1000);
-        }
-
-        function exportExcel(elementId, targetName, schoolYear, extraInfo, viewType) {
-            let tableClone = document.querySelector('#pdf-content-' + elementId + ' table').cloneNode(true);
-            
-            tableClone.querySelectorAll('td, th').forEach(cell => {
-                cell.style.border = '1px solid #000000';
-                cell.style.padding = '5px';
-                cell.style.textAlign = 'center';
-                cell.style.verticalAlign = 'middle';
-                
-                let subject = cell.querySelector('.subject-txt');
-                let teacherClass = cell.querySelector('.teacher-txt');
-                let room = cell.querySelector('.room-tag');
-                
-                if (subject && teacherClass) {
-                    let htmlContent = `<strong>${subject.innerText}</strong><br style="mso-data-placement:same-cell;"/>${teacherClass.innerText}`;
-                    if(room) {
-                        htmlContent += `<br style="mso-data-placement:same-cell;"/><span style="color:#c2410c;">${room.innerText}</span>`;
-                    }
-                    cell.innerHTML = htmlContent;
-                } else {
-                    let text = cell.innerText.trim();
-                    if(text !== '') cell.innerHTML = `<strong>${text}</strong>`;
-                }
-            });
-
-            let schoolName = "{{ $schoolName }}";
-            let mainTitle = viewType === 'class' ? `THỜI KHÓA BIỂU LỚP ${targetName}` : `THỜI KHÓA BIỂU GIẢNG DẠY - GV: ${targetName}`;
-            let subTitle = viewType === 'class' ? `Giáo viên chủ nhiệm: ${extraInfo}` : `Mã giáo viên: ${extraInfo}`;
-
-            let headerHtml = `
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                    <tr><td colspan="8" style="text-align: center; font-size: 15px; font-weight: bold; text-transform: uppercase;">${schoolName}</td></tr>
-                    <tr><td colspan="8" style="text-align: center; font-size: 22px; font-weight: bold; color: #1d4ed8;">${mainTitle}</td></tr>
-                    <tr><td colspan="8" style="text-align: center; font-size: 13px; font-style: italic;">Năm học: ${schoolYear}</td></tr>
-                    <tr><td colspan="8" style="text-align: left; font-size: 13px; font-weight: bold; color: #b91c1c;">${subTitle}</td></tr>
-                    <tr><td colspan="8"></td></tr>
-                </table>
-            `;
-
-            let uri = 'data:application/vnd.ms-excel;base64,';
-            let template = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head><meta charset="UTF-8"></head>
-            <body>${headerHtml}${tableClone.outerHTML}</body>
-            </html>`;
-
-            let base64 = function(s) { return window.btoa(unescape(encodeURIComponent(s))) };
-            let format = function(s, c) { return s.replace(/{(\w+)}/g, function(m, p) { return c[p]; }) };
-
-            let fileName = viewType === 'class' ? `TKB_Lop_${targetName}.xls` : `TKB_GV_${targetName}.xls`;
-            let ctx = { worksheet: 'TKB' };
-            let link = document.createElement("a");
-            link.download = fileName;
-            link.href = uri + base64(format(template, ctx));
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
     </script>
 </body>

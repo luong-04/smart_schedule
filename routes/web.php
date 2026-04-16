@@ -16,9 +16,9 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\ProctorController; 
 use App\Http\Controllers\Admin\UserController; 
 
-Route::get('/', function () { 
-    return view('welcome'); 
-});
+use App\Http\Controllers\HomeController;
+
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::get('/dashboard', function () {
     return redirect()->route('admin.dashboard');

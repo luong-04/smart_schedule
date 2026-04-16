@@ -131,6 +131,25 @@ class ScheduleValidationService
             if ($error = $this->validateConsecutiveSlots($tId, $days, $allAssignments, $maxConsecutive)) {
                 return $error;
             }
+            if ($error = $this->validateGapSession($tId, $days, $allAssignments, 'giáo viên')) {
+                return $error;
+            }
+        }
+
+        // ── 7. Kiểm tra tiết trống cho Lớp học ──────────────────────────────
+        // Chuyển teacherDayPeriods (teacherId -> day -> periods) thành classDayPeriods (day -> periods)
+        $classDayPeriods = [];
+        foreach ($teacherDayPeriods as $tId => $days) {
+            foreach ($days as $day => $periods) {
+                foreach ($periods as $p) {
+                    $classDayPeriods[$day][] = $p;
+                }
+            }
+        }
+        foreach ($classDayPeriods as $day => $periods) {
+            if ($error = $this->validateGapSession($classroom->id, [$day => $periods], null, 'lớp học')) {
+                return $error;
+            }
         }
 
         return null; // Mọi kiểm tra đều pass
@@ -263,6 +282,40 @@ class ScheduleValidationService
                 return [
                     'message' => "Vi phạm cấu hình: GV {$teacher->name} dạy liên tiếp {$maxFound} tiết vào Thứ {$day} (Giới hạn hệ thống là {$maxConsecutive} tiết)!"
                 ];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Kiểm tra "tiết trống" giữa các buổi dạy (Gap Session).
+     * Một buổi (Sáng: 1-5, Chiều: 6-10) không nên có tiết trống xen kẽ.
+     */
+    private function validateGapSession($id, array $days, $allAssignments, string $type): ?array
+    {
+        foreach ($days as $day => $periods) {
+            if (count($periods) < 2) continue;
+            sort($periods);
+
+            $morning = array_filter($periods, fn($p) => $p <= 5);
+            $afternoon = array_filter($periods, fn($p) => $p > 5);
+
+            foreach ([$morning, $afternoon] as $sessionPeriods) {
+                if (count($sessionPeriods) < 2) continue;
+                
+                $min = min($sessionPeriods);
+                $max = max($sessionPeriods);
+                
+                // Nếu số lượng tiết ít hơn khoảng cách min-max => có lỗ hổng
+                if (count($sessionPeriods) < ($max - $min + 1)) {
+                    $entityName = ($type === 'giáo viên' && $allAssignments) 
+                        ? "GV " . ($allAssignments->first(fn($a) => $a->teacher_id == $id)?->teacher->name ?? 'N/A')
+                        : "Lớp học";
+
+                    return [
+                        'message' => "Cảnh báo tiết trống: {$entityName} có tiết học cách quãng (ví dụ tiết 1 & 3 nhưng trống tiết 2) vào Thứ {$day}. Vui lòng xếp các tiết liền nhau để tối ưu thời gian."
+                    ];
+                }
             }
         }
         return null;

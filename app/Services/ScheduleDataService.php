@@ -18,28 +18,36 @@ class ScheduleDataService
     {
         $otherSchedules = Schedule::where('schedule_name', $scheduleName)
             ->whereHas('assignment', function ($q) use ($selectedClassId) {
+                // Chỉ lấy lịch của các lớp KHÁC lớp đang xếp
                 $q->where('class_id', '!=', $selectedClassId);
             })
             ->with(['assignment:id,teacher_id,class_id'])
-            ->get(['id', 'assignment_id', 'room_id', 'day_of_week', 'period']);
+            ->get(['id', 'assignment_id', 'room_id', 'teacher_id', 'day_of_week', 'period']);
 
         $teacherBusySlots = [];
         $teacherOtherDays = [];
         $roomBusySlots    = [];
 
         foreach ($otherSchedules as $sch) {
-            $tId = $sch->assignment->teacher_id;
+            // Dùng teacher_id trực tiếp từ bảng schedules (đã được denormalize để tối ưu N+1)
+            $tId = $sch->teacher_id ?? ($sch->assignment->teacher_id ?? null);
+            if (!$tId) continue;
+
             $rId = $sch->room_id;
+            $slotKey = $sch->day_of_week . '-' . $sch->period;
 
-            $teacherBusySlots[$tId][] = $sch->day_of_week . '-' . $sch->period;
+            // 1. Gom slot bận của giáo viên
+            $teacherBusySlots[$tId][] = $slotKey;
 
+            // 2. Gom các ngày giáo viên có tiết dạy (ở lớp khác)
             if (!isset($teacherOtherDays[$tId])) $teacherOtherDays[$tId] = [];
             if (!in_array($sch->day_of_week, $teacherOtherDays[$tId])) {
                 $teacherOtherDays[$tId][] = $sch->day_of_week;
             }
 
+            // 3. Gom slot bận của phòng học
             if ($rId) {
-                $roomBusySlots[$rId][] = $sch->day_of_week . '-' . $sch->period;
+                $roomBusySlots[$rId][] = $slotKey;
             }
         }
 

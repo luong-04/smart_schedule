@@ -409,7 +409,11 @@
         fetch(window.ScheduleData.saveUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.ScheduleData.csrfToken },
-            body: JSON.stringify({ schedules: data, class_id: window.ScheduleData.selectedClassId })
+            body: JSON.stringify({ 
+                schedules: data, 
+                class_id: window.ScheduleData.selectedClassId,
+                last_updated_at: window.ScheduleData.lastUpdatedAt
+            })
         }).then(res => res.json()).then(res => {
             if (res.status === 'success') {
                 alert('🎉 Tuyệt vời! Đã lưu thời khóa biểu thành công.');

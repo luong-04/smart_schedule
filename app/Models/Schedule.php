@@ -17,12 +17,14 @@ class Schedule extends Model
 
     public function assignment()
     {
-        return $this->belongsTo(Assignment::class)->withTrashed();
+        return $this->belongsTo(Assignment::class)->withTrashed()->withDefault();
     }
 
     // BỔ SUNG HÀM NÀY ĐỂ FIX LỖI RELATION NOT FOUND
     public function room()
     {
-        return $this->belongsTo(Room::class);
+        return $this->belongsTo(Room::class)->withDefault([
+            'name' => 'N/A (Đã xóa)',
+        ]);
     }
 }

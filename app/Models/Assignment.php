@@ -22,16 +22,23 @@ class Assignment extends Model
      */
     public function teacher() 
     { 
-        return $this->belongsTo(Teacher::class)->withTrashed(); 
+        return $this->belongsTo(Teacher::class)->withTrashed()->withDefault([
+            'name' => 'N/A (Đã xóa)',
+            'code' => 'N/A',
+        ]); 
     }
 
     public function subject() 
     { 
-        return $this->belongsTo(Subject::class)->withTrashed(); 
+        return $this->belongsTo(Subject::class)->withTrashed()->withDefault([
+            'name' => 'Môn học (Đã xóa)',
+        ]); 
     }
 
     public function classroom() 
     { 
-        return $this->belongsTo(Classroom::class, 'class_id'); 
+        return $this->belongsTo(Classroom::class, 'class_id')->withDefault([
+            'name' => 'Lớp học (Đã xóa)',
+        ]); 
     }
 }

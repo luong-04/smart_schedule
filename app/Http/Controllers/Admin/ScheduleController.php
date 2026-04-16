@@ -143,10 +143,20 @@ class ScheduleController extends Controller
         $scheduleName = $this->getScheduleName();
         $classId      = $request->input('class_id');
         $schedules    = $request->input('schedules');
+        $lastUpdated  = $request->input('last_updated_at'); // Optimistic Locking
+        
         $classroom    = Classroom::findOrFail($classId);
         $settings     = Setting::pluck('value', 'key')->all();
 
-        // Chống IDOR — tất cả assignment_id phải thuộc class_id
+        // 1. Kiểm tra Optimistic Locking: Chống ghi đè dữ liệu cũ
+        if ($lastUpdated && $classroom->updated_at->gt($lastUpdated)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang để thấy bản cập nhật mới nhất!',
+            ], 422);
+        }
+
+        // 2. Chống IDOR — tất cả assignment_id phải thuộc class_id
         $validAssignmentIds = Assignment::where('class_id', $classId)->pluck('id')->toArray();
         foreach ($schedules as $item) {
             if (!in_array($item['assignment_id'], $validAssignmentIds)) {
@@ -170,7 +180,7 @@ class ScheduleController extends Controller
         [$teacherBusySlots, $teacherOtherDays, $roomBusySlots] = $this->dataService->getBusySlots($scheduleName, $classId);
         $busyData = compact('teacherBusySlots', 'teacherOtherDays', 'roomBusySlots');
 
-        // ── Gọi Service để kiểm tra toàn bộ ràng buộc ──────────────────────
+        // ── 3. Gọi Service để kiểm tra toàn bộ ràng buộc ──────────────────
         $error = $this->validator->validate(
             $schedules,
             $classroom,
@@ -185,55 +195,74 @@ class ScheduleController extends Controller
             return response()->json(['status' => 'error', 'message' => $error['message']]);
         }
 
-        // ── DB Transaction: Chống mất dữ liệu và Race Condition ───────────
+        // ── 4. DB Transaction: Diff-Update (Upsert) ──────────────────────
         try {
-            DB::transaction(function () use ($scheduleName, $classId, $schedules, $allAssignments) {
-                // 1. Khóa các lịch hiện tại của lớp ở mức cursor DB để ngăn vừa xóa vừa thêm trùng lặp
-                Schedule::where('schedule_name', $scheduleName)
+            DB::transaction(function () use ($scheduleName, $classId, $schedules, $allAssignments, $classroom) {
+                // Lấy lịch hiện tại của lớp
+                $existingSchedules = Schedule::where('schedule_name', $scheduleName)
                     ->whereHas('assignment', function ($q) use ($classId) {
                         $q->where('class_id', $classId);
                     })
                     ->lockForUpdate()
                     ->get();
+                
+                $keepIds = [];
 
-                // 2. Xóa lịch cũ
+                foreach ($schedules as $item) {
+                    $d = (int) $item['day_of_week'];
+                    $p = (int) $item['period'];
+                    
+                    // Tìm xem tiết này đã có trong DB chưa
+                    $match = $existingSchedules->first(fn($s) => $s->day_of_week == $d && $s->period == $p);
+                    
+                    $realAssignment = $allAssignments->get($item['assignment_id']);
+                    $dataToStore = [
+                        'assignment_id' => $item['assignment_id'],
+                        'day_of_week'   => $d,
+                        'period'        => $p,
+                        'room_id'       => $item['room_id'] ?? null,
+                        'teacher_id'    => $realAssignment->teacher_id,
+                        'schedule_name' => $scheduleName,
+                    ];
+
+                    if ($match) {
+                        // Nếu đã có, kiểm tra xem có thay đổi gì không (assignment hoặc room)
+                        // Nếu không thay đổi, DB sẽ tự bỏ qua update SQL nhờ dirty check của Eloquent
+                        $match->update($dataToStore);
+                        $keepIds[] = $match->id;
+                    } else {
+                        // Nếu chưa có, tạo mới
+                        $newRecord = Schedule::create($dataToStore);
+                        $keepIds[] = $newRecord->id;
+                    }
+                }
+
+                // Xóa những bản ghi không có trong danh sách mới (Dữ liệu mồ côi)
                 Schedule::where('schedule_name', $scheduleName)
                     ->whereHas('assignment', function ($q) use ($classId) {
                         $q->where('class_id', $classId);
                     })
+                    ->whereNotIn('id', $keepIds)
                     ->delete();
-
-                // 3. Tạo lịch mới hàng loạt
-                foreach ($schedules as $item) {
-                    // Lấy teacher_id trực tiếp từ Assignment đã load từ DB (sync dữ liệu chuẩn)
-                    $realAssignment = $allAssignments->get($item['assignment_id']);
-                    
-                    if ($realAssignment) {
-                        Schedule::create($item + [
-                            'schedule_name' => $scheduleName,
-                            'teacher_id'    => $realAssignment->teacher_id
-                        ]);
-                    }
-                }
+                
+                // Cập nhật timestamp của lớp để trigger Optimistic Locking cho người dùng khác
+                $classroom->touch();
             });
         } catch (\Illuminate\Database\QueryException $e) {
             // Lỗi 23000 là Duplicate entry (vi phạm Unique Constraint ở DB level)
-            // Đây là chốt chặn cuối cùng chống Race Condition
             if ($e->getCode() === '23000') {
                 return response()->json([
                     'status'  => 'error',
-                    'message' => 'Xung đột dữ liệu: Giáo viên hoặc phòng học đã có lịch tại thời điểm này ở lớp khác. Vui lòng tải lại trang!',
-                ]);
+                    'message' => 'Dữ liệu bị trùng lặp: Giáo viên hoặc phòng học đã bị đăng ký bởi một thao tác khác cùng lúc.',
+                    'errors'  => ['conflict' => ['Vui lòng tải lại trang và kiểm tra lại lịch.']]
+                ], 422);
             }
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Lỗi cơ sở dữ liệu: ' . $e->getMessage(),
-            ]);
+            throw $e;
         } catch (\Throwable $e) {
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Lỗi hệ thống khi lưu lịch: ' . $e->getMessage(),
-            ]);
+            ], 500);
         }
 
         return response()->json(['status' => 'success']);

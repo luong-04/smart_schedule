@@ -269,6 +269,7 @@
         teacherOtherDays: @json($teacherOtherDays ?? []),
         roomBusySlots: @json($roomBusySlots ?? []),
         selectedClassId: {{ $selectedClassId }},
+        lastUpdatedAt: "{{ $classroom->updated_at }}",
         saveUrl: "{{ route('admin.schedules.save') }}",
         csrfToken: "{{ csrf_token() }}"
     };

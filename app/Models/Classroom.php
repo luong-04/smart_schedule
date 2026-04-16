@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Classroom extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     // Khai báo tên bảng nếu khác với tên Model số nhiều
     protected $table = 'classes';

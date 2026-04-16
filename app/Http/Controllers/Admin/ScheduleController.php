@@ -155,9 +155,9 @@ class ScheduleController extends Controller
             }
         }
 
-        // Pre-load tất cả assignments 1 lần
+        // Pre-load tất cả assignments 1 lần kèm relations để validation
         $assignmentIds  = collect($schedules)->pluck('assignment_id')->unique()->toArray();
-        $allAssignments = Assignment::with(['teacher', 'subject'])
+        $allAssignments = Assignment::with(['teacher', 'subject', 'classroom'])
             ->whereIn('id', $assignmentIds)
             ->get()
             ->keyBy('id');
@@ -180,7 +180,10 @@ class ScheduleController extends Controller
 
         // ── DB Transaction: Chống mất dữ liệu khi lỗi giữa chừng ───────────
         try {
-            DB::transaction(function () use ($scheduleName, $classId, $schedules) {
+            DB::transaction(function () use ($scheduleName, $classId, $schedules, $allAssignments) {
+                // Khóa các assignments của lớp để chống Race condition
+                Assignment::where('class_id', $classId)->lockForUpdate()->get();
+
                 // Xóa lịch cũ của lớp trong cùng học kỳ
                 Schedule::where('schedule_name', $scheduleName)
                     ->whereHas('assignment', function ($q) use ($classId) {
@@ -190,7 +193,11 @@ class ScheduleController extends Controller
 
                 // Tạo lịch mới hàng loạt
                 foreach ($schedules as $item) {
-                    Schedule::create($item + ['schedule_name' => $scheduleName]);
+                    $teacherId = $allAssignments[$item['assignment_id']]->teacher_id;
+                    Schedule::create($item + [
+                        'schedule_name' => $scheduleName,
+                        'teacher_id' => $teacherId
+                    ]);
                 }
             });
         } catch (\Throwable $e) {

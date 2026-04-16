@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="https://ui-avatars.com/api/?name=S&background=886cc0&color=fff&rounded=true">
     
     
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/admin/admin-common.js'])
     
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://unpkg.com/idiomorph/dist/idiomorph-ext.min.js"></script>
@@ -230,37 +230,45 @@
         
         // ===========================================================================
         // BÍ QUYẾT XỬ LÝ THANH CUỘN DÀNH RIÊNG CHO HTMX & RELOAD
-        // Sử dụng event scroll thay vì beforeSwap để chớp lấy vị trí mới nhất một cách mượt mà
+        // Lưu vị trí khi chuẩn bị rời trang (full reload hoặc qua HTMX)
         // ===========================================================================
-        const sidebarNav = document.getElementById('sidebar-nav');
-        if (sidebarNav) {
-            sidebarNav.addEventListener('scroll', function() {
-                localStorage.setItem('sidebar_scroll_position', sidebarNav.scrollTop);
-            });
-        }
-
-        // Lưu lại vị trí khi load lại toàn trang
-        window.addEventListener('beforeunload', function() {
+        function saveScrollPositions() {
             const sb = document.getElementById('sidebar-nav');
             if (sb) {
-                localStorage.setItem('sidebar_scroll_position', sb.scrollTop);
+                sessionStorage.setItem('sidebar_scroll_position', sb.scrollTop);
             }
-        });
+            sessionStorage.setItem('main_scroll_' + window.location.pathname, window.scrollY);
+        }
+
+        window.addEventListener('beforeunload', saveScrollPositions);
+        document.addEventListener('htmx:beforeRequest', saveScrollPositions);
 
         // Phục hồi khi load trang hoặc morph
-        function restoreSidebarScroll() {
+        function restoreScrollPositions() {
             const sidebar = document.getElementById('sidebar-nav');
-            const pos = localStorage.getItem('sidebar_scroll_position');
-            if (sidebar && pos !== null) {
-                sidebar.scrollTop = parseInt(pos, 10);
+            const targetSBPos = sessionStorage.getItem('sidebar_scroll_position');
+            if (sidebar && targetSBPos !== null) {
+                sidebar.scrollTop = parseInt(targetSBPos, 10);
             }
+            
+            const targetMainPos = sessionStorage.getItem('main_scroll_' + window.location.pathname);
+            setTimeout(() => {
+                if (targetMainPos !== null) {
+                    window.scrollTo({ top: parseInt(targetMainPos, 10), behavior: 'instant' });
+                } else {
+                    // Nếu không có lịch sử cuộn cho trang này, và đang không có thẻ hash, thì cuộn lên top
+                    if (!window.location.hash) {
+                        window.scrollTo({ top: 0, behavior: 'instant' });
+                    }
+                }
+            }, 10);
         }
 
         // 1. Phục hồi sau khi morph
         document.addEventListener('htmx:afterSettle', function(evt) {
             clearTimeout(nprogressTimer);
             NProgress.done();
-            restoreSidebarScroll();
+            restoreScrollPositions();
             
             // Xử lý Alpine sau khi morph vì body thay đổi cấu trúc
             if (window.Alpine) {
@@ -269,7 +277,7 @@
         });
 
         // 2. Phục hồi cho lần tải đầu tiên (F5)
-        window.addEventListener('DOMContentLoaded', restoreSidebarScroll);
+        window.addEventListener('DOMContentLoaded', restoreScrollPositions);
         // ===========================================================================
 
         // Logic Đồng hồ (Được tối ưu để không bị lỗi khi chuyển trang bằng AJAX)
@@ -293,49 +301,6 @@
         if (window.clockInterval) clearInterval(window.clockInterval);
         window.clockInterval = setInterval(updateClock, 1000);
         updateClock();
-    </script>
-    <!--logic xử lý import excel lớp học, giáo viên, môn học -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script>
-        function handleImport(event, type) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => { 
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                
-                let parsedData = [];
-                // Xử lý Excel cho Lớp học
-                if (type === 'classrooms') {
-                    parsedData = jsonData.map(row => ({
-                        name: row['Tên lớp'] || row['Lớp'] || '',
-                        grade: row['Khối'] || row['Khối lớp'] || '',
-                        shift: row['Ca học'] || row['Ca'] || 'morning',
-                        homeroom_teacher: row['GVCN'] || row['Giáo viên chủ nhiệm'] || null
-                    }));
-                } 
-                // Xử lý Excel cho Môn học
-                else if (type === 'subjects') {
-                    parsedData = jsonData.map(row => ({
-                        name: row['Tên môn'] || row['Môn'] || '',
-                        type: row['Phân loại'] || row['Loại'] || 'Lý thuyết'
-                    }));
-                }
-
-                // Đẩy vào form ẩn và tự động Submit
-                if(parsedData.length > 0) {
-                    document.getElementById('importData' + type.charAt(0).toUpperCase() + type.slice(1)).value = JSON.stringify(parsedData);
-                    document.getElementById('importForm' + type.charAt(0).toUpperCase() + type.slice(1)).submit();
-                } else {
-                    alert("File Excel trống hoặc không đúng định dạng các cột yêu cầu!");
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
     </script>
 </body>
 </html>

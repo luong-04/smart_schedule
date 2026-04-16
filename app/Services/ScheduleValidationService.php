@@ -49,6 +49,16 @@ class ScheduleValidationService
         // Map đếm số tiết theo assignment: [assignmentId => count]
         $assignmentCounts = [];
 
+        // Eager load các dữ liệu cần thiết trước vòng lặp để tránh N+1 Query
+        $otherSchedules = Schedule::where('schedule_name', $scheduleName)
+            ->whereHas('assignment', function ($q) use ($classId) {
+                $q->where('class_id', '!=', $classId);
+            })
+            ->with(['assignment.classroom', 'room'])
+            ->get();
+            
+        $allRooms = \App\Models\Room::all()->keyBy('id');
+
         foreach ($schedules as $item) {
             $assignment = $allAssignments[$item['assignment_id']] ?? null;
             if (!$assignment) {
@@ -74,15 +84,25 @@ class ScheduleValidationService
 
             // ── 3. Kiểm tra trùng lịch giáo viên (với lớp khác) ─────────────
             if ($checkTeacherConflict) {
-                if ($error = $this->validateTeacherConflict($teacherId, $classId, $d, $p, $scheduleName, $assignment)) {
+                if ($error = $this->validateTeacherConflict($otherSchedules, $teacherId, $d, $p, $assignment)) {
                     return $error;
                 }
             }
 
             // ── 4. Kiểm tra trùng phòng học ───────────────────────────────────
-            if ($checkRoomConflict && $roomId) {
-                if ($error = $this->validateRoomConflict($roomId, $classId, $d, $p, $scheduleName)) {
-                    return $error;
+            if ($roomId) {
+                if ($checkRoomConflict) {
+                    if ($error = $this->validateRoomConflict($otherSchedules, $roomId, $d, $p)) {
+                        return $error;
+                    }
+                }
+
+                // ── 4.5. Kiểm tra logic "Phòng học đặc thù" ─────────────────────
+                $room = $allRooms[$roomId] ?? null;
+                if ($room && $assignment->subject->room_type_id && $room->room_type_id !== $assignment->subject->room_type_id) {
+                    return [
+                        'message' => "Sai loại phòng: Môn {$assignment->subject->name} yêu cầu loại phòng đặc thù, không thể học tại phòng {$room->name}!"
+                    ];
                 }
             }
 
@@ -97,7 +117,7 @@ class ScheduleValidationService
 
         // ── 6. Kiểm tra tiết liên tiếp + số ngày dạy tối đa ─────────────────
         foreach ($teacherDayPeriods as $tId => $days) {
-            if ($error = $this->validateMaxDays($tId, $days, $classId, $scheduleName, $allAssignments, $maxDaysPerWeek)) {
+            if ($error = $this->validateMaxDays($otherSchedules, $tId, $days, $allAssignments, $maxDaysPerWeek)) {
                 return $error;
             }
             if ($error = $this->validateConsecutiveSlots($tId, $days, $allAssignments, $maxConsecutive)) {
@@ -139,18 +159,13 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra giáo viên bị trùng lịch với lớp khác
+     * Kiểm tra giáo viên bị trùng lịch với lớp khác sử dụng Collection Memory
      */
-    private function validateTeacherConflict(int $teacherId, int $classId, int $d, int $p, string $scheduleName, $assignment): ?array
+    private function validateTeacherConflict($otherSchedules, int $teacherId, int $d, int $p, $assignment): ?array
     {
-        $conflict = Schedule::where('schedule_name', $scheduleName)
-            ->where('day_of_week', $d)
-            ->where('period', $p)
-            ->whereHas('assignment', function ($q) use ($teacherId, $classId) {
-                $q->where('teacher_id', $teacherId)->where('class_id', '!=', $classId);
-            })
-            ->with(['assignment.classroom'])
-            ->first();
+        $conflict = $otherSchedules->first(function ($s) use ($teacherId, $d, $p) {
+            return $s->day_of_week == $d && $s->period == $p && $s->assignment->teacher_id == $teacherId;
+        });
 
         if ($conflict) {
             return [
@@ -161,19 +176,13 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra phòng học bị trùng với lớp khác
+     * Kiểm tra phòng học bị trùng với lớp khác sử dụng Collection Memory
      */
-    private function validateRoomConflict($roomId, int $classId, int $d, int $p, string $scheduleName): ?array
+    private function validateRoomConflict($otherSchedules, $roomId, int $d, int $p): ?array
     {
-        $roomConflict = Schedule::where('schedule_name', $scheduleName)
-            ->where('day_of_week', $d)
-            ->where('period', $p)
-            ->where('room_id', $roomId)
-            ->whereHas('assignment', function ($q) use ($classId) {
-                $q->where('class_id', '!=', $classId);
-            })
-            ->with(['room', 'assignment.classroom'])
-            ->first();
+        $roomConflict = $otherSchedules->first(function ($s) use ($roomId, $d, $p) {
+            return $s->day_of_week == $d && $s->period == $p && $s->room_id == $roomId;
+        });
 
         if ($roomConflict) {
             return [
@@ -213,17 +222,14 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra số ngày dạy tối đa trong tuần của giáo viên (toàn trường)
+     * Kiểm tra số ngày dạy tối đa trong tuần của giáo viên (toàn trường) sử dụng Collection Memory
      */
-    private function validateMaxDays(int $tId, array $days, int $classId, string $scheduleName, $allAssignments, int $maxDaysPerWeek): ?array
+    private function validateMaxDays($otherSchedules, int $tId, array $days, $allAssignments, int $maxDaysPerWeek): ?array
     {
-        $daysThisClass   = array_keys($days);
-        $daysOtherClasses = Schedule::where('schedule_name', $scheduleName)
-            ->whereHas('assignment', function ($q) use ($tId, $classId) {
-                $q->where('teacher_id', $tId)->where('class_id', '!=', $classId);
-            })
-            ->pluck('day_of_week')
-            ->toArray();
+        $daysThisClass    = array_keys($days);
+        $daysOtherClasses = $otherSchedules->filter(function ($s) use ($tId) {
+            return $s->assignment->teacher_id == $tId;
+        })->pluck('day_of_week')->unique()->toArray();
 
         $totalUniqueDays = count(array_unique(array_merge($daysThisClass, $daysOtherClasses)));
         if ($totalUniqueDays > $maxDaysPerWeek) {

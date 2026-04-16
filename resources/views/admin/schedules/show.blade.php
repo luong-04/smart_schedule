@@ -32,7 +32,7 @@
             </div>
             
             <h1 class="text-xl font-black text-slate-800 uppercase tracking-widest">THỜI KHÓA BIỂU LỚP {{ $classroom->name }}</h1>
-            <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">Khối {{ $classroom->grade }} ({{ $classroom->block ?? 'Cơ bản' }}) • {{ $classroom->shift == 'morning' ? 'Ca Sáng' : 'Ca Chiều' }} • GVCN: {{ $classroom->homeroom_teacher ?? 'Chưa phân công' }}</p>
+            <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">Khối {{ $classroom->grade }} ({{ $classroom->block ?? 'Cơ bản' }}) • {{ $classroom->shift == 'morning' ? 'Ca Sáng' : 'Ca Chiều' }} • GVCN: {{ $classroom->homeroomTeacher?->name ?? 'Chưa phân công' }}</p>
         </div>
 
         <table class="w-full text-center border-collapse">
@@ -74,13 +74,13 @@
                             <td class="border border-slate-300 p-3 h-20 relative align-middle">
                                 @if($isFlagSalute)
                                     <span class="text-xs font-black text-rose-600 uppercase tracking-widest block">CHÀO CỜ</span>
-                                    @if($classroom->homeroom_teacher && ($settings['assign_gvcn_flag_salute'] ?? 0))
-                                        <span class="text-[9px] font-bold text-rose-500 mt-1 block">{{ $classroom->homeroom_teacher }}</span>
+                                    @if($classroom->homeroom_teacher_id && ($settings['assign_gvcn_flag_salute'] ?? 0))
+                                        <span class="text-[9px] font-bold text-rose-500 mt-1 block">{{ $classroom->homeroomTeacher?->name }}</span>
                                     @endif
                                 @elseif($isClassMeeting)
                                     <span class="text-xs font-black text-emerald-600 uppercase tracking-widest block">SINH HOẠT</span>
-                                    @if($classroom->homeroom_teacher && ($settings['assign_gvcn_class_meeting'] ?? 0))
-                                        <span class="text-[9px] font-bold text-emerald-500 mt-1 block">{{ $classroom->homeroom_teacher }}</span>
+                                    @if($classroom->homeroom_teacher_id && ($settings['assign_gvcn_class_meeting'] ?? 0))
+                                        <span class="text-[9px] font-bold text-emerald-500 mt-1 block">{{ $classroom->homeroomTeacher?->name }}</span>
                                     @endif
                                 @elseif($current)
                                     <span class="text-[11px] font-black text-blue-700 uppercase block mb-1">{{ $current->assignment->subject->name }}</span>

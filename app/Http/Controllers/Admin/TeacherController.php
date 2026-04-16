@@ -63,7 +63,14 @@ class TeacherController extends Controller
             'code'          => 'required|string|unique:teachers,code',
             'department'    => 'required|string',
             'max_slots_week' => 'required|integer|min:1',
+            'off_days'      => 'nullable|array',
+            'off_days.*'    => 'integer|min:2|max:7',
         ]);
+        
+        if (!$request->has('off_days')) {
+            $data['off_days'] = null;
+        }
+
         Teacher::create($data);
         return redirect()->route('teachers.index')->with('success', 'Đã thêm giáo viên thành công!');
     }
@@ -84,7 +91,14 @@ class TeacherController extends Controller
             'code'          => 'required|string|unique:teachers,code,' . $teacher->id,
             'department'    => 'required|string',
             'max_slots_week' => 'required|integer|min:1',
+            'off_days'      => 'nullable|array',
+            'off_days.*'    => 'integer|min:2|max:7',
         ]);
+
+        if (!$request->has('off_days')) {
+            $data['off_days'] = null;
+        }
+
         $teacher->update($data);
         return redirect()->route('teachers.index')->with('success', 'Đã cập nhật hồ sơ!');
     }

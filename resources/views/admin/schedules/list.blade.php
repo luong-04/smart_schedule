@@ -4,7 +4,7 @@
 @section('content')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-<div x-data="{ viewMode: 'class', activeGrade: 10, expandedClass: null, expandedTeacher: null, searchTeacher: '' }" class="space-y-6 max-w-7xl mx-auto">
+<div x-data="{ viewMode: 'class', activeGrade: 10, activeBlock: 'all', expandedClass: null, expandedTeacher: null, searchTeacher: '' }" class="space-y-6 max-w-7xl mx-auto">
     
     <div class="flex gap-4 mb-6 no-print">
         <button @click="viewMode = 'class'" :class="viewMode === 'class' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'" class="px-8 py-3.5 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all border border-slate-100 flex items-center gap-2">
@@ -26,6 +26,29 @@
             @endforeach
         </div>
 
+        <div class="flex flex-wrap gap-2 mb-6 no-print">
+            <button @click="activeBlock = 'all'" 
+                    :class="activeBlock === 'all' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
+                    class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
+                Tất cả Lớp
+            </button>
+            <button @click="activeBlock = 'KHTN'" 
+                    :class="activeBlock === 'KHTN' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
+                    class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
+                Tổ hợp KHTN
+            </button>
+            <button @click="activeBlock = 'KHXH'" 
+                    :class="activeBlock === 'KHXH' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
+                    class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
+                Tổ hợp KHXH
+            </button>
+            <button @click="activeBlock = 'Cơ bản'" 
+                    :class="activeBlock === 'Cơ bản' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
+                    class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
+                Cơ bản
+            </button>
+        </div>
+
         @foreach([10, 11, 12] as $grade)
         <div x-show="activeGrade === {{ $grade }}" class="space-y-4">
             
@@ -43,7 +66,7 @@
 
             @php $classGroup = $groupedClasses->get($grade) ?? collect(); @endphp
             @forelse($classGroup as $class)
-            <div class="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:border-blue-300 transition-colors">
+            <div x-show="activeBlock === 'all' || activeBlock === '{{ $class->block ?? 'Cơ bản' }}'" class="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:border-blue-300 transition-colors">
                 
                 <div @click="expandedClass = expandedClass === {{ $class->id }} ? null : {{ $class->id }}" 
                      class="p-5 flex justify-between items-center cursor-pointer bg-white hover:bg-blue-50/30 transition-colors no-print">
@@ -51,7 +74,7 @@
                         <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center font-black text-lg">{{ $class->name }}</div>
                         <div>
                             <h3 class="text-sm font-black text-slate-800 uppercase">LỚP {{ $class->name }} ({{ $class->block ?? 'Cơ bản' }})</h3>
-                            <p class="text-[11px] text-slate-500 font-bold">GVCN: <span class="teacher-name-data">{{ $class->homeroom_teacher ?? 'Chưa cập nhật' }}</span></p>
+                            <p class="text-[11px] text-slate-500 font-bold">GVCN: <span class="teacher-name-data">{{ $class->homeroomTeacher?->name ?? 'Chưa cập nhật' }}</span></p>
                         </div>
                     </div>
                     <span class="material-symbols-outlined text-slate-400 transition-transform" :class="expandedClass === {{ $class->id }} ? 'rotate-180' : ''">expand_more</span>
@@ -75,7 +98,7 @@
                         <p style="font-size: 12px; font-weight: 700; color: #1f2937; margin: 5px 0;">
                             LỚP: <span class="class-name-data">{{ $class->name }}</span> ({{ $class->block ?? 'Cơ bản' }}) | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
                         </p>
-                        <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">GVCN: {{ $class->homeroom_teacher ?? 'Chưa cập nhật' }}</p>
+                        <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">GVCN: {{ $class->homeroomTeacher?->name ?? 'Chưa cập nhật' }}</p>
                     </div>
 
                     <table class="w-full border-collapse border-2 border-black print-table" style="width: 100%; border-collapse: collapse; border: 2px solid black;">
@@ -135,9 +158,201 @@
         </div>
         @endforeach
     </div>
+    
+    <div x-show="viewMode === 'teacher'" x-transition x-cloak>
+        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm mb-6 no-print">
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <input type="text" x-model="searchTeacher" placeholder="Tìm kiếm giáo viên (Tên, Bộ môn)..." 
+                       class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 outline-none transition-all text-sm font-bold text-slate-700">
+            </div>
+        </div>
+
+        <div class="flex justify-end mb-6 no-print">
+            <div class="flex gap-2">
+                <button onclick="exportAllTeachersWord()" class="bg-blue-50 text-blue-700 border border-blue-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-blue-100 transition-all">
+                    <span class="material-symbols-outlined text-sm">description</span> Xuất Word Tất cả GV
+                </button>
+                <button onclick="exportAllTeachersNative()" class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-indigo-100 transition-all">
+                    <span class="material-symbols-outlined text-sm">print</span> In Tất cả GV (PDF)
+                </button>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            @foreach($teachers as $teacher)
+            <div x-show="searchTeacher === '' || '{{ mb_strtolower($teacher->name, 'UTF-8') }}'.includes(searchTeacher.toLowerCase())" 
+                 class="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:border-blue-300 transition-colors">
+                
+                <div @click="expandedTeacher = expandedTeacher === {{ $teacher->id }} ? null : {{ $teacher->id }}" 
+                     class="p-5 flex justify-between items-center cursor-pointer bg-white hover:bg-blue-50/30 transition-colors no-print">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-lg">
+                            <span class="material-symbols-outlined">person</span>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-black text-slate-800 uppercase">{{ $teacher->name }}</h3>
+                            <p class="text-[11px] text-slate-500 font-bold">Môn: {{ $teacher->subject->name ?? 'Chưa cập nhật' }}</p>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined text-slate-400 transition-transform" :class="expandedTeacher === {{ $teacher->id }} ? 'rotate-180' : ''">expand_more</span>
+                </div>
+
+                <div x-show="expandedTeacher === {{ $teacher->id }}" x-transition class="border-t border-slate-100 bg-[#f8f9fa] p-6 no-print">
+                    <div class="flex justify-end gap-3 mb-6">
+                        <button onclick="exportTeacherWord({{ $teacher->id }}, '{{ $teacher->name }}')" class="bg-blue-700 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-blue-800 shadow-lg shadow-blue-500/20">
+                            <span class="material-symbols-outlined text-sm">article</span> Tải File Word
+                        </button>
+                        <button onclick="exportNative('pdf-content-teacher-{{ $teacher->id }}')" class="bg-slate-800 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-black shadow-lg">
+                            <span class="material-symbols-outlined text-sm">print</span> In / Tải PDF
+                        </button>
+                    </div>
+                </div>
+
+                <div id="pdf-content-teacher-{{ $teacher->id }}" class="teacher-content bg-white p-6 md:p-10" :class="expandedTeacher === {{ $teacher->id }} ? '' : 'hidden print:block'">
+                    
+                    <div class="text-center mb-6 border-b-2 border-slate-800 pb-4 print-header-pdf" style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
+                        <h2 style="font-size: 14px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $settings['school_name'] ?? 'TRƯỜNG CHƯA CÀI ĐẶT' }}</h2>
+                        <h1 style="font-size: 24px; font-weight: 900; color: #1d4ed8; margin: 5px 0; text-transform: uppercase;">THỜI KHÓA BIỂU GIÁO VIÊN</h1>
+                        <p style="font-size: 12px; font-weight: 700; color: #1f2937; margin: 5px 0;">
+                            HỌ TÊN: <span class="teacher-name-data uppercase">{{ $teacher->name }}</span> | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
+                        </p>
+                        @php
+                            $homeroomClass = $classes->where('homeroom_teacher_id', $teacher->id)->first();
+                        @endphp
+                        <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">MÔN: {{ $teacher->subject->name ?? '........' }} {{ $homeroomClass ? '| GVCN LỚP: '.$homeroomClass->name : '' }}</p>
+                    </div>
+
+                    <table class="w-full border-collapse border-2 border-black print-table" style="width: 100%; border-collapse: collapse; border: 2px solid black;">
+                        <thead>
+                            <tr class="bg-slate-100" style="background-color: #f1f5f9;">
+                                <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; width: 60px; text-align: center;">Tiết</th>
+                                @for($d=2; $d<=7; $d++)
+                                <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; text-align: center;">Thứ {{ $d }}</th>
+                                @endfor
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php
+                                if($homeroomClass) {
+                                    $shiftStr = strtolower($homeroomClass->shift ?? 'morning');
+                                    $fDay = $settings[$shiftStr.'_flag_day'] ?? 2;
+                                    $fPer = $settings[$shiftStr.'_flag_period'] ?? ($shiftStr == 'morning' ? 1 : 10);
+                                    $mDay = $settings[$shiftStr.'_meeting_day'] ?? 7;
+                                    $mPer = $settings[$shiftStr.'_meeting_period'] ?? ($shiftStr == 'morning' ? 5 : 10);
+                                } else {
+                                    $fDay = -1; $fPer = -1; $mDay = -1; $mPer = -1;
+                                }
+                            @endphp
+
+                            @for($p=1; $p<=10; $p++)
+                                @if($p == 6)
+                                <tr style="height: 25px;"><td colspan="7" style="border: 1px solid black; background-color: #f8f9fa; text-align: center; font-size: 11px; font-weight: 900; text-transform: uppercase; font-style: italic;">Nghỉ trưa / Chuyển ca</td></tr>
+                                @endif
+                                <tr style="height: 50px;">
+                                    <td style="border: 1px solid black; text-align: center; font-weight: 900; font-size: 13px; background-color: #f8f9fa;">{{ $p }}</td>
+                                    @for($d=2; $d<=7; $d++)
+                                        @php
+                                            $isFixed = ($d == $fDay && $p == $fPer) || ($d == $mDay && $p == $mPer);
+                                            $fixedLabel = ($d == $fDay && $p == $fPer) ? 'CHÀO CỜ' : 'SINH HOẠT';
+                                            $cell = $schedules->where('assignment.teacher_id', $teacher->id)->where('day_of_week', $d)->where('period', $p)->first();
+                                        @endphp
+                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }};">
+                                            @if($isFixed && $homeroomClass)
+                                                <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                                                    <span style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</span>
+                                                    <span style="font-size: 10px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClass->name }}</span>
+                                                </div>
+                                            @elseif($cell)
+                                                <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                                                    <span style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase;">Lớp {{ $cell->assignment->classroom->name }}</span>
+                                                    <span style="font-size: 10px; font-weight: 700; color: #4b5563;">{{ $cell->assignment->subject->name }}</span>
+                                                    @if($cell->room_id)
+                                                        <span style="font-size: 9px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</span>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </td>
+                                    @endfor
+                                </tr>
+                            @endfor
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
 </div>
 
 <script>
+    // --- FIX LỖI TẢI WORD GV ---
+    function exportTeacherWord(teacherId, teacherName) {
+        const element = document.getElementById(`pdf-content-teacher-${teacherId}`);
+        if (!element) return alert("Không tìm thấy nội dung!");
+        
+        const content = element.innerHTML;
+        const finalHtml = generateWordTemplate(content);
+        const blob = new Blob(['\ufeff', finalHtml], { type: 'application/msword' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `TKB_GiaoVien_${teacherName}.doc`;
+        link.click();
+    }
+
+    function exportAllTeachersWord() {
+        const classContents = document.querySelectorAll(`.teacher-content`);
+        if (classContents.length === 0) return alert("Không tìm thấy dữ liệu giáo viên.");
+
+        let combinedHtml = "";
+        classContents.forEach((el, index) => {
+            combinedHtml += `
+                <div class="word-page">${el.innerHTML}</div>
+                ${index < classContents.length - 1 ? '<br clear="all" style="mso-special-character:line-break; page-break-before:always">' : ''}
+            `;
+        });
+
+        const finalHtml = generateWordTemplate(combinedHtml);
+        const blob = new Blob(['\ufeff', finalHtml], { type: 'application/msword' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `TKB_TatCa_GiaoVien.doc`;
+        link.click();
+    }
+
+    function exportAllTeachersNative() {
+        const classContents = document.querySelectorAll(`.teacher-content`);
+        if (classContents.length === 0) return alert("Không tìm thấy dữ liệu giáo viên.");
+
+        const newWindow = window.open('', '_blank');
+        let fullHtml = "";
+        classContents.forEach((el, index) => {
+            fullHtml += `<div style="${index < classContents.length - 1 ? 'page-break-after: always;' : ''} padding: 5mm; background:white;">${el.innerHTML}</div>`;
+        });
+
+        newWindow.document.write(`
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <script src="https://cdn.tailwindcss.com"><\/script>
+                <style>
+                    @page { size: A4 landscape; margin: 0; }
+                    body { background: white; -webkit-print-color-adjust: exact !important; font-family: sans-serif; }
+                    .print-table th, .print-table td { border: 1px solid black !important; }
+                    .hidden { display: block !important; }
+                </style>
+            </head>
+            <body>${fullHtml}</body>
+            </html>
+        `);
+        newWindow.document.close();
+        setTimeout(() => {
+            newWindow.focus();
+            newWindow.print();
+            newWindow.close();
+        }, 1200);
+    }
+
     // --- FIX LỖI TẢI WORD ---
     function exportWord(classId, className) {
         const element = document.getElementById(`pdf-content-class-${classId}`);

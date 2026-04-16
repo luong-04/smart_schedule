@@ -12,60 +12,10 @@
     </form>
 
     {{-- ===== BẢNG LỖI IMPORT CHI TIẾT (thay thế flash message che màn hình) ===== --}}
-    @if(session('import_errors') && count(session('import_errors')) > 0)
-    <div x-data="{ open: true }" class="bg-white rounded-[2rem] shadow-sm border border-amber-200 overflow-hidden">
-        <div class="flex items-center justify-between p-5 bg-amber-50 border-b border-amber-100 cursor-pointer" @click="open = !open">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-xl">warning</span>
-                </div>
-                <div>
-                    <p class="text-sm font-black text-amber-800">
-                        Import hoàn tất — {{ session('import_success_count', 0) }} dòng thành công,
-                        <span class="text-red-600">{{ count(session('import_errors')) }} dòng lỗi</span>
-                    </p>
-                    <p class="text-[10px] text-amber-600 font-bold uppercase tracking-widest mt-0.5">Nhấn để xem / ẩn danh sách lỗi chi tiết</p>
-                </div>
-            </div>
-            <span class="material-symbols-outlined text-amber-500 transition-transform duration-200" :class="open ? 'rotate-180' : ''">expand_more</span>
-        </div>
-
-        <div x-show="open" x-transition class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    <tr>
-                        <th class="px-5 py-3 whitespace-nowrap">Dòng</th>
-                        <th class="px-5 py-3 whitespace-nowrap">Mã GV</th>
-                        <th class="px-5 py-3 whitespace-nowrap">Lớp</th>
-                        <th class="px-5 py-3 whitespace-nowrap">Môn học</th>
-                        <th class="px-5 py-3 whitespace-nowrap text-red-500">Nguyên nhân lỗi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-50">
-                    @foreach(session('import_errors') as $err)
-                    <tr class="hover:bg-red-50/30 transition-colors">
-                        <td class="px-5 py-3 font-black text-slate-500">#{{ $err['row'] }}</td>
-                        <td class="px-5 py-3 font-bold text-slate-700 uppercase">{{ $err['teacher'] }}</td>
-                        <td class="px-5 py-3 font-bold text-slate-700">{{ $err['class'] }}</td>
-                        <td class="px-5 py-3 font-bold text-slate-700">{{ $err['subject'] }}</td>
-                        <td class="px-5 py-3 font-medium text-red-500">{{ $err['reason'] }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
-    @endif
-
-    @if(session('import_success_count') && !session('import_errors'))
-    <div class="bg-emerald-50 border border-emerald-200 rounded-[2rem] p-5 flex items-center gap-3">
-        <span class="material-symbols-outlined text-emerald-600 text-2xl">check_circle</span>
-        <p class="text-sm font-bold text-emerald-700">🎉 Đã import thành công {{ session('import_success_count') }} phân công!</p>
-    </div>
-    @endif
+    <x-admin.import-alert />
     {{-- ===== END BẢNG LỖI ===== --}}
 
-    <div class="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+    <x-admin.card class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
             <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Danh sách cán bộ giảng dạy</h3>
             <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">Quản lý theo Tổ chuyên môn và Định mức tiết</p>
@@ -108,7 +58,7 @@
                 <span class="material-symbols-outlined text-[16px]">person_add</span> Thêm giáo viên
             </a>
         </div>
-    </div>
+    </x-admin.card>
 
     @foreach($groupedTeachers as $department => $teachers)
     <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
@@ -124,7 +74,7 @@
                         @php 
                             $allIdsJson = $teachers->pluck('id')->toJson();
                         @endphp
-                        <th class="px-6 py-6 w-12 text-center border-r border-slate-50 whitespace-nowrap">
+                        <th class="px-6 py-5 w-12 text-center border-r border-slate-50">
                             <input type="checkbox" 
                                 @change="
                                     let allIds = {{ $allIdsJson }};
@@ -137,51 +87,40 @@
                                 :checked="{{ $teachers->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedTeachers.includes(id))"
                                 class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
                         </th>
-                        <th class="px-6 py-6 whitespace-nowrap">Mã định danh</th>
-                        <th class="px-8 py-6 whitespace-nowrap">Họ và tên</th>
-                        <th class="px-8 py-6 text-center whitespace-nowrap">Định mức/Tuần</th>
-                        <th class="px-8 py-6 text-center whitespace-nowrap text-blue-500">Số lớp dạy</th>
-                        <th class="px-8 py-6 text-center whitespace-nowrap">Tải trọng phân công</th>
-                        <th class="px-8 py-6 text-center whitespace-nowrap">Trạng thái nghỉ</th>
-                        <th class="px-8 py-6 text-right whitespace-nowrap">Thao tác</th>
+                        <th class="px-6 py-5 whitespace-nowrap">Giáo viên</th>
+                        <th class="px-6 py-5 text-center whitespace-nowrap">Thống kê phụ trách</th>
+                        <th class="px-6 py-5 text-center whitespace-nowrap">Trạng thái nghỉ</th>
+                        <th class="px-6 py-5 text-right whitespace-nowrap sticky right-0 bg-white z-10 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.02)]">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50 text-sm">
                     @forelse($teachers as $t)
                     <tr x-show="searchQuery === '' || `{{ $t->name }}`.toLowerCase().includes(searchQuery.toLowerCase()) || `{{ $t->code }}`.toLowerCase().includes(searchQuery.toLowerCase())" 
-                        class="hover:bg-blue-50/20 transition-all group"
+                        class="hover:bg-slate-50 transition-all group"
                         :class="selectedTeachers.includes({{ $t->id }}) ? 'bg-blue-50/40' : ''">
                         
-                        <td class="px-6 py-5 text-center border-r border-slate-50 whitespace-nowrap">
+                        <td class="px-6 py-3 text-center border-r border-slate-50 whitespace-nowrap bg-inherit">
                             <input type="checkbox" value="{{ $t->id }}" x-model="selectedTeachers" 
                                    class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer transition-all">
                         </td>
 
-                        <td class="px-6 py-5 font-black text-slate-600 uppercase whitespace-nowrap">{{ $t->code }}</td>
-                        <td class="px-8 py-5 font-bold text-slate-700 whitespace-nowrap">{{ $t->name }}</td>
-                        
-                        <td class="px-8 py-5 text-center whitespace-nowrap">
-                            <span class="font-black text-slate-600">{{ $t->max_slots_week }}</span>
-                            <span class="text-[10px] text-slate-400 font-bold uppercase ml-1">Tiết</span>
-                        </td>
-
-                        <td class="px-8 py-5 text-center whitespace-nowrap">
-                            <span class="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-xl font-black text-[10px] uppercase border border-blue-100">
-                                {{ $t->assignments->count() ?? 0 }} Lớp
-                            </span>
+                        <td class="px-6 py-3 bg-inherit">
+                            <p class="font-bold text-slate-700 whitespace-nowrap">{{ $t->name }}</p>
+                            <p class="text-[9px] font-black text-slate-400 uppercase mt-0.5 tracking-widest">ID: {{ $t->code }}</p>
                         </td>
                         
-                        <td class="px-8 py-5 text-center whitespace-nowrap">
+                        <td class="px-6 py-3 text-center bg-inherit">
                             @php
                                 $percent = $t->max_slots_week > 0 ? ($t->total_assigned_slots / $t->max_slots_week) * 100 : 0;
                                 $color = $percent > 100 ? 'text-red-600 border-red-200 bg-red-50' : 'text-emerald-600 border-emerald-200 bg-emerald-50';
                             @endphp
-                            <span class="{{ $color }} px-4 py-1.5 rounded-xl font-black text-[10px] uppercase border">
-                                Đã xếp {{ $t->total_assigned_slots }} Tiết
-                            </span>
+                            <div class="flex items-center justify-center gap-2">
+                                <span title="Số lớp đang dạy" class="bg-blue-50 text-blue-600 px-2 py-1 rounded-lg font-black text-[10px] uppercase border border-blue-100 flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[12px]">school</span> {{ $t->assignments->count() ?? 0 }} Lớp</span>
+                                <span title="Số tiết đã xếp trên tổng định mức" class="{{ $color }} px-2 py-1 rounded-lg font-black text-[10px] uppercase border flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[12px]">history_edu</span> {{ $t->total_assigned_slots }}/{{ $t->max_slots_week }} Tiết</span>
+                            </div>
                         </td>
                         
-                        <td class="px-8 py-5 text-center whitespace-nowrap">
+                        <td class="px-6 py-3 text-center bg-inherit">
                             <div class="flex justify-center gap-1">
                                 @if($t->off_days)
                                     @foreach($t->off_days as $day)
@@ -193,15 +132,15 @@
                             </div>
                         </td>
                         
-                        <td class="px-8 py-5 text-right whitespace-nowrap">
-                            <div class="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <a href="{{ route('teachers.edit', $t->id) }}" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-blue-500 font-bold text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm">
-                                    <span class="material-symbols-outlined text-[14px]">edit_note</span> Sửa
+                        <td class="px-6 py-3 text-right whitespace-nowrap sticky right-0 bg-white group-hover:bg-slate-50 transition-colors shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.02)] border-l border-slate-50">
+                            <div class="flex justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                <a href="{{ route('teachers.edit', $t->id) }}" class="flex items-center justify-center w-8 h-8 bg-slate-50 border border-slate-200 rounded-lg text-blue-500 hover:bg-blue-600 hover:text-white border-transparent transition-all shadow-sm" title="Sửa hồ sơ">
+                                    <span class="material-symbols-outlined text-[16px]">edit_note</span>
                                 </a>
                                 <form action="{{ route('teachers.destroy', $t->id) }}" method="POST" onsubmit="return confirm('Xác nhận xóa hồ sơ giáo viên này?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-red-400 font-bold text-[10px] uppercase tracking-widest hover:bg-red-500 hover:text-white hover:border-red-500 transition-all shadow-sm">
-                                        <span class="material-symbols-outlined text-[14px]">delete</span> Xóa
+                                    <button type="submit" class="flex items-center justify-center w-8 h-8 bg-slate-50 border border-slate-200 rounded-lg text-red-400 hover:bg-red-500 hover:text-white border-transparent transition-all shadow-sm" title="Xóa giáo viên">
+                                        <span class="material-symbols-outlined text-[16px]">delete</span>
                                     </button>
                                 </form>
                             </div>
@@ -209,7 +148,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-8 py-20 text-center">
+                        <td colspan="5" class="px-8 py-20 text-center">
                             <p class="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy dữ liệu</p>
                         </td>
                     </tr>
@@ -221,71 +160,4 @@
     @endforeach
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script>
-    // 1. Script Import Giáo Viên
-    function handleImportTeachers(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-            
-            let parsedData = jsonData.map(row => {
-                let cleanRow = {};
-                for (let key in row) cleanRow[key.trim().toLowerCase()] = row[key];
-                return {
-                    code: cleanRow['mã gv'] || cleanRow['mã'] || '',
-                    name: cleanRow['họ và tên'] || cleanRow['tên'] || '',
-                    department: cleanRow['tổ chuyên môn'] || cleanRow['tổ'] || 'Chưa phân tổ',
-                    max_slots_week: parseInt(cleanRow['định mức'] || cleanRow['số tiết'] || 18)
-                };
-            });
-
-            if(parsedData.length > 0) {
-                document.getElementById('importDataTeachers').value = JSON.stringify(parsedData);
-                document.getElementById('importFormTeachers').submit();
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    // 2. Script Import Phân Công
-    function handleImportAssignments(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-            
-            let parsedData = jsonData.map(row => {
-                let cleanRow = {};
-                for (let key in row) cleanRow[key.trim().toLowerCase()] = row[key];
-                
-                return {
-                    teacher_code: cleanRow['mã gv'] || cleanRow['mã'] || '',
-                    class_name: cleanRow['lớp'] || cleanRow['tên lớp'] || '',
-                    subject_name: cleanRow['môn'] || cleanRow['tên môn'] || ''
-                };
-            });
-
-            // Lọc bỏ dòng trống
-            parsedData = parsedData.filter(item => item.teacher_code !== '' && item.class_name !== '' && item.subject_name !== '');
-
-            if(parsedData.length > 0) {
-                document.getElementById('importDataAssignments').value = JSON.stringify(parsedData);
-                document.getElementById('importFormAssignments').submit();
-            } else {
-                alert("File Excel trống hoặc không đúng định dạng cột (Cần có 3 cột: Mã GV, Lớp, Môn)!");
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-</script>
 @endsection

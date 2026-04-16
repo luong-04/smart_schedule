@@ -186,40 +186,4 @@
     @endforeach
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script>
-    function handleImportClassrooms(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        
-        const reader = new FileReader();
-        reader.onload = (e) => { 
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-            
-            // "Dịch" các cột tiếng Việt sang đúng tên biến mà PHP cần
-            let parsedData = jsonData.map(row => ({
-                name: row['Tên lớp'] || row['Lớp'] || row['name'] || '',
-                grade: row['Khối'] || row['Khối lớp'] || row['grade'] || '',
-                shift: row['Ca học'] || row['Ca'] || row['shift'] || 'morning',
-                homeroom_teacher: row['GVCN'] || row['Giáo viên chủ nhiệm'] || row['homeroom_teacher'] || null,
-                block: row['Tổ hợp'] || row['Ban'] || row['block'] || 'Cơ bản'
-            }));
-
-            // Lọc bỏ các dòng trống
-            parsedData = parsedData.filter(item => item.name !== '' && item.grade !== '');
-
-            if(parsedData.length > 0) {
-                document.getElementById('importDataClassrooms').value = JSON.stringify(parsedData);
-                document.getElementById('importFormClassrooms').submit();
-            } else {
-                alert("File Excel trống hoặc không tìm thấy cột 'Tên lớp' và 'Khối'!");
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-</script>
-
 @endsection

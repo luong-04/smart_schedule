@@ -154,7 +154,7 @@
                             // DRY: Tính 1 lần trước vòng lặp — không cần lặp 60 lần (6 ngày × 10 tiết)
                             $assignFlag    = $settings['assign_gvcn_flag_salute']   ?? 0;
                             $assignMeeting = $settings['assign_gvcn_class_meeting'] ?? 0;
-                            $gvcnName      = $classroom->homeroomTeacher->name ?? '';
+                            $gvcnName      = $classroom->homeroomTeacher?->name ?? '';
                         @endphp
 
                         @for($p=1; $p<=10; $p++)
@@ -266,5 +266,5 @@
         csrfToken: "{{ csrf_token() }}"
     };
 </script>
-<script src="{{ asset('js/schedule-matrix.js') }}"></script>
+@vite('resources/js/admin/schedule-matrix.js')
 @endsection

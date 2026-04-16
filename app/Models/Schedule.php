@@ -17,7 +17,7 @@ class Schedule extends Model
 
     public function assignment()
     {
-        return $this->belongsTo(Assignment::class);
+        return $this->belongsTo(Assignment::class)->withTrashed();
     }
 
     // BỔ SUNG HÀM NÀY ĐỂ FIX LỖI RELATION NOT FOUND

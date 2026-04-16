@@ -33,7 +33,8 @@ class ScheduleValidationService
         $allAssignments,
         array $settings,
         string $scheduleName,
-        string $shiftStr
+        string $shiftStr,
+        array $busyData = []
     ): ?array {
         // Tính toán các tiết cố định từ settings
         $isMorning  = ($shiftStr === 'morning');
@@ -46,6 +47,11 @@ class ScheduleValidationService
         $maxDaysPerWeek      = (int) ($settings['max_days_per_week']     ?? 6);
         $checkTeacherConflict = (bool) ($settings['check_teacher_conflict'] ?? false);
         $checkRoomConflict    = (bool) ($settings['check_room_conflict']    ?? false);
+
+        // Lấy dữ liệu pre-loaded
+        $teacherBusySlots = $busyData['teacherBusySlots'] ?? [];
+        $roomBusySlots    = $busyData['roomBusySlots']    ?? [];
+        $teacherOtherDays = $busyData['teacherOtherDays'] ?? [];
 
         // Map để gom lịch theo giáo viên trong request này: [teacherId => [day => [periods]]]
         $teacherDayPeriods = [];
@@ -61,10 +67,16 @@ class ScheduleValidationService
                 return ['message' => 'Phân công không tồn tại trong hệ thống!'];
             }
 
+            // Phòng thủ SoftDeletes: Nếu giáo viên bị xóa, assignment->teacher sẽ null
+            if (!$assignment->teacher) {
+                return ['message' => "Lỗi dữ liệu: Giáo viên cho môn {$assignment->subject->name} không tồn tại hoặc đã bị xóa!"];
+            }
+
             $teacherId = $assignment->teacher_id;
             $d         = (int) $item['day_of_week'];
             $p         = (int) $item['period'];
             $roomId    = $item['room_id'] ?? null;
+            $slotKey   = "$d-$p";
 
             $assignmentCounts[$assignment->id] = ($assignmentCounts[$assignment->id] ?? 0) + 1;
 
@@ -80,7 +92,7 @@ class ScheduleValidationService
 
             // ── 3. Kiểm tra trùng lịch giáo viên (với lớp khác) ─────────────
             if ($checkTeacherConflict) {
-                if ($error = $this->validateTeacherConflict($scheduleName, $classroom->id, $teacherId, $d, $p, $assignment)) {
+                if ($error = $this->validateTeacherConflictMemory($teacherId, $slotKey, $assignment, $d, $p, $teacherBusySlots)) {
                     return $error;
                 }
             }
@@ -88,7 +100,7 @@ class ScheduleValidationService
             // ── 4. Kiểm tra trùng phòng học ───────────────────────────────────
             if ($roomId) {
                 if ($checkRoomConflict) {
-                    if ($error = $this->validateRoomConflict($scheduleName, $classroom->id, $roomId, $d, $p)) {
+                    if ($error = $this->validateRoomConflictMemory($roomId, $slotKey, $d, $p, $roomBusySlots, $allRooms)) {
                         return $error;
                     }
                 }
@@ -113,7 +125,7 @@ class ScheduleValidationService
 
         // ── 6. Kiểm tra tiết liên tiếp + số ngày dạy tối đa ─────────────────
         foreach ($teacherDayPeriods as $tId => $days) {
-            if ($error = $this->validateMaxDays($scheduleName, $classroom->id, $tId, $days, $allAssignments, $maxDaysPerWeek)) {
+            if ($error = $this->validateMaxDaysMemory($tId, $days, $allAssignments, $maxDaysPerWeek, $teacherOtherDays)) {
                 return $error;
             }
             if ($error = $this->validateConsecutiveSlots($tId, $days, $allAssignments, $maxConsecutive)) {
@@ -155,46 +167,29 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra giáo viên bị trùng lịch với lớp khác (Sử dụng DB query mượt mà hơn cho array lớn)
+     * Kiểm tra giáo viên bị trùng lịch với lớp khác (Sử dụng Memory Array)
      */
-    private function validateTeacherConflict(string $scheduleName, int $classId, int $teacherId, int $d, int $p, $assignment): ?array
+    private function validateTeacherConflictMemory(int $teacherId, string $slotKey, $assignment, int $d, int $p, array $teacherBusySlots): ?array
     {
-        $conflict = Schedule::where('schedule_name', $scheduleName)
-            ->where('day_of_week', $d)
-            ->where('period', $p)
-            ->whereHas('assignment', function ($q) use ($teacherId, $classId) {
-                $q->where('teacher_id', $teacherId)
-                  ->where('class_id', '!=', $classId);
-            })
-            ->with('assignment.classroom')
-            ->first();
-
-        if ($conflict) {
+        $busySlots = $teacherBusySlots[$teacherId] ?? [];
+        if (in_array($slotKey, $busySlots)) {
             return [
-                'message' => "Trùng lịch: GV {$assignment->teacher->name} đang dạy lớp {$conflict->assignment->classroom->name} vào Thứ {$d} - Tiết {$p}!"
+                'message' => "Trùng lịch: GV {$assignment->teacher->name} đang bận dạy lớp khác vào Thứ {$d} - Tiết {$p}!"
             ];
         }
         return null;
     }
 
     /**
-     * Kiểm tra phòng học bị trùng với lớp khác (Sử dụng DB query)
+     * Kiểm tra phòng học bị trùng với lớp khác (Sử dụng Memory Array)
      */
-    private function validateRoomConflict(string $scheduleName, int $classId, $roomId, int $d, int $p): ?array
+    private function validateRoomConflictMemory($roomId, string $slotKey, int $d, int $p, array $roomBusySlots, $allRooms): ?array
     {
-        $roomConflict = Schedule::where('schedule_name', $scheduleName)
-            ->where('day_of_week', $d)
-            ->where('period', $p)
-            ->where('room_id', $roomId)
-            ->whereHas('assignment', function ($q) use ($classId) {
-                $q->where('class_id', '!=', $classId);
-            })
-            ->with(['assignment.classroom', 'room'])
-            ->first();
-
-        if ($roomConflict) {
+        $busySlots = $roomBusySlots[$roomId] ?? [];
+        if (in_array($slotKey, $busySlots)) {
+            $roomName = $allRooms[$roomId]->name ?? "Phòng ID {$roomId}";
             return [
-                'message' => "Trùng phòng học: {$roomConflict->room->name} đang được lớp {$roomConflict->assignment->classroom->name} sử dụng vào Thứ {$d} - Tiết {$p}!"
+                'message' => "Trùng phòng học: {$roomName} đang được lớp khác sử dụng vào Thứ {$d} - Tiết {$p}!"
             ];
         }
         return null;
@@ -229,20 +224,12 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra số ngày dạy tối đa trong tuần của giáo viên (Sử dụng DB query hiệu năng cao)
+     * Kiểm tra số ngày dạy tối đa trong tuần của giáo viên (Sử dụng Memory Array)
      */
-    private function validateMaxDays(string $scheduleName, int $classId, int $tId, array $days, $allAssignments, int $maxDaysPerWeek): ?array
+    private function validateMaxDaysMemory(int $tId, array $days, $allAssignments, int $maxDaysPerWeek, array $teacherOtherDays): ?array
     {
         $daysThisClass    = array_keys($days);
-        
-        $daysOtherClasses = Schedule::where('schedule_name', $scheduleName)
-            ->whereHas('assignment', function ($q) use ($tId, $classId) {
-                $q->where('teacher_id', $tId)
-                  ->where('class_id', '!=', $classId);
-            })
-            ->pluck('day_of_week')
-            ->unique()
-            ->toArray();
+        $daysOtherClasses = $teacherOtherDays[$tId] ?? [];
 
         $totalUniqueDays = count(array_unique(array_merge($daysThisClass, $daysOtherClasses)));
         if ($totalUniqueDays > $maxDaysPerWeek) {

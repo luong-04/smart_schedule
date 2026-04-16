@@ -166,6 +166,10 @@ class ScheduleController extends Controller
 
         $shiftStr = strtolower($classroom->shift ?? 'morning');
 
+        // Pre-load dữ liệu bận từ các lớp khác để validate (Memory-based)
+        [$teacherBusySlots, $teacherOtherDays, $roomBusySlots] = $this->dataService->getBusySlots($scheduleName, $classId);
+        $busyData = compact('teacherBusySlots', 'teacherOtherDays', 'roomBusySlots');
+
         // ── Gọi Service để kiểm tra toàn bộ ràng buộc ──────────────────────
         $error = $this->validator->validate(
             $schedules,
@@ -173,7 +177,8 @@ class ScheduleController extends Controller
             $allAssignments,
             $settings,
             $scheduleName,
-            $shiftStr
+            $shiftStr,
+            $busyData
         );
 
         if ($error) {
@@ -211,10 +216,23 @@ class ScheduleController extends Controller
                     }
                 }
             });
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Lỗi 23000 là Duplicate entry (vi phạm Unique Constraint ở DB level)
+            // Đây là chốt chặn cuối cùng chống Race Condition
+            if ($e->getCode() === '23000') {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Xung đột dữ liệu: Giáo viên hoặc phòng học đã có lịch tại thời điểm này ở lớp khác. Vui lòng tải lại trang!',
+                ]);
+            }
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Lỗi cơ sở dữ liệu: ' . $e->getMessage(),
+            ]);
         } catch (\Throwable $e) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Lỗi hệ thống khi lưu lịch. Vui lòng thử lại! (' . $e->getMessage() . ')',
+                'message' => 'Lỗi hệ thống khi lưu lịch: ' . $e->getMessage(),
             ]);
         }
 

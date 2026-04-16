@@ -169,7 +169,7 @@ class ScheduleController extends Controller
         // ── Gọi Service để kiểm tra toàn bộ ràng buộc ──────────────────────
         $error = $this->validator->validate(
             $schedules,
-            $classId,
+            $classroom,
             $allAssignments,
             $settings,
             $scheduleName,

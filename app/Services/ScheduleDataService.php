@@ -95,8 +95,8 @@ class ScheduleDataService
             $gvcnClassCount  = $gvcnCounts[$as->teacher_id] ?? 0;
 
             if ($gvcnClassCount > 0) {
-                if ($assignFlag)   $teacherUsed += $gvcnClassCount;
-                if ($assignMeeting) $teacherUsed += $gvcnClassCount;
+                if ($assignFlag)   $teacherUsed += 1;
+                if ($assignMeeting) $teacherUsed += 1;
             }
 
             $as->teacher_remaining       = max(0, $as->teacher->max_slots_week - $teacherUsed);

@@ -55,9 +55,11 @@
                             return sprintf('%02d-%s', $c->grade, $c->name);
                         });
                     @endphp
+                    @foreach($sortedClasses as $class)
                         <option value="{{ $class->id }}" {{ $selectedClassId == $class->id ? 'selected' : '' }}>
                             Lớp {{ $class->name }} - Khối {{ $class->grade }} ({{ $class->block_name }})
                         </option>
+                    @endforeach
                 </select>
             </div>
         </div>

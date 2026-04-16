@@ -64,11 +64,13 @@
             let asId = this.dataset.id;
             let tid = this.dataset.teacherId;
             
+            // Trả lại tiết cho cả phân công và giáo viên
             if(subjectSlots[asId] !== undefined) subjectSlots[asId]++;
             if(teacherSlots[tid] !== undefined) teacherSlots[tid]++;
             
-            updateSidebarUI();
+            // Xóa phần tử khỏi ma trận và cập nhật lại Sidebar ngay lập tức
             this.remove();
+            updateSidebarUI();
         });
     }
 
@@ -96,14 +98,28 @@
         return maxCons;
     }
 
+    /**
+     * Tính tổng số ngày giáo viên này đã có lịch (trong ma trận + các lớp khác).
+     * Dùng để kiểm tra giới hạn MAX_DAYS_PER_WEEK.
+     */
     function getTeacherTotalDays(teacherId, targetDayToAdd) {
         let daysInMatrix = new Set();
+        
+        // Lấy các ngày đang có trên lưới (excluding the item being moved if necessary, 
+        // but Sortable moves it before onAdd, so we just count unique days from DOM)
         document.querySelectorAll(`.matrix-item[data-teacher-id="${teacherId}"]`).forEach(el => {
             let box = el.closest('.drop-zone');
-            if (box) daysInMatrix.add(parseInt(box.dataset.day));
+            if (box && box.dataset.day) {
+                daysInMatrix.add(parseInt(box.dataset.day));
+            }
         });
-        if (targetDayToAdd) daysInMatrix.add(parseInt(targetDayToAdd));
+        
+        // Luôn add targetDay vào để kiểm tra xem nếu đặt vào đó thì có vượt ngưỡng không
+        if (targetDayToAdd) {
+            daysInMatrix.add(parseInt(targetDayToAdd));
+        }
 
+        // Cộng các ngày bận ở các lớp khác (đã load từ server)
         let otherDays = teacherOtherDays[teacherId] || [];
         otherDays.forEach(d => daysInMatrix.add(parseInt(d)));
 

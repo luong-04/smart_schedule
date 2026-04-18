@@ -4,7 +4,7 @@
 @section('content')
 <div x-data="{ selectedSubjects: [] }" class="bg-white rounded-[2rem] shadow-sm border border-blue-50 overflow-hidden">
     
-    <form action="{{ route('subjects.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden">
+    <form action="{{ route('subjects.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden" hx-boost="false">
         @csrf @method('DELETE')
         <template x-for="id in selectedSubjects" :key="id">
             <input type="hidden" name="ids[]" :value="id">
@@ -46,14 +46,14 @@
                     <th class="px-6 py-5 w-12 text-center">
                         <input type="checkbox" 
                             @change="
-                                let allIds = {{ $allIdsJson }};
+                                let allIds = {{ $allIdsJson }}.map(id => String(id));
                                 if($event.target.checked) {
                                     selectedSubjects = [...new Set([...selectedSubjects, ...allIds])];
                                 } else {
-                                    selectedSubjects = selectedSubjects.filter(id => !allIds.includes(id));
+                                    selectedSubjects = selectedSubjects.filter(id => !allIds.includes(String(id)));
                                 }
                             "
-                            :checked="{{ $subjects->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedSubjects.includes(id))"
+                            :checked="{{ $subjects->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedSubjects.includes(String(id)))"
                             class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
                     </th>
                     <th class="px-4 py-5">Tên môn học</th>
@@ -64,8 +64,8 @@
             </thead>
             <tbody class="divide-y divide-slate-50 text-sm">
                 @forelse($subjects as $s)
-                <tr class="hover:bg-blue-50/30 transition-all group"
-                    :class="selectedSubjects.includes({{ $s->id }}) ? 'bg-blue-50/50' : ''">
+                <tr id="subject-{{ $s->id }}" class="hover:bg-blue-50/30 transition-all group"
+                    :class="selectedSubjects.includes('{{ $s->id }}') ? 'bg-blue-50/50' : ''">
                     
                     <td class="px-6 py-5 text-center">
                         <input type="checkbox" value="{{ $s->id }}" x-model="selectedSubjects" 

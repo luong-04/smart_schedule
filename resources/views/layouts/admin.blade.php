@@ -38,7 +38,13 @@
     </style>
 </head>
 
-<body hx-boost="true" hx-ext="morph" hx-swap="morph:outerHTML" class="bg-[#f6f6f8] text-slate-900 antialiased overflow-x-hidden">
+<body 
+    @hasSection('body_attrs') 
+        @yield('body_attrs') 
+    @else 
+        hx-boost="true" hx-ext="morph" hx-swap="morph:outerHTML" 
+    @endif 
+    class="bg-[#f6f6f8] text-slate-900 antialiased overflow-x-hidden">
     <div class="flex min-h-screen">
         
         <aside class="w-[20%] bg-[#F0F7FF] border-r border-slate-200 flex flex-col p-6 gap-6 sticky top-0 h-screen shrink-0">

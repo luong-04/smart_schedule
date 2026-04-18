@@ -10,7 +10,10 @@ use Illuminate\Http\Request;
 class ClassroomController extends Controller
 {
     public function index() {
-        $classrooms = Classroom::orderBy('grade', 'asc')->get();
+        $classrooms = Classroom::with('homeroomTeacher')
+            ->orderBy('grade', 'asc')
+            ->orderBy('name', 'asc')
+            ->get();
         return view('admin.classrooms.index', compact('classrooms'));
     }
 
@@ -47,7 +50,8 @@ class ClassroomController extends Controller
         ]);
 
         $classroom->update($data);
-        return redirect()->route('classrooms.index')->with('success', 'Đã cập nhật lớp!');
+        return redirect()->to(route('classrooms.index') . '#class-' . $classroom->id)
+            ->with('success', 'Đã cập nhật thông tin lớp học!');
     }
 
     public function destroy(Classroom $classroom) {
@@ -68,16 +72,19 @@ class ClassroomController extends Controller
     public function import(Request $request) {
         $request->validate(['import_data' => 'required|string']);
         $classrooms = json_decode($request->import_data, true);
+        
+        // Tối ưu N+1: Load bản đồ giáo viên một lần duy nhất
+        $teacherMap = Teacher::pluck('id', 'name')->all();
+        
         $count = 0;
         foreach ($classrooms as $c) {
             if (!empty($c['name']) && !empty($c['grade'])) {
                 $shift = (strtolower($c['shift'] ?? '') === 'chiều' || strtolower($c['shift'] ?? '') === 'afternoon') ? 'afternoon' : 'morning';
                 
-                // Map teacher name to ID
                 $teacherId = null;
                 if (!empty($c['homeroom_teacher'])) {
-                    $teacher = Teacher::where('name', $c['homeroom_teacher'])->first();
-                    $teacherId = $teacher ? $teacher->id : null;
+                    // O(1) Lookup từ bộ nhớ
+                    $teacherId = $teacherMap[trim($c['homeroom_teacher'])] ?? null;
                 }
 
                 Classroom::updateOrCreate(

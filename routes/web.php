@@ -70,7 +70,7 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
     // 5. NHÓM XẾP LỊCH (Phân công, Ma trận, Chương trình)
     Route::middleware(['can:quan_ly_xep_lich'])->group(function () {
-        Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
+        Route::delete('/assignments/bulk-delete', [AssignmentController::class, 'bulkDelete'])->name('assignments.bulkDelete');
         Route::post('/assignments', [AssignmentController::class, 'store'])->name('assignments.store');
         Route::delete('/assignments/{id}', [AssignmentController::class, 'destroy'])->name('assignments.destroy');
 
@@ -84,6 +84,7 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
     // 6. NHÓM GIÁM THỊ
     Route::middleware(['can:quan_ly_giam_thi'])->group(function () {
+        Route::delete('/proctors/bulk-delete', [ProctorController::class, 'bulkDelete'])->name('proctors.bulkDelete');
         Route::get('/proctors', [ProctorController::class, 'index'])->name('admin.proctors.index');
         Route::post('/proctors/assign', [ProctorController::class, 'assign'])->name('admin.proctors.assign');
         Route::get('/proctors/history', [ProctorController::class, 'history'])->name('admin.proctors.history');
@@ -95,6 +96,7 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('admin.settings.index');
         Route::post('/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
         
+        Route::delete('/users/bulk-delete', [UserController::class, 'bulkDelete'])->name('users.bulkDelete');
         Route::resource('users', UserController::class);
     });
 });

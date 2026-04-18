@@ -6,14 +6,11 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up()
+    public function up(): void
     {
         Schema::create('exams', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); 
+            $table->string('name')->index();
             $table->date('start_date');
             $table->integer('total_days');
             $table->integer('rooms_per_day');
@@ -21,9 +18,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('exams');

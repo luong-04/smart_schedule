@@ -163,26 +163,32 @@ class ProctorController extends Controller
         $exam = Exam::find($request->exam_id);
         if (!$exam) return response()->json(['error' => 'Not found']);
 
+        // Eager load các proctor để tránh N+1 (nếu có thêm quan hệ nào sau này)
         $proctors = ExamProctor::where('exam_id', $exam->id)->orderBy('proctor_name')->get();
-        $assignments = ProctorAssignment::where('exam_id', $exam->id)->get();
         
-        // Lấy danh sách các ngày thi
+        // Group assignments theo ngày và theo proctor_id ngay từ đầu để tra cứu O(1)
+        $assignments = ProctorAssignment::where('exam_id', $exam->id)->get();
+        $groupedAssignments = $assignments->groupBy(['assign_date', 'exam_proctor_id']);
+        
         $dates = $assignments->pluck('assign_date')->unique()->sort()->values();
         $historyByDate = [];
 
         foreach ($dates as $date) {
             $formattedDate = Carbon::parse($date)->format('d/m/Y');
             $dailyData = [];
-            $dailyAssignments = $assignments->where('assign_date', $date);
+            
+            // Lấy toàn bộ assignments của ngày này
+            $assignmentsOfDate = $groupedAssignments->get($date) ?? collect();
 
-            // Giữ nguyên danh sách Giám thị, chỉ thay đổi dữ liệu phòng thi bên trong
             foreach ($proctors as $p) {
-                $proctorAssigns = $dailyAssignments->where('exam_proctor_id', $p->id);
+                // Tra cứu cực nhanh trong cụm đã group
+                $proctorAssigns = $assignmentsOfDate->get($p->id) ?? collect();
+                
                 $dailyData[] = [
                     'name' => $p->proctor_name,
                     'department' => $p->department,
-                    'gt1' => $proctorAssigns->where('role', 'GT1')->count() > 0 ? true : false,
-                    'gt2' => $proctorAssigns->where('role', 'GT2')->count() > 0 ? true : false,
+                    'gt1' => $proctorAssigns->contains('role', 'GT1'),
+                    'gt2' => $proctorAssigns->contains('role', 'GT2'),
                     'room' => $proctorAssigns->pluck('room_name')->first() ?: '(Trống)' 
                 ];
             }
@@ -207,5 +213,18 @@ class ProctorController extends Controller
         $exam->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    // TÍNH NĂNG MỚI: XÓA NHIỀU
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids');
+        if ($ids && is_array($ids)) {
+            ProctorAssignment::whereIn('exam_id', $ids)->delete();
+            ExamProctor::whereIn('exam_id', $ids)->delete();
+            Exam::whereIn('id', $ids)->delete();
+            return back()->with('success', 'Đã xóa thành công ' . count($ids) . ' kỳ thi!');
+        }
+        return back()->with('error', 'Vui lòng chọn ít nhất 1 kỳ thi để xóa!');
     }
 }

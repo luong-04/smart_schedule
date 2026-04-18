@@ -11,7 +11,7 @@ class RoomController extends Controller
 {
     public function index() {
         $roomTypes = RoomType::all();
-        $rooms = Room::with('roomType')->get();
+        $rooms = Room::with('roomType')->orderBy('name', 'asc')->get();
         return view('admin.rooms.index', compact('roomTypes', 'rooms'));
     }
 
@@ -40,7 +40,8 @@ class RoomController extends Controller
             'room_type_id' => 'required|exists:room_types,id'
         ]);
         $room->update($data);
-        return redirect()->route('rooms.index')->with('success', 'Đã cập nhật phòng!');
+        return redirect()->to(route('rooms.index') . '#room-' . $room->id)
+            ->with('success', 'Đã cập nhật thông tin phòng học thành công!');
     }
 
     public function destroy(Room $room) {

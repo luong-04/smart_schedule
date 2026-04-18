@@ -4,8 +4,81 @@
 @section('content')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-<div x-data="{ viewMode: 'class', activeGrade: 10, activeBlock: 'all', expandedClass: null, expandedTeacher: null, searchTeacher: '' }" class="space-y-6 max-w-7xl mx-auto">
+
+<script>
+    function removeVietnameseTones(str) {
+        str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
+        str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
+        str = str.replace(/ì|í|ị|ỉ|ĩ/g,"i"); 
+        str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g,"o"); 
+        str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g,"u"); 
+        str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g,"y"); 
+        str = str.replace(/đ/g,"d");
+        str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g,"A");
+        str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g,"E");
+        str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g,"I");
+        str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g,"O");
+        str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g,"U");
+        str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g,"Y");
+        str = str.replace(/Đ/g,"D");
+        return str.toLowerCase().trim();
+    }
+</script>
+
+<div x-data="{ 
+    viewMode: 'class', 
+    activeGrade: 10, 
+    activeBlock: 'all', 
+    expandedClass: null, 
+    expandedTeacher: null, 
+    searchTeacher: '',
+    matchTeacher(name) {
+        if (!this.searchTeacher) return true;
+        let s = removeVietnameseTones(this.searchTeacher);
+        let n = removeVietnameseTones(name);
+        return n.includes(s);
+    }
+}" class="space-y-6 max-w-7xl mx-auto">
     
+    <!-- Bộ chọn phiên bản TKB -->
+    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm mb-6 no-print">
+        <form action="{{ route('schedules.list') }}" method="GET" class="flex flex-wrap items-end gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Chọn phiên bản TKB</label>
+                <div class="relative">
+                    <select name="date" onchange="this.form.submit()" 
+                            style="-webkit-appearance: none !important; -moz-appearance: none !important; appearance: none !important; background-image: none !important;"
+                            class="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 outline-none bg-white text-sm font-bold text-slate-700 cursor-pointer">
+                        @foreach($historyRanges as $range)
+                            @php 
+                                $rangeStart = $range->applies_from->toDateString();
+                                $isSelected = ($appliesFrom == $rangeStart);
+                            @endphp
+                            <option value="{{ $rangeStart }}" {{ $isSelected ? 'selected' : '' }}>
+                                Phiên bản: {{ $range->applies_from->format('d/m/Y') }} - {{ $range->applies_to->format('d/m/Y') }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-[150px]">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Xem ngày cụ thể</label>
+                <input type="date" name="lookup_date" value="{{ request('lookup_date', $appliesFrom) }}" onchange="this.form.submit()"
+                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 outline-none text-sm font-bold text-slate-700">
+            </div>
+
+            <div class="bg-blue-50 border border-blue-100 px-6 py-3 rounded-xl flex items-center gap-3">
+                <span class="material-symbols-outlined text-blue-600">event_available</span>
+                <div>
+                    <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">Đang hiển thị tuần</p>
+                    <p class="text-xs font-bold text-blue-700">{{ \Illuminate\Support\Carbon::parse($appliesFrom)->format('d/m/Y') }} - {{ \Illuminate\Support\Carbon::parse($appliesTo)->format('d/m/Y') }}</p>
+                </div>
+            </div>
+        </form>
+    </div>
+
     <div class="flex gap-4 mb-6 no-print">
         <button @click="viewMode = 'class'" :class="viewMode === 'class' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'" class="px-8 py-3.5 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all border border-slate-100 flex items-center gap-2">
             <span class="material-symbols-outlined text-[18px]">meeting_room</span> Xem theo Lớp Học
@@ -101,12 +174,12 @@
                         <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">GVCN: {{ $class->homeroomTeacher?->name ?? 'Chưa cập nhật' }}</p>
                     </div>
 
-                    <table class="w-full border-collapse border-2 border-black print-table" style="width: 100%; border-collapse: collapse; border: 2px solid black;">
+                    <table class="w-full border-collapse border-b-2 border-black print-table" style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
                         <thead>
                             <tr class="bg-slate-100" style="background-color: #f1f5f9;">
-                                <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; width: 60px; text-align: center;">Tiết</th>
+                                <th style="border: 1px solid black; padding: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; width: 35px; text-align: center;">T</th>
                                 @for($d=2; $d<=7; $d++)
-                                <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; text-align: center;">Thứ {{ $d }}</th>
+                                <th style="border: 1px solid black; padding: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; text-align: center; width: 16%;">Thứ {{ $d }}</th>
                                 @endfor
                             </tr>
                         </thead>
@@ -120,23 +193,48 @@
                             @endphp
                             @for($p=1; $p<=10; $p++)
                                 @if($p == 6)
-                                <tr style="height: 25px;"><td colspan="7" style="border: 1px solid black; background-color: #f8f9fa; text-align: center; font-size: 11px; font-weight: 900; text-transform: uppercase; font-style: italic;">Nghỉ trưa / Chuyển ca</td></tr>
+                                <tr style="height: 20px;"><td colspan="7" style="border: 1px solid black; background-color: #f8f9fa; text-align: center; font-size: 10px; font-weight: 900; text-transform: uppercase; font-style: italic;">Nghỉ trưa / Chuyển ca</td></tr>
                                 @endif
-                                <tr style="height: 50px;">
-                                    <td style="border: 1px solid black; text-align: center; font-weight: 900; font-size: 13px; background-color: #f8f9fa;">{{ $p }}</td>
+                                <tr style="height: 48px;">
+                                    <td style="border: 1px solid black; text-align: center; font-weight: 900; font-size: 11px; background-color: #f8f9fa;">{{ $p }}</td>
                                     @for($d=2; $d<=7; $d++)
                                         @php
                                             $isFixed = ($d == $fDay && $p == $fPer) || ($d == $mDay && $p == $mPer);
                                             $fixedLabel = ($d == $fDay && $p == $fPer) ? 'CHÀO CỜ' : 'SINH HOẠT';
-                                            $cell = $schedules->where('assignment.class_id', $class->id)->where('day_of_week', $d)->where('period', $p)->first();
+                                            $cell = $classSchedules[$class->id][$d][$p] ?? null;
                                         @endphp
-                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }};">
+                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }}; height: 48px; overflow: hidden; padding: 1px;">
                                             @if($isFixed)
-                                                <span style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</span>
+                                                <span style="font-size: 10px; font-weight: 900; color: #6b7280; line-height: 1;">{{ $fixedLabel }}</span>
                                             @elseif($cell)
-                                                <div style="display: flex; flex-direction: column; line-height: 1.2;">
-                                                    <span style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase;">{{ $cell->assignment->subject->name }}</span>
-                                                    <span style="font-size: 10px; font-weight: 700; color: #4b5563;">{{ $cell->assignment->teacher->name }}</span>
+                                                @php
+                                                    $sName = $cell->assignment->subject->name;
+                                                    $abbreviations = [
+                                                        'Giáo dục thể chất' => 'GD Thể chất',
+                                                        'Giáo dục quốc phòng và an ninh' => 'GDQP-AN',
+                                                        'GD Kinh tế và Pháp luật' => 'GDKT-PL',
+                                                        'Hoạt động trải nghiệm, hướng nghiệp' => 'HĐTN-HN',
+                                                        'Nội dung giáo dục địa phương' => 'GD Địa phương',
+                                                        'Tiếng Anh' => 'T.Anh',
+                                                        'Ngữ văn' => 'Ngữ văn',
+                                                        'Toán học' => 'Toán-H',
+                                                        'Vật lí' => 'Vật lí',
+                                                        'Hóa học' => 'Hóa học',
+                                                        'Sinh học' => 'Sinh học',
+                                                        'Lịch sử' => 'Lịch sử',
+                                                        'Địa lí' => 'Địa lí',
+                                                        'Tin học' => 'Tin học',
+                                                        'Công nghệ' => 'Công nghệ'
+                                                    ];
+                                                    $displayName = $abbreviations[$sName] ?? $sName;
+                                                    
+                                                    $tName = $cell->assignment->teacher->name;
+                                                    $tParts = explode(' ', $tName);
+                                                    $tShort = count($tParts) > 1 ? end($tParts) : $tName; // Lấy tên cuối
+                                                @endphp
+                                                <div style="display: flex; flex-direction: column; line-height: 1.1; padding: 2px;">
+                                                    <span style="font-size: 11px; font-weight: 900; color: #1e40af; text-transform: uppercase; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">{{ $displayName }}</span>
+                                                    <span style="font-size: 9px; font-weight: 700; color: #4b5563;">GV: {{ $tShort }}</span>
                                                     @if($cell->room_id)
                                                         <span style="font-size: 9px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</span>
                                                     @endif
@@ -149,6 +247,8 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- Page break for printing multiple schedules -->
+                <div class="page-break"></div>
             </div>
             @empty
             <div class="py-10 text-center bg-white rounded-[2rem] border border-slate-200 no-print">
@@ -181,7 +281,7 @@
 
         <div class="space-y-4">
             @foreach($teachers as $teacher)
-            <div x-show="searchTeacher === '' || '{{ mb_strtolower($teacher->name, 'UTF-8') }}'.includes(searchTeacher.toLowerCase())" 
+            <div x-show="matchTeacher('{{ $teacher->name }}')" 
                  class="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:border-blue-300 transition-colors">
                 
                 <div @click="expandedTeacher = expandedTeacher === {{ $teacher->id }} ? null : {{ $teacher->id }}" 
@@ -192,7 +292,6 @@
                         </div>
                         <div>
                             <h3 class="text-sm font-black text-slate-800 uppercase">{{ $teacher->name }}</h3>
-                            <p class="text-[11px] text-slate-500 font-bold">Môn: {{ $teacher->subject->name ?? 'Chưa cập nhật' }}</p>
                         </div>
                     </div>
                     <span class="material-symbols-outlined text-slate-400 transition-transform" :class="expandedTeacher === {{ $teacher->id }} ? 'rotate-180' : ''">expand_more</span>
@@ -218,17 +317,17 @@
                             HỌ TÊN: <span class="teacher-name-data uppercase">{{ $teacher->name }}</span> | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
                         </p>
                         @php
-                            $homeroomClass = $classes->where('homeroom_teacher_id', $teacher->id)->first();
+                            $homeroomClass = $homeroomMap->get($teacher->id);
                         @endphp
                         <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">MÔN: {{ $teacher->subject->name ?? '........' }} {{ $homeroomClass ? '| GVCN LỚP: '.$homeroomClass->name : '' }}</p>
                     </div>
 
-                    <table class="w-full border-collapse border-2 border-black print-table" style="width: 100%; border-collapse: collapse; border: 2px solid black;">
+                    <table class="w-full border-collapse border-b-2 border-black print-table" style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
                         <thead>
                             <tr class="bg-slate-100" style="background-color: #f1f5f9;">
-                                <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; width: 60px; text-align: center;">Tiết</th>
+                                <th style="border: 1px solid black; padding: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; width: 35px; text-align: center;">T</th>
                                 @for($d=2; $d<=7; $d++)
-                                <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; text-align: center;">Thứ {{ $d }}</th>
+                                <th style="border: 1px solid black; padding: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; text-align: center; width: 16%;">Thứ {{ $d }}</th>
                                 @endfor
                             </tr>
                         </thead>
@@ -245,28 +344,47 @@
                                 }
                             @endphp
 
-                            @for($p=1; $p<=10; $p++)
-                                @if($p == 6)
-                                <tr style="height: 25px;"><td colspan="7" style="border: 1px solid black; background-color: #f8f9fa; text-align: center; font-size: 11px; font-weight: 900; text-transform: uppercase; font-style: italic;">Nghỉ trưa / Chuyển ca</td></tr>
-                                @endif
-                                <tr style="height: 50px;">
-                                    <td style="border: 1px solid black; text-align: center; font-weight: 900; font-size: 13px; background-color: #f8f9fa;">{{ $p }}</td>
-                                    @for($d=2; $d<=7; $d++)
+                                @for($p=1; $p<=10; $p++)
+                                    @if($p == 6)
+                                    <tr style="height: 20px;"><td colspan="7" style="border: 1px solid black; background-color: #f8f9fa; text-align: center; font-size: 10px; font-weight: 900; text-transform: uppercase; font-style: italic;">Nghỉ trưa / Chuyển ca</td></tr>
+                                    @endif
+                                    <tr style="height: 48px;">
+                                        <td style="border: 1px solid black; text-align: center; font-weight: 900; font-size: 11px; background-color: #f8f9fa;">{{ $p }}</td>
+                                        @for($d=2; $d<=7; $d++)
                                         @php
                                             $isFixed = ($d == $fDay && $p == $fPer) || ($d == $mDay && $p == $mPer);
                                             $fixedLabel = ($d == $fDay && $p == $fPer) ? 'CHÀO CỜ' : 'SINH HOẠT';
-                                            $cell = $schedules->where('assignment.teacher_id', $teacher->id)->where('day_of_week', $d)->where('period', $p)->first();
+                                            $cell = $teacherSchedules[$teacher->id][$d][$p] ?? null;
                                         @endphp
-                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }};">
+                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }}; height: 48px; overflow: hidden; padding: 1px;">
                                             @if($isFixed && $homeroomClass)
-                                                <div style="display: flex; flex-direction: column; line-height: 1.2;">
-                                                    <span style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</span>
-                                                    <span style="font-size: 10px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClass->name }}</span>
+                                                <div style="display: flex; flex-direction: column; line-height: 1;">
+                                                    <span style="font-size: 10px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</span>
+                                                    <span style="font-size: 9px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClass->name }}</span>
                                                 </div>
                                             @elseif($cell)
-                                                <div style="display: flex; flex-direction: column; line-height: 1.2;">
-                                                    <span style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase;">Lớp {{ $cell->assignment->classroom->name }}</span>
-                                                    <span style="font-size: 10px; font-weight: 700; color: #4b5563;">{{ $cell->assignment->subject->name }}</span>
+                                                @php
+                                                    $sName = $cell->assignment->subject->name;
+                                                    $abbreviations = [
+                                                        'Giáo dục thể chất' => 'GD Thể chất',
+                                                        'Giáo dục quốc phòng và an ninh' => 'GDQP-AN',
+                                                        'GD Kinh tế và Pháp luật' => 'GDKT-PL',
+                                                        'Hoạt động trải nghiệm, hướng nghiệp' => 'HĐTN-HN',
+                                                        'Nội dung giáo dục địa phương' => 'GD Địa phương',
+                                                        'Tiếng Anh' => 'T.Anh',
+                                                        'Vật lí' => 'Vật lí',
+                                                        'Hóa học' => 'Hóa học',
+                                                        'Sinh học' => 'Sinh học',
+                                                        'Lịch sử' => 'Lịch sử',
+                                                        'Địa lí' => 'Địa lí',
+                                                        'Tin học' => 'Tin học',
+                                                        'Công nghệ' => 'Công nghệ'
+                                                    ];
+                                                    $displayName = $abbreviations[$sName] ?? $sName;
+                                                @endphp
+                                                <div style="display: flex; flex-direction: column; line-height: 1.1; padding: 2px;">
+                                                    <span style="font-size: 11px; font-weight: 900; color: #1e40af; text-transform: uppercase;">Lớp {{ $cell->assignment->classroom->name }}</span>
+                                                    <span style="font-size: 10px; font-weight: 700; color: #4b5563; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">{{ $displayName }}</span>
                                                     @if($cell->room_id)
                                                         <span style="font-size: 9px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</span>
                                                     @endif

@@ -34,7 +34,8 @@ class ScheduleValidationService
         array $settings,
         string $scheduleName,
         string $shiftStr,
-        array $busyData = []
+        array $busyData = [],
+        array $curriculums = []
     ): ?array {
         // Tính toán các tiết cố định từ settings
         $isMorning  = ($shiftStr === 'morning');
@@ -59,7 +60,7 @@ class ScheduleValidationService
         $assignmentCounts = [];
 
         // Load rooms một lần dùng cho check loại phòng
-        $allRooms = $this->room->all()->keyBy('id');
+        $allRooms = $this->room->select(['id', 'name', 'room_type_id'])->get()->keyBy('id');
 
         foreach ($schedules as $item) {
             $assignment = $allAssignments[$item['assignment_id']] ?? null;
@@ -69,7 +70,12 @@ class ScheduleValidationService
 
             // Phòng thủ SoftDeletes: Nếu giáo viên bị xóa, assignment->teacher sẽ null
             if (!$assignment->teacher) {
-                return ['message' => "Lỗi dữ liệu: Giáo viên cho môn {$assignment->subject->name} không tồn tại hoặc đã bị xóa!"];
+                $subName = $assignment->subject->name ?? 'Môn học (N/A)';
+                return ['message' => "Lỗi dữ liệu: Giáo viên cho môn {$subName} không tồn tại hoặc đã bị xóa!"];
+            }
+
+            if (!$assignment->subject) {
+                return ['message' => "Lỗi dữ liệu: Môn học trong phân công #{$assignment->id} không tồn tại!"];
             }
 
             $teacherId = $assignment->teacher_id;
@@ -119,7 +125,7 @@ class ScheduleValidationService
         }
 
         // ── 5. Kiểm tra vượt định mức tiết môn ───────────────────────────────
-        if ($error = $this->validateSlotLimits($assignmentCounts, $allAssignments, $classroom, $settings)) {
+        if ($error = $this->validateSlotLimits($assignmentCounts, $allAssignments, $classroom, $settings, $curriculums)) {
             return $error;
         }
 
@@ -179,7 +185,7 @@ class ScheduleValidationService
             ? $assignment->teacher->off_days
             : json_decode($assignment->teacher->off_days ?? '[]', true);
 
-        if (in_array($d, $offDays)) {
+        if ($assignment->teacher && in_array($d, $offDays)) {
             return ['message' => "Lịch nghỉ: Giáo viên {$assignment->teacher->name} đã xin nghỉ vào Thứ {$d}!"];
         }
         return null;
@@ -192,8 +198,9 @@ class ScheduleValidationService
     {
         $busySlots = $teacherBusySlots[$teacherId] ?? [];
         if (in_array($slotKey, $busySlots)) {
+            $name = $assignment->teacher->name ?? 'N/A';
             return [
-                'message' => "Trùng lịch: GV {$assignment->teacher->name} đang bận dạy lớp khác vào Thứ {$d} - Tiết {$p}!"
+                'message' => "Trùng lịch: GV {$name} đang bận dạy lớp khác vào Thứ {$d} - Tiết {$p}!"
             ];
         }
         return null;
@@ -217,11 +224,12 @@ class ScheduleValidationService
     /**
      * Kiểm tra không vượt quá định mức tiết/tuần của môn học theo lớp
      */
-    private function validateSlotLimits(array $assignmentCounts, $allAssignments, Classroom $classroom, array $settings): ?array
+    private function validateSlotLimits(array $assignmentCounts, $allAssignments, Classroom $classroom, array $settings, array $curriculums = []): ?array
     {
         $blockName = $classroom->block_name;
 
-        $configs = SubjectConfiguration::where('grade', $classroom->grade)
+        // Nếu chưa truyền vào thì mới query (fallback cho backward compatibility)
+        $configs = !empty($curriculums) ? $curriculums : SubjectConfiguration::where('grade', $classroom->grade)
             ->where('block', $blockName)
             ->pluck('slots_per_week', 'subject_id')
             ->all();
@@ -234,8 +242,9 @@ class ScheduleValidationService
             if (!$maxSlots) continue;
 
             if ($count > $maxSlots) {
+                $subName = $asmt->subject->name ?? 'Môn học';
                 return [
-                    'message' => "Vượt định mức: Môn {$asmt->subject->name} chỉ được phép xếp tối đa {$maxSlots} tiết/tuần cho khối {$classroom->grade}!"
+                    'message' => "Vượt định mức: Môn {$subName} chỉ được phép xếp tối đa {$maxSlots} tiết/tuần cho khối {$classroom->grade}!"
                 ];
             }
         }
@@ -253,8 +262,9 @@ class ScheduleValidationService
         $totalUniqueDays = count(array_unique(array_merge($daysThisClass, $daysOtherClasses)));
         if ($totalUniqueDays > $maxDaysPerWeek) {
             $teacher = $allAssignments->first(fn($a) => $a->teacher_id == $tId)?->teacher;
+            $name = $teacher->name ?? 'N/A';
             return [
-                'message' => "Giới hạn hệ thống: GV {$teacher->name} vượt quá số ngày dạy tối đa trong tuần (Đang xếp: {$totalUniqueDays} ngày, Cho phép: {$maxDaysPerWeek} ngày)."
+                'message' => "Giới hạn hệ thống: GV {$name} vượt quá số ngày dạy tối đa trong tuần (Đang xếp: {$totalUniqueDays} ngày, Cho phép: {$maxDaysPerWeek} ngày)."
             ];
         }
         return null;
@@ -279,8 +289,9 @@ class ScheduleValidationService
             }
             if ($maxFound > $maxConsecutive) {
                 $teacher = $allAssignments->first(fn($a) => $a->teacher_id == $tId)?->teacher;
+                $name = $teacher->name ?? 'N/A';
                 return [
-                    'message' => "Vi phạm cấu hình: GV {$teacher->name} dạy liên tiếp {$maxFound} tiết vào Thứ {$day} (Giới hạn hệ thống là {$maxConsecutive} tiết)!"
+                    'message' => "Vi phạm cấu hình: GV {$name} dạy liên tiếp {$maxFound} tiết vào Thứ {$day} (Giới hạn hệ thống là {$maxConsecutive} tiết)!"
                 ];
             }
         }
@@ -313,7 +324,7 @@ class ScheduleValidationService
                         : "Lớp học";
 
                     return [
-                        'message' => "Cảnh báo tiết trống: {$entityName} có tiết học cách quãng (ví dụ tiết 1 & 3 nhưng trống tiết 2) vào Thứ {$day}. Vui lòng xếp các tiết liền nhau để tối ưu thời gian."
+                        'message' => "Cảnh báo Tiết trống: {$entityName} đang có tiết học bị cách quãng (Ví dụ: Dạy tiết 1 và 3 nhưng trống tiết 2) vào Thứ {$day}. Vui lòng sắp xếp các tiết học liên tục nhau!"
                     ];
                 }
             }

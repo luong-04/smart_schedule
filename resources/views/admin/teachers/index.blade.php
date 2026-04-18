@@ -4,7 +4,7 @@
 @section('content')
 <div x-data="{ searchQuery: '', selectedTeachers: [] }" class="space-y-6">
     
-    <form action="{{ route('teachers.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden">
+    <form action="{{ route('teachers.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden" hx-boost="false">
         @csrf @method('DELETE')
         <template x-for="id in selectedTeachers" :key="id">
             <input type="hidden" name="ids[]" :value="id">
@@ -33,7 +33,7 @@
             
             <button x-show="selectedTeachers.length > 0" 
                     @click="if(confirm('CẢNH BÁO: Bạn sắp xóa ' + selectedTeachers.length + ' giáo viên. Toàn bộ lịch dạy của họ cũng sẽ bị xóa. Bạn có chắc chắn không?')) document.getElementById('bulkDeleteForm').submit()"
-                    x-transition style="display: none;"
+                    x-transition
                     class="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-500 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-200 hover:bg-red-600 transition-all shrink-0">
                 <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Xóa (<span x-text="selectedTeachers.length"></span>)
             </button>
@@ -53,6 +53,7 @@
             <button onclick="document.getElementById('excelFileAssignments').click()" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-500 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-600 transition-all shrink-0">
                 <span class="material-symbols-outlined text-[16px]">assignment_turned_in</span> Import Phân Công
             </button>
+
 
             <a href="{{ route('teachers.create') }}" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all shrink-0">
                 <span class="material-symbols-outlined text-[16px]">person_add</span> Thêm giáo viên
@@ -77,14 +78,14 @@
                         <th class="px-6 py-5 w-12 text-center border-r border-slate-50">
                             <input type="checkbox" 
                                 @change="
-                                    let allIds = {{ $allIdsJson }};
+                                    let allIds = {{ $allIdsJson }}.map(id => String(id));
                                     if($event.target.checked) {
                                         selectedTeachers = [...new Set([...selectedTeachers, ...allIds])];
                                     } else {
-                                        selectedTeachers = selectedTeachers.filter(id => !allIds.includes(id));
+                                        selectedTeachers = selectedTeachers.filter(id => !allIds.includes(String(id)));
                                     }
                                 "
-                                :checked="{{ $teachers->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedTeachers.includes(id))"
+                                :checked="{{ $teachers->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedTeachers.includes(String(id)))"
                                 class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
                         </th>
                         <th class="px-6 py-5 whitespace-nowrap">Giáo viên</th>
@@ -95,9 +96,9 @@
                 </thead>
                 <tbody class="divide-y divide-slate-50 text-sm">
                     @forelse($teachers as $t)
-                    <tr x-show="searchQuery === '' || `{{ $t->name }}`.toLowerCase().includes(searchQuery.toLowerCase()) || `{{ $t->code }}`.toLowerCase().includes(searchQuery.toLowerCase())" 
+                    <tr id="teacher-{{ $t->id }}" x-show="searchQuery === '' || `{{ $t->name }}`.toLowerCase().includes(searchQuery.toLowerCase()) || `{{ $t->code }}`.toLowerCase().includes(searchQuery.toLowerCase())" 
                         class="hover:bg-slate-50 transition-all group"
-                        :class="selectedTeachers.includes({{ $t->id }}) ? 'bg-blue-50/40' : ''">
+                        :class="selectedTeachers.includes('{{ $t->id }}') ? 'bg-blue-50/40' : ''">
                         
                         <td class="px-6 py-3 text-center border-r border-slate-50 whitespace-nowrap bg-inherit">
                             <input type="checkbox" value="{{ $t->id }}" x-model="selectedTeachers" 

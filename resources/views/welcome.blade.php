@@ -158,7 +158,12 @@
                             <h2 style="font-size: 14px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $schoolName }}</h2>
                             <h1 style="font-size: 24px; font-weight: 900; color: #1d4ed8; margin: 5px 0; text-transform: uppercase;">THỜI KHÓA BIỂU{{ $teacher ? ' GIÁO VIÊN' : '' }}</h1>
                             <p style="font-size: 12px; font-weight: 700; color: #1f2937; margin: 5px 0;">
-                                {{ $classroom ? 'LỚP: ' .  $targetName : 'HỌ TÊN: ' . $targetName }} | NĂM HỌC: {{ $schoolYear }}
+                                <span style="background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 10px;">PHIÊN BẢN HIỆN TẠI</span>
+                                {{ $classroom ? 'LỚP: ' .  $targetName : 'HỌ TÊN: ' . $targetName }} 
+                                @if($appliesFromDate && $appliesToDate)
+                                    | ÁP DỤNG: {{ $appliesFromDate->format('d/m/Y') }} - {{ $appliesToDate->format('d/m/Y') }}
+                                @endif
+                                | NĂM HỌC: {{ $schoolYear }}
                             </p>
                             <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">
                                 {{ $extraInfo }} 
@@ -242,10 +247,13 @@
                     <!-- No results -->
                     <div class="bg-white rounded-[3rem] p-16 border-2 border-dashed border-slate-200 text-center max-w-2xl mx-auto shadow-sm">
                         <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <span class="material-symbols-outlined text-4xl">search_off</span>
+                            <span class="material-symbols-outlined text-4xl">calendar_today</span>
                         </div>
-                        <h3 class="text-xl font-black text-slate-800 mb-2 uppercase">Không tìm thấy</h3>
-                        <p class="text-slate-500 font-medium">Không tìm thấy kết quả cho: "<span class="text-rose-600 font-bold uppercase">{{ $searchQuery }}</span>"</p>
+                        <h4 class="text-xl font-black text-slate-800 mb-2 uppercase">Không tìm thấy lịch áp dụng</h4>
+                        <p class="text-slate-500 font-medium leading-relaxed">
+                            Rất tiếc, hệ thống không tìm thấy thời khóa biểu nào đang áp dụng cho ngày hôm nay ({{ now()->format('d/m/Y') }}).<br>
+                            Vui lòng liên hệ bộ phận học vụ hoặc thử lại sau.
+                        </p>
                         <a href="{{ url('/') }}" class="inline-block mt-8 text-blue-600 font-bold text-sm">Quay lại trang chủ</a>
                     </div>
                 @endif

@@ -55,7 +55,23 @@ class UserController extends Controller
     public function destroy($id)
     {
         $user = User::findOrFail($id);
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'Bạn không thể tự xóa chính mình!');
+        }
         $user->delete();
         return redirect()->route('users.index')->with('success', 'Đã xóa tài khoản!');
+    }
+
+    // 5. TÍNH NĂNG MỚI: XÓA NHIỀU
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids');
+        if ($ids && is_array($ids)) {
+            // Loại bỏ ID của chính mình nếu lỡ tick vào
+            $ids = array_diff($ids, [auth()->id()]);
+            User::whereIn('id', $ids)->delete();
+            return back()->with('success', 'Đã xóa thành công ' . count($ids) . ' tài khoản!');
+        }
+        return back()->with('error', 'Vui lòng chọn ít nhất 1 tài khoản để xóa!');
     }
 }

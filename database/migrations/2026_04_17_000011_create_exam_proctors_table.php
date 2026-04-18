@@ -6,24 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up()
+    public function up(): void
     {
         Schema::create('exam_proctors', function (Blueprint $table) {
             $table->id();
             $table->foreignId('exam_id')->constrained()->onDelete('cascade');
-            $table->string('proctor_name'); 
-            $table->string('proctor_code')->nullable();
-            $table->string('department')->nullable(); 
+            $table->string('proctor_name')->index();
+            $table->string('proctor_code')->nullable()->index();
+            $table->string('department')->nullable();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('exam_proctors');

@@ -15,7 +15,9 @@ class TeacherController extends Controller
 {
     public function index()
     {
-        $teachers = Teacher::with(['assignments.classroom', 'assignments.subject'])->get();
+        $teachers = Teacher::with(['assignments.classroom', 'assignments.subject'])
+            ->orderBy('name', 'asc')
+            ->get();
 
         // Pre-load toàn bộ SubjectConfiguration 1 lần thay vì query N+1 trong loop
         $configs = SubjectConfiguration::all()->keyBy(function ($c) {
@@ -100,7 +102,8 @@ class TeacherController extends Controller
         }
 
         $teacher->update($data);
-        return redirect()->route('teachers.index')->with('success', 'Đã cập nhật hồ sơ!');
+        return redirect()->to(route('teachers.index') . '#teacher-' . $teacher->id)
+            ->with('success', 'Đã cập nhật hồ sơ giáo viên thành công!');
     }
 
     public function destroy(Teacher $teacher)
@@ -143,55 +146,44 @@ class TeacherController extends Controller
             return back()->with('error', 'Dữ liệu import không hợp lệ hoặc vượt quá 1000 dòng!');
         }
 
-        // Pre-load toàn bộ bảng để tránh N+1 query trong vòng lặp
-        $teacherMap  = Teacher::pluck('id', 'code')->all();
-        $classMap    = Classroom::pluck('id', 'name')->all();
-        $subjectMap  = Subject::pluck('id', 'name')->all();
+        // Pre-load data to avoid N+1 queries
+        $teacherMap = Teacher::pluck('id', 'code')->all();
+        $classMap   = Classroom::pluck('id', 'name')->all();
+        $subjectMap = Subject::pluck('id', 'name')->all();
 
-        $count  = 0;
+        $count = 0;
         $errors = [];
 
         foreach ($data as $index => $row) {
-            $rowNum     = $index + 1;
             $teacherCode = trim($row['teacher_code'] ?? '');
             $className   = trim($row['class_name']   ?? '');
             $subjectName = trim($row['subject_name'] ?? '');
 
-            $teacherId = $teacherMap[$teacherCode] ?? null;
-            $classId   = $classMap[$className]     ?? null;
-            $subjectId = $subjectMap[$subjectName]  ?? null;
+            $tId = $teacherMap[$teacherCode] ?? null;
+            $cId = $classMap[$className]     ?? null;
+            $sId = $subjectMap[$subjectName] ?? null;
 
-            if ($teacherId && $classId && $subjectId) {
+            if ($tId && $cId && $sId) {
                 Assignment::updateOrCreate([
-                    'teacher_id' => $teacherId,
-                    'class_id'   => $classId,
-                    'subject_id' => $subjectId,
+                    'teacher_id' => $tId,
+                    'class_id'   => $cId,
+                    'subject_id' => $sId,
                 ]);
                 $count++;
             } else {
-                // Ghi nhận CHI TIẾT lỗi cho từng dòng
                 $reason = [];
-                if (!$teacherId) $reason[] = "Mã GV \"{$teacherCode}\" không tồn tại";
-                if (!$classId)   $reason[] = "Lớp \"{$className}\" không tồn tại";
-                if (!$subjectId) $reason[] = "Môn \"{$subjectName}\" không tồn tại";
-
-                $errors[] = [
-                    'row'     => $rowNum,
-                    'teacher' => $teacherCode,
-                    'class'   => $className,
-                    'subject' => $subjectName,
-                    'reason'  => implode('; ', $reason),
-                ];
+                if (!$tId) $reason[] = "Mã GV \"$teacherCode\" không tồn tại";
+                if (!$cId) $reason[] = "Lớp \"$className\" không tồn tại";
+                if (!$sId) $reason[] = "Môn \"$subjectName\" không tồn tại";
+                $errors[] = "Dòng " . ($index + 1) . ": " . implode(', ', $reason);
             }
         }
 
-        // Nếu có lỗi: trả về mảng lỗi để view hiển thị dạng bảng chi tiết
         if (count($errors) > 0) {
-            return back()
-                ->with('import_success_count', $count)
-                ->with('import_errors', $errors);
+            return back()->with('success', "Đã import thành công $count phân công.")
+                         ->with('error', "Có các dòng lỗi sau: <br>" . implode('<br>', array_slice($errors, 0, 10)));
         }
 
-        return back()->with('success', "🎉 Đã tự động phân công thành công $count lớp cho giáo viên!");
+        return back()->with('success', "🎉 Đã import thành công $count phân công giảng dạy!");
     }
 }

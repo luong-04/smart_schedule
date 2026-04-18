@@ -27,15 +27,13 @@ class Teacher extends Model
         return $this->hasMany(Assignment::class);
     }
     public function getRemainingSlotsAttribute() {
-        // Tổng tiết tối đa
-        $max = $this->max_slots_week;
+        // Tối ưu: Truy vấn trực tiếp từ bảng schedules bằng teacher_id đã denormalize
+        // Chỉ đếm các tiết thuộc phân công chưa bị xóa (nếu cần ràng buộc chặt chẽ hơn)
+        $used = \App\Models\Schedule::where('teacher_id', $this->id)
+            ->whereHas('assignment') // whereHas mặc định không lấy Assignment đã soft-deleted
+            ->count();
         
-        // Đếm số tiết đã được xếp trong bảng schedules thông qua assignments
-        $used = \App\Models\Schedule::whereHas('assignment', function($q) {
-            $q->where('teacher_id', $this->id);
-        })->count();
-        
-        return $max - $used;
+        return max(0, $this->max_slots_week - $used);
     }
     
 }

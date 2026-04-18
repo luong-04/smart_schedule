@@ -1,5 +1,6 @@
 @extends('layouts.admin')
 @section('title', 'Ma trận Xếp lịch')
+@section('body_attrs', 'hx-boost="false" hx-history="false"')
 
 @section('content')
 <style>
@@ -16,6 +17,30 @@
 
     .drop-zone { max-width: 100%; min-width: 0; overflow: hidden; }
     .matrix-item { width: 100%; max-width: 100%; min-width: 0; overflow: hidden; }
+    
+    /* Real-time Conflict Highlighting */
+    .conflict-zone { 
+        background-color: #fef2f2 !important; 
+        border: 2px solid #ef4444 !important; 
+        border-style: solid !important;
+        position: relative;
+    }
+    .conflict-zone::after {
+        content: "BẬN";
+        position: absolute;
+        top: 2px;
+        right: 4px;
+        font-size: 8px;
+        font-weight: 900;
+        color: #ef4444;
+        letter-spacing: 1px;
+    }
+
+    /* Prevent text selection during drag to avoid "bôi đen" issue */
+    .sortable-drag * {
+        user-select: none !important;
+        -webkit-user-select: none !important;
+    }
 </style>
 
 <div id="roomModal" class="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center hidden opacity-0 transition-opacity backdrop-blur-sm">
@@ -39,6 +64,20 @@
         </div>
     </div>
 </div>
+<div id="saving-overlay" class="fixed inset-0 bg-slate-900/40 z-[300] flex items-center justify-center hidden backdrop-blur-[2px]">
+    <div class="bg-white rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
+        <div class="size-16 border-4 border-slate-100 border-t-primary rounded-full animate-spin"></div>
+        <p class="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">Đang lưu dữ liệu...</p>
+    </div>
+</div>
+
+<div id="success-toast" class="fixed top-10 left-1/2 -translate-x-1/2 z-[400] transform -translate-y-20 transition-all duration-500 hidden">
+    <div id="toast-container" class="bg-emerald-500 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[300px] justify-center">
+        <span id="toast-icon" class="material-symbols-outlined animate-bounce">check_circle</span>
+        <span id="toast-message" class="font-black uppercase tracking-widest text-xs">Lưu bản cập nhật thành công!</span>
+    </div>
+</div>
+
 
 <div class="flex flex-col h-[calc(100vh-100px)]">
     <div class="bg-white p-4 rounded-t-[2rem] border-b border-slate-200 flex justify-between items-center shrink-0">
@@ -63,14 +102,37 @@
                 </select>
             </div>
         </div>
-        <button onclick="saveSchedule()" class="bg-primary text-white px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all flex items-center gap-2">
-            <span class="material-symbols-outlined text-sm">save</span> Lưu Ma trận
-        </button>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center bg-slate-100/50 rounded-xl px-3 py-1.5 border border-slate-200">
+                <span class="material-symbols-outlined text-slate-400 text-sm mr-2">calendar_month</span>
+                <input type="date" id="applies_from" value="{{ $appliesFrom }}" class="bg-transparent border-none p-0 text-[10px] font-black text-slate-700 focus:ring-0 uppercase">
+                <span class="mx-2 text-slate-400 text-[10px] fon-black">→</span>
+                <input type="date" id="applies_to" value="{{ $appliesTo }}" class="bg-transparent border-none p-0 text-[10px] font-black text-slate-700 focus:ring-0 uppercase">
+            </div>
+
+            @if($historyRanges->count() > 0)
+            <div class="relative group">
+                <select onchange="window.location.href='?class_id={{ $selectedClassId }}&date='+this.value" class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest focus:ring-primary focus:border-primary cursor-pointer outline-none hover:bg-slate-50 transition-all appearance-none pr-10 shadow-sm">
+                    <option value="">Lịch sử phiên bản</option>
+                    @foreach($historyRanges as $range)
+                        <option value="{{ $range->applies_from->toDateString() }}" {{ $appliesFrom == $range->applies_from->toDateString() ? 'selected' : '' }}>
+                            {{ $range->applies_from->format('d/m/Y') }} - {{ $range->applies_to->format('d/m/Y') }}
+                        </option>
+                    @endforeach
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">history</span>
+            </div>
+            @endif
+
+            <button onclick="saveSchedule()" hx-boost="false" class="bg-primary text-white px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">save</span> Lưu Phiên bản
+            </button>
+        </div>
     </div>
 
-    <div class="flex flex-1 overflow-hidden bg-white rounded-b-[2rem] shadow-sm border border-t-0 border-slate-200">
+    <div class="flex flex-1 overflow-hidden bg-white rounded-b-[2rem] shadow-sm border border-t-0 border-slate-200" hx-disable>
         
-        <section class="w-[30%] border-r border-slate-200 bg-[#f8f9fa] flex flex-col shrink-0">
+        <section class="w-[30%] border-r border-slate-200 bg-[#f8f9fa] flex flex-col shrink-0" hx-disable>
             <div class="p-5 border-b border-slate-200 bg-white">
                 <div class="relative">
                     <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">person_search</span>
@@ -88,7 +150,10 @@
                 <div class="sidebar-item bg-white p-3 rounded-xl border border-slate-200 shadow-sm cursor-move hover:border-primary/50 transition-all group relative" 
                      data-id="{{ $as->id }}" 
                      data-teacher-id="{{ $as->teacher_id }}"
+                     data-subject-name="{{ $as->subject->name }}"
+                     data-teacher-name="{{ $as->teacher->name }}"
                      data-room-type-id="{{ $as->subject->room_type_id }}"
+                     data-subject-type="{{ $as->subject->type }}"
                      data-off-days="{{ is_array($as->teacher->off_days) ? json_encode($as->teacher->off_days) : $as->teacher->off_days ?? '[]' }}"
                      data-teacher-remaining="{{ $as->teacher_remaining }}"
                      data-subject-remaining="{{ $as->remaining_subject_slots }}">
@@ -138,8 +203,11 @@
             </div>
         </section>
 
-        <section class="flex-1 flex flex-col bg-white overflow-hidden">
-            <div class="flex-1 overflow-auto p-6">
+        <section class="flex-1 flex flex-col bg-white overflow-hidden" id="matrix-section" hx-disable>
+            <div class="flex-1 overflow-auto p-6 scroll-smooth">
+                @php
+                    $isClassMorning = strtolower($classroom->shift) === 'morning';
+                @endphp
                 <div class="min-w-[700px] border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
                     
                     <div class="schedule-grid bg-slate-50 border-b border-slate-200">
@@ -153,6 +221,9 @@
 
                     <div class="divide-y divide-slate-100 bg-[#f8f9fa]">
                         @php
+                            // Check shift
+                            $isClassMorning = strtolower($classroom->shift ?? 'morning') === 'morning';
+
                             // DRY: Các biến này được tính 1 lần ở Controller, không cần tính lại ở đây
                             $fDay = $shiftVars['flagDay'];
                             $fPer = $shiftVars['flagPeriod'];
@@ -166,18 +237,23 @@
 
                         @for($p=1; $p<=10; $p++)
                         @if($p == 6)
-                        <div class="schedule-grid bg-slate-50/50 border-y border-slate-200 relative overflow-hidden">
-                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjBMMjAgMEgxNkwwIDE2djRaTTIwIDE2djRMMTYgMjBMMjAgMTZ6IiBmaWxsPSIjZTFlNWU5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-[0.05]"></div>
+                        <div class="schedule-grid bg-slate-100/80 border-y border-slate-200 relative overflow-hidden">
+                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjBMMjAgMEgxNkwwIDE2djRaTTIwIDE2djRMMTYgMjBMMjAgMTZ6IiBmaWxsPSIjZTFlNWU5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-[0.1]"></div>
                             <div class="p-2 border-r border-slate-200 relative z-10"></div>
                             <div class="col-span-6 flex items-center justify-center h-8 relative z-10">
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] bg-slate-50/80 px-4 rounded-full">Nghỉ trưa / Đổi ca</span>
+                                <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] bg-white/80 px-4 rounded-full shadow-sm">Nghỉ trưa / Đổi ca</span>
                             </div>
                         </div>
                         @endif
 
-                        <div class="schedule-grid group hover:bg-slate-50/50 transition-colors">
-                            <div class="p-2 flex flex-col items-center justify-center border-r border-slate-200 bg-white group-hover:bg-slate-50 transition-colors">
-                                <span class="text-[10px] font-black text-slate-400">TIẾT {{ $p }}</span>
+                        @php
+                            $isCurrentShift = ($isClassMorning && $p <= 5) || (!$isClassMorning && $p >= 6);
+                            $rowOpacity = $isCurrentShift ? 'bg-white' : 'bg-slate-50/50 opacity-60';
+                        @endphp
+
+                        <div class="schedule-grid group hover:bg-slate-50/50 transition-colors {{ $rowOpacity }}">
+                            <div class="p-2 flex flex-col items-center justify-center border-r border-slate-200 {{ $isCurrentShift ? 'bg-white' : 'bg-slate-100/50' }} group-hover:bg-slate-50 transition-colors">
+                                <span class="text-[10px] font-black {{ $isCurrentShift ? 'text-primary' : 'text-slate-400' }}">TIẾT {{ $p }}</span>
                             </div>
                             
                             @for($d=2; $d<=7; $d++)
@@ -186,7 +262,10 @@
                                     $isClassMeeting = ($d == $mDay && $p == $mPer);
                                     $isFixed        = $isFlagSalute || $isClassMeeting;
                                     $fixedLabel     = $isFlagSalute ? 'CHÀO CỜ' : 'SINH HOẠT';
-                                    $current        = $schedules->where('day_of_week', $d)->where('period', $p)->where('assignment.class_id', $selectedClassId)->first();
+                                    
+                                    // O(1) Lookup - Toàn bộ N+1 và loop in loop đã được triệt tiêu ở Controller
+                                    $current = $schedules["{$d}-{$p}"] ?? null;
+                                    
                                     // $assignFlag, $assignMeeting, $gvcnName đã được khai báo bên ngoài vòng lặp
                                     $showGvcn       = ($isFlagSalute && $assignFlag) || ($isClassMeeting && $assignMeeting);
 
@@ -214,6 +293,7 @@
                                                      data-id="{{ $current->assignment_id }}"
                                                      data-teacher-id="{{ $current->assignment->teacher_id }}"
                                                      data-room-id="{{ $current->room_id }}"
+                                                     data-subject-type="{{ $current->assignment->subject->type }}"
                                                      data-room-type-id="{{ $current->assignment->subject->room_type_id }}"
                                                      data-off-days="{{ is_array($current->assignment->teacher->off_days) ? json_encode($current->assignment->teacher->off_days) : $current->assignment->teacher->off_days ?? '[]' }}">
                                                     
@@ -269,7 +349,9 @@
         teacherOtherDays: @json($teacherOtherDays ?? []),
         roomBusySlots: @json($roomBusySlots ?? []),
         selectedClassId: {{ $selectedClassId }},
-        lastUpdatedAt: "{{ $classroom->updated_at }}",
+        appliesFrom: "{{ $appliesFrom }}",
+        appliesTo: "{{ $appliesTo }}",
+        lastUpdatedAt: "{{ $classroom->updated_at->toDateTimeString() }}",
         saveUrl: "{{ route('admin.schedules.save') }}",
         csrfToken: "{{ csrf_token() }}"
     };

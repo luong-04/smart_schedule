@@ -4,7 +4,7 @@
 
 <div x-data="{ activeGrade: 10, activeBlock: 'KHTN', selectedConfigs: [] }" class="space-y-6">
     
-    <form action="{{ route('curriculum.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden">
+    <form action="{{ route('curriculum.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden" hx-boost="false">
         @csrf @method('DELETE')
         <template x-for="id in selectedConfigs" :key="id">
             <input type="hidden" name="ids[]" :value="id">
@@ -88,14 +88,14 @@
                                 <th class="px-6 py-6 w-12 text-center border-r border-slate-50">
                                     <input type="checkbox" 
                                         @change="
-                                            let allIds = {{ $allIdsJson }};
+                                            let allIds = {{ $allIdsJson }}.map(id => String(id));
                                             if($event.target.checked) {
                                                 selectedConfigs = [...new Set([...selectedConfigs, ...allIds])];
                                             } else {
-                                                selectedConfigs = selectedConfigs.filter(id => !allIds.includes(id));
+                                                selectedConfigs = selectedConfigs.filter(id => !allIds.includes(String(id)));
                                             }
                                         "
-                                        :checked="{{ $configs->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedConfigs.includes(id))"
+                                        :checked="{{ $configs->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedConfigs.includes(String(id)))"
                                         class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
                                 </th>
                                 <th class="px-8 py-6">Môn học</th>
@@ -106,7 +106,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-50">
                             @forelse($configs as $c)
-                            <tr class="hover:bg-blue-50/20 transition-all group" :class="selectedConfigs.includes({{ $c->id }}) ? 'bg-blue-50/40' : ''">
+                            <tr class="hover:bg-blue-50/20 transition-all group" :class="selectedConfigs.includes('{{ $c->id }}') ? 'bg-blue-50/40' : ''">
                                 
                                 <td class="px-6 py-5 text-center border-r border-slate-50">
                                     <input type="checkbox" value="{{ $c->id }}" x-model="selectedConfigs" 
@@ -114,11 +114,11 @@
                                 </td>
 
                                 <td class="px-8 py-5">
-                                    <span class="font-black text-slate-700 uppercase tracking-tight">{{ $c->subject->name }}</span>
+                                    <span class="font-black text-slate-700 uppercase tracking-tight">{{ $c->subject->name ?? 'Môn học đã xóa' }}</span>
                                 </td>
                                 <td class="px-8 py-5">
-                                    <span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase {{ $c->subject->type == 'theory' ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600' }}">
-                                        {{ $c->subject->type == 'theory' ? 'Lý thuyết' : 'Thực hành' }}
+                                    <span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase {{ ($c->subject->type ?? 'theory') == 'theory' ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600' }}">
+                                        {{ ($c->subject->type ?? 'theory') == 'theory' ? 'Lý thuyết' : 'Thực hành' }}
                                     </span>
                                 </td>
                                 <td class="px-8 py-5 text-center">

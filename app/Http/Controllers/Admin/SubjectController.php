@@ -56,7 +56,8 @@ class SubjectController extends Controller
         }
 
         $subject->update($data);
-        return redirect()->route('subjects.index')->with('success', 'Đã cập nhật môn học!');
+        return redirect()->to(route('subjects.index') . '#subject-' . $subject->id)
+            ->with('success', 'Đã cập nhật môn học thành công!');
     }
 
     // 6. Xóa dữ liệu

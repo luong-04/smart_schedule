@@ -14,14 +14,11 @@ class ScheduleDataService
     /**
      * Lấy các slot đã bận của giáo viên và phòng học từ lịch các lớp khác.
      */
-    public function getBusySlots(string $scheduleName, int $selectedClassId): array
+    public function getBusySlots(string $scheduleName, int $selectedClassId, string $appliesFrom): array
     {
         $otherSchedules = Schedule::where('schedule_name', $scheduleName)
-            ->whereHas('assignment', function ($q) use ($selectedClassId) {
-                // Chỉ lấy lịch của các lớp KHÁC lớp đang xếp
-                $q->where('class_id', '!=', $selectedClassId);
-            })
-            ->with(['assignment:id,teacher_id,class_id'])
+            ->where('class_id', '!=', $selectedClassId)
+            ->where('applies_from', $appliesFrom)
             ->get(['id', 'assignment_id', 'room_id', 'teacher_id', 'day_of_week', 'period']);
 
         $teacherBusySlots = [];
@@ -57,16 +54,18 @@ class ScheduleDataService
     /**
      * Lấy số lượng tiết đã sử dụng cho giáo viên và các môn học.
      */
-    public function getUsedCounts(string $scheduleName, Collection $allAssignments): array
+    public function getUsedCounts(string $scheduleName, Collection $allAssignments, string $appliesFrom): array
     {
+        // Tối ưu: Dùng trực tiếp teacher_id đã denormalize ở bảng schedules
         $teacherUsedCounts = Schedule::where('schedule_name', $scheduleName)
-            ->join('assignments', 'schedules.assignment_id', '=', 'assignments.id')
-            ->selectRaw('assignments.teacher_id, COUNT(*) as total')
-            ->groupBy('assignments.teacher_id')
+            ->where('applies_from', $appliesFrom)
+            ->selectRaw('teacher_id, COUNT(*) as total')
+            ->groupBy('teacher_id')
             ->pluck('total', 'teacher_id')
             ->all();
 
         $assignmentUsedCounts = Schedule::where('schedule_name', $scheduleName)
+            ->where('applies_from', $appliesFrom)
             ->whereIn('assignment_id', $allAssignments->pluck('id'))
             ->selectRaw('assignment_id, COUNT(*) as total')
             ->groupBy('assignment_id')

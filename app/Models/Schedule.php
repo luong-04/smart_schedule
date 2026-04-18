@@ -8,11 +8,19 @@ class Schedule extends Model
 {
     protected $fillable = [
         'schedule_name',
+        'applies_from',
+        'applies_to',
         'assignment_id',
         'teacher_id',
         'room_id',
         'day_of_week',
-        'period'
+        'period',
+        'class_id'
+    ];
+
+    protected $casts = [
+        'applies_from' => 'date',
+        'applies_to'   => 'date',
     ];
 
     public function assignment()

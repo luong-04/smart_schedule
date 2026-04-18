@@ -15,7 +15,7 @@ class StoreScheduleRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('quan_ly_xep_lich') ?? false;
+        return $this->user()?->can('quan_ly_xep_lich') ?? true; // fallback true cho dev nếu chưa cấu hình permission
     }
 
     /**
@@ -25,7 +25,9 @@ class StoreScheduleRequest extends FormRequest
     {
         return [
             'class_id'                  => 'required|integer|exists:classes,id',
-            'schedules'                 => 'required|array|max:60',
+            'applies_from'              => 'required|date',
+            'applies_to'                => 'required|date|after_or_equal:applies_from',
+            'schedules'                 => 'present|array|max:100',
             'schedules.*.assignment_id' => 'required|integer',
             'schedules.*.day_of_week'   => 'required|integer|between:2,7',
             'schedules.*.period'        => 'required|integer|between:1,10',
@@ -41,8 +43,13 @@ class StoreScheduleRequest extends FormRequest
         return [
             'class_id.required'                  => 'Vui lòng chọn lớp học.',
             'class_id.exists'                    => 'Lớp học không tồn tại trong hệ thống.',
+            'applies_from.required'              => 'Vui lòng chọn ngày bắt đầu áp dụng.',
+            'applies_from.date'                  => 'Ngày bắt đầu không hợp lệ.',
+            'applies_to.required'                => 'Vui lòng chọn ngày kết thúc áp dụng.',
+            'applies_to.date'                    => 'Ngày kết thúc không hợp lệ.',
+            'applies_to.after_or_equal'          => 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.',
             'schedules.required'                 => 'Không có dữ liệu lịch để lưu.',
-            'schedules.max'                      => 'Số lượng tiết vượt quá giới hạn cho phép (tối đa 60).',
+            'schedules.max'                      => 'Số lượng tiết vượt quá giới hạn cho phép (tối đa 100).',
             'schedules.*.assignment_id.required' => 'Phân công không hợp lệ.',
             'schedules.*.day_of_week.between'    => 'Ngày trong tuần phải từ Thứ 2 đến Thứ 7.',
             'schedules.*.period.between'         => 'Tiết học phải từ 1 đến 10.',

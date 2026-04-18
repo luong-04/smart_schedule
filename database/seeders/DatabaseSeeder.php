@@ -40,5 +40,11 @@ class DatabaseSeeder extends Seeder
 
         // 4. Gán chức vụ Admin Tổng cho bạn
         $admin->assignRole($superAdmin);
+
+        // 5. Thêm dữ liệu mẫu
+        $this->call([
+            SampleDataSeeder::class,
+            SampleScheduleSeeder::class,
+        ]);
     }
 }

@@ -9,7 +9,7 @@
 
 <div x-data="{ activeGrade: 10, activeBlock: 'all', selectedClasses: [] }" class="space-y-4 max-w-6xl mx-auto">
     
-    <form action="{{ route('classrooms.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden">
+    <form action="{{ route('classrooms.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden" hx-boost="false">
         @csrf @method('DELETE')
         <template x-for="id in selectedClasses" :key="id">
             <input type="hidden" name="ids[]" :value="id">
@@ -101,14 +101,14 @@
                             <th class="px-6 py-5 w-12 text-center">
                                 <input type="checkbox" 
                                     @change="
-                                        let allIds = {{ $allIdsJson }};
+                                        let allIds = {{ $allIdsJson }}.map(id => String(id));
                                         if($event.target.checked) {
                                             selectedClasses = [...new Set([...selectedClasses, ...allIds])];
                                         } else {
-                                            selectedClasses = selectedClasses.filter(id => !allIds.includes(id));
+                                            selectedClasses = selectedClasses.filter(id => !allIds.includes(String(id)));
                                         }
                                     "
-                                    :checked="{{ $classesInGrade->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedClasses.includes(id))"
+                                    :checked="{{ $classesInGrade->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedClasses.includes(String(id)))"
                                     class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
                             </th>
                             <th class="px-4 py-5">Tên lớp / Tổ hợp</th>
@@ -119,9 +119,9 @@
                     </thead>
                     <tbody class="divide-y divide-slate-50 text-sm">
                         @forelse($classesInGrade as $c)
-                        <tr x-show="activeBlock === 'all' || activeBlock === '{{ $c->block ?? 'Cơ bản' }}'" 
+                        <tr id="class-{{ $c->id }}" x-show="activeBlock === 'all' || activeBlock === '{{ $c->block ?? 'Cơ bản' }}'" 
                             class="hover:bg-blue-50/30 transition-all group"
-                            :class="selectedClasses.includes({{ $c->id }}) ? 'bg-blue-50/50' : ''">
+                            :class="selectedClasses.includes('{{ $c->id }}') ? 'bg-blue-50/50' : ''">
                             
                             <td class="px-6 py-5 text-center">
                                 <input type="checkbox" value="{{ $c->id }}" x-model="selectedClasses" 

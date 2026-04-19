@@ -22,10 +22,22 @@ class Teacher extends Model
         'off_days' => 'array' // Tự động convert JSON <-> Array
     ];
 
+    /**
+     * Một giáo viên có nhiều phân công giảng dạy (dạy nhiều môn ở nhiều lớp).
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function assignments()
     {
         return $this->hasMany(Assignment::class);
     }
+
+
+    /**
+     * Thuộc tính ảo (Accessor) tính toán số tiết dạy còn lại của giáo viên trong tuần.
+     * 
+     * @return int Số tiết còn lại.
+     */
     public function getRemainingSlotsAttribute() {
         // Tối ưu: Truy vấn trực tiếp từ bảng schedules bằng teacher_id đã denormalize
         // Chỉ đếm các tiết thuộc phân công chưa bị xóa (nếu cần ràng buộc chặt chẽ hơn)

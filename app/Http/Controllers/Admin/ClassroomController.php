@@ -9,6 +9,11 @@ use Illuminate\Http\Request;
 
 class ClassroomController extends Controller
 {
+    /**
+     * Danh sách lớp học kèm theo thông tin giáo viên chủ nhiệm.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function index() {
         $classrooms = Classroom::with('homeroomTeacher')
             ->orderBy('grade', 'asc')
@@ -17,11 +22,22 @@ class ClassroomController extends Controller
         return view('admin.classrooms.index', compact('classrooms'));
     }
 
+    /**
+     * Hiển thị form tạo lớp học mới.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function create() {
         $teachers = Teacher::all();
         return view('admin.classrooms.create', compact('teachers'));
     }
 
+    /**
+     * Lưu thông tin lớp học mới vào cơ sở dữ liệu.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request) {
         $data = $request->validate([
             'name' => 'required|string|max:255',
@@ -35,11 +51,24 @@ class ClassroomController extends Controller
         return redirect()->route('classrooms.index')->with('success', 'Đã tạo lớp thành công!');
     }
 
+    /**
+     * Hiển thị form chỉnh sửa thông tin lớp học.
+     * 
+     * @param Classroom $classroom
+     * @return \Illuminate\View\View
+     */
     public function edit(Classroom $classroom) {
         $teachers = Teacher::all();
         return view('admin.classrooms.edit', compact('classroom', 'teachers'));
     }
 
+    /**
+     * Cập nhật thông tin lớp học.
+     * 
+     * @param Request $request
+     * @param Classroom $classroom
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, Classroom $classroom) {
         $data = $request->validate([
             'name' => 'required|string|max:255',
@@ -54,12 +83,23 @@ class ClassroomController extends Controller
             ->with('success', 'Đã cập nhật thông tin lớp học!');
     }
 
+    /**
+     * Xóa một lớp học khỏi hệ thống.
+     * 
+     * @param Classroom $classroom
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy(Classroom $classroom) {
         $classroom->delete();
         return redirect()->route('classrooms.index')->with('success', 'Đã xóa lớp!');
     }
 
-    // TÍNH NĂNG MỚI: Xóa nhiều lớp cùng lúc
+    /**
+     * Xóa hàng loạt lớp học qua ID.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function bulkDelete(Request $request) {
         $ids = $request->input('ids');
         if ($ids && is_array($ids)) {
@@ -69,6 +109,12 @@ class ClassroomController extends Controller
         return back()->with('error', 'Vui lòng chọn ít nhất 1 lớp học để xóa!');
     }
 
+    /**
+     * Nhập dữ liệu lớp học hàng loạt từ JSON.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function import(Request $request) {
         $request->validate(['import_data' => 'required|string']);
         $classrooms = json_decode($request->import_data, true);

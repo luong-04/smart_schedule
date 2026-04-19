@@ -8,12 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Tạo bảng danh sách giám thị tham gia kỳ thi
         Schema::create('exam_proctors', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('exam_id')->constrained()->onDelete('cascade');
-            $table->string('proctor_name')->index();
-            $table->string('proctor_code')->nullable()->index();
-            $table->string('department')->nullable();
+            $table->foreignId('exam_id')->constrained()->onDelete('cascade'); // ID Kỳ thi
+            $table->string('proctor_name')->index(); // Tên giám thị
+            $table->string('proctor_code')->nullable()->index(); // Mã giám thị
+            $table->string('department')->nullable(); // Tổ chuyên môn
             $table->timestamps();
         });
     }

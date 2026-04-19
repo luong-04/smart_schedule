@@ -9,7 +9,10 @@ use Illuminate\Http\Request;
 class AssignmentController extends Controller
 {
     /**
-     * Store a newly created assignment in storage.
+     * Lưu thông tin phân công giảng dạy mới.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function store(Request $request)
     {
@@ -37,7 +40,10 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Remove the specified assignment from storage.
+     * Xóa một bản ghi phân công giảng dạy.
+     * 
+     * @param int $id ID của phân công.
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy($id)
     {
@@ -48,7 +54,10 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Bulk delete assignments.
+     * Xóa hàng loạt các bản ghi phân công giảng dạy được chọn.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function bulkDelete(Request $request)
     {

@@ -28,8 +28,11 @@ class Setting extends Model
     const CACHE_PREFIX = 'setting_';
 
     /**
-     * Helper nhanh để lấy giá trị từ settings.
-     * Sử dụng Cache::remember để tránh query DB lặp lại.
+     * Lấy giá trị cài đặt từ cache hoặc database.
+     * 
+     * @param string $key Khóa của cài đặt.
+     * @param mixed $default Giá trị mặc định nếu không tìm thấy.
+     * @return mixed Giá trị của cài đặt.
      */
     public static function getVal($key, $default = null)
     {
@@ -40,7 +43,9 @@ class Setting extends Model
     }
 
     /**
-     * Xóa cache của một key cụ thể
+     * Xóa cache của một cài đặt cụ thể dựa trên khóa.
+     * 
+     * @param string $key Khóa cần xóa cache.
      */
     public static function clearCache($key)
     {
@@ -48,9 +53,7 @@ class Setting extends Model
     }
 
     /**
-     * Xóa toàn bộ cache settings.
-     * Tối ưu: Nếu số lượng settings lớn, việc loop có thể tốn tài nguyên.
-     * Ở đây ta giữ logic an toàn nhưng sạch sẽ hơn.
+     * Xóa toàn bộ cache của tất cả các cài đặt.
      */
     public static function clearAllCache()
     {
@@ -61,7 +64,7 @@ class Setting extends Model
     }
 
     /**
-     * Đăng ký Observer tự động
+     * Đăng ký Observer tự động để xóa cache khi dữ liệu thay đổi.
      */
     protected static function booted()
     {

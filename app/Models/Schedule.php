@@ -23,12 +23,21 @@ class Schedule extends Model
         'applies_to'   => 'date',
     ];
 
+    /**
+     * Lấy thông tin phân công giảng dạy liên quan đến tiết này.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function assignment()
     {
         return $this->belongsTo(Assignment::class)->withTrashed()->withDefault();
     }
 
-    // BỔ SUNG HÀM NÀY ĐỂ FIX LỖI RELATION NOT FOUND
+    /**
+     * Lấy thông tin phòng học được gán cho tiết học này.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function room()
     {
         return $this->belongsTo(Room::class)->withDefault([

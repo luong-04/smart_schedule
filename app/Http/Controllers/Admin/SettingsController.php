@@ -8,6 +8,11 @@ use Illuminate\Http\Request;
 
 class SettingsController extends Controller
 {
+    /**
+     * Hiển thị trang cấu hình hệ thống.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         // Lấy tất cả cài đặt và chuyển thành mảng ['key' => 'value']
@@ -15,6 +20,12 @@ class SettingsController extends Controller
         return view('admin.settings.index', compact('settings'));
     }
 
+    /**
+     * Cập nhật các giá trị cài đặt hệ thống.
+     * 
+     * @param Request $request Request chứa các giá trị cài đặt mới.
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request)
     {
         $data = $request->except('_token');

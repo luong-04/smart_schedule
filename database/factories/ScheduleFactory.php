@@ -12,12 +12,17 @@ class ScheduleFactory extends Factory
 {
     protected $model = Schedule::class;
 
+    /**
+     * Định nghĩa trạng thái mặc định của Model Thời khóa biểu (Schedule).
+     * 
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         return [
             'schedule_name' => 'Học kỳ 1 - 2024-2025',
             'applies_from' => now()->startOfWeek(),
-            'applies_to' => now()->startOfWeek()->addDays(6),
+            'applies_to' => now()->startOfWeek()->addYears(1),
             'assignment_id' => Assignment::factory(),
             'teacher_id' => Teacher::factory(),
             'class_id' => Classroom::factory(),

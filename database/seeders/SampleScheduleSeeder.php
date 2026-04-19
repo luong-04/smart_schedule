@@ -10,15 +10,22 @@ use App\Models\SubjectConfiguration;
 use App\Models\Setting;
 use App\Models\Room;
 
+/**
+ * Seeder nạp dữ liệu Thời khóa biểu mẫu (Sample Schedules).
+ * Tự động xếp lịch dựa trên các phân công đã có, tuân thủ các quy tắc cơ bản.
+ */
 class SampleScheduleSeeder extends Seeder
 {
+    /**
+     * Chạy tiến trình nạp TKB mẫu.
+     */
     public function run()
     {
         $scheduleName = $this->getScheduleName();
         $appliesFrom = now()->startOfWeek()->toDateString();
         $appliesTo = now()->endOfYear()->toDateString();
 
-        // 1. Clear existing schedules for this name to start fresh
+        // 1. Xóa lịch cũ cùng tên để nạp lại mới hoàn toàn
         Schedule::where('schedule_name', $scheduleName)->delete();
 
         $classrooms = Classroom::all()->shuffle();
@@ -28,7 +35,7 @@ class SampleScheduleSeeder extends Seeder
         $usedTeacherSlots = []; 
         $usedRoomSlots = [];    
 
-        // Fetch Fixed slots settings
+        // Lấy cấu hình các tiết cố định (Chào cờ, Sinh hoạt)
         $settings = [
             'morning' => [
                 'f_day' => (int)Setting::getVal('morning_flag_day', 2),
@@ -59,49 +66,30 @@ class SampleScheduleSeeder extends Seeder
 
             $totalAcademicSlots = array_sum($curriculums);
             
-            // Distribute slots across 6 days (Mon-Sat)
-            // Rule: D2 and D7 should have 4 academic slots + 1 fixed = 5 total
+            // Phân bổ số tiết học cho từng ngày trong tuần (Thứ 2 - Thứ 7)
             $slotsPerDay = [2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0, 7 => 0];
             $tempTotal = $totalAcademicSlots;
             
-            // Priority 1: Set D2 and D7 to 4 academic slots (if total allows)
+            // Ưu tiên nạp đầy Thứ 2 và Thứ 7 (thường có 4 tiết học + 1 tiết cố định)
             foreach ([2, 7] as $d) {
                 $target = min($tempTotal, 4);
                 $slotsPerDay[$d] = $target;
                 $tempTotal -= $target;
             }
 
-            // Priority 2: Fill D3, D4, D5, D6 to 5 academic slots
+            // Phân bổ cho các ngày còn lại (Thứ 3 - Thứ 6)
             foreach ([3, 4, 5, 6] as $d) {
                 $target = min($tempTotal, 5);
                 $slotsPerDay[$d] = $target;
                 $tempTotal -= $target;
             }
 
-            // Priority 3: If still has extra (very rare), add to D2/D7 but careful of 5 total cap
-            // and then to others if they can take more (unlikely in one shift)
-            $allDays = [2, 3, 4, 5, 6, 7];
-            while ($tempTotal > 0) {
-                $changed = false;
-                foreach ($allDays as $d) {
-                    $limit = (in_array($d, [2, 7])) ? 4 : 5; // Academic limit per day
-                    if ($tempTotal > 0 && $slotsPerDay[$d] < $limit) {
-                        $slotsPerDay[$d]++;
-                        $tempTotal--;
-                        $changed = true;
-                    }
-                }
-                if (!$changed) break; // Avoid infinite loop if curriculum > capacity
-            }
-
-            // Create eligible slots (Continuity check & Fixed slot exclusion)
+            // Tạo danh sách các slot khả dụng (loại trừ Tiết cố định)
             $eligibleSlots = [];
             foreach ($slotsPerDay as $d => $count) {
                 $start = ($shift === 'morning') ? 1 : 6;
-                $placed = 0;
-                $p = $start;
-                // We need to place $count academic slots, skipping the fixed one if it falls in range
-                while ($placed < $count && $p < $start + 6) {
+                $placed = 0; $p = $start;
+                while ($placed < $count && $p < $start + 5) {
                     $slotKey = "$d-$p";
                     if (!in_array($slotKey, $fixedSlots)) {
                         $eligibleSlots[] = ['d' => $d, 'p' => $p];
@@ -111,11 +99,11 @@ class SampleScheduleSeeder extends Seeder
                 }
             }
 
-            // Separate assignments
+            // Tách riêng các môn đặc thù (Thể chất, QP-AN) - Thường học khác buổi
             $oppositeSubjects = $assignments->filter(fn($as) => in_array($as->subject->name, ['Giáo dục thể chất', 'Giáo dục quốc phòng và an ninh']));
             $generalSubjects  = $assignments->filter(fn($as) => !in_array($as->subject->name, ['Giáo dục thể chất', 'Giáo dục quốc phòng và an ninh']));
 
-            // 1. Schedule Opposite Shift Subjects (PE/Defense) - These can be anywhere in opposite shift
+            // 1. Xếp các môn trái buổi
             $oppShift = ($shift === 'morning') ? 'afternoon' : 'morning';
             $os = $settings[$oppShift];
             $oppFixed = ["{$os['f_day']}-{$os['f_per']}", "{$os['m_day']}-{$os['m_per']}"];
@@ -126,7 +114,7 @@ class SampleScheduleSeeder extends Seeder
                 $this->scheduleAssignment($as, $slotsNeeded, $oppositeShiftPeriods, $scheduleName, $appliesFrom, $appliesTo, $usedTeacherSlots, $usedRoomSlots, $usedClassSlots, $specialRooms, $oppFixed);
             }
 
-            // 2. Schedule General Subjects in the gap-free eligible slots
+            // 2. Xếp các môn học thông thường (Đảm bảo không có "tiết trống" giữa các buổi)
             $generalSubjectList = [];
             foreach ($generalSubjects as $as) {
                 $count = $curriculums[$as->subject_id] ?? 0;
@@ -146,7 +134,7 @@ class SampleScheduleSeeder extends Seeder
                             'assignment_id' => $as->id,
                             'class_id'      => $as->class_id,
                             'teacher_id'    => $as->teacher_id,
-                            'room_id'       => $roomFoundId, // Will be null for theory
+                            'room_id'       => $roomFoundId,
                             'day_of_week'   => $d,
                             'period'        => $p
                         ]);
@@ -161,12 +149,13 @@ class SampleScheduleSeeder extends Seeder
         }
     }
 
+    /**
+     * Kiểm tra tính khả dụng của một Slot (Trùng lịch GV, Trùng Phòng).
+     */
     private function isSlotAvailable($as, $slotKey, $usedTeacherSlots, $usedRoomSlots, $specialRooms, &$roomFoundId)
     {
-        // Teacher conflict check
         if (isset($usedTeacherSlots[$as->teacher_id]) && in_array($slotKey, $usedTeacherSlots[$as->teacher_id])) return false;
 
-        // Room assignment: ONLY Practice/PE subjects get a room ID
         $roomFoundId = null;
         if ($as->subject->type !== 'theory') {
             foreach ($specialRooms as $room) {
@@ -177,12 +166,14 @@ class SampleScheduleSeeder extends Seeder
                     }
                 }
             }
-            if (!$roomFoundId) return false; // Fail if no room available for practical subject
+            if (!$roomFoundId) return false;
         }
-
         return true;
     }
 
+    /**
+     * Helper thực hiện xếp lịch cho một phân công.
+     */
     private function scheduleAssignment($as, $slotsNeeded, $allowedPeriods, $scheduleName, $appliesFrom, $appliesTo, &$usedTeacherSlots, &$usedRoomSlots, &$usedClassSlots, $specialRooms, $excludeSlots = [])
     {
         $slotsPlaced = 0;
@@ -222,6 +213,9 @@ class SampleScheduleSeeder extends Seeder
         }
     }
 
+    /**
+     * Lấy tên bản thời khóa biểu dựa trên cài đặt hệ thống.
+     */
     private function getScheduleName(): string
     {
         $semester   = Setting::getVal('semester', 'Học kỳ 1');

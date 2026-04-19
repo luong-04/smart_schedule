@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Hash;
 class UserController extends Controller
 {
     // 1. Hiển thị danh sách nhân viên
+    /**
+     * Hiển thị danh sách tất cả người dùng (nhân viên) trong hệ thống.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         // Lấy tất cả user trừ tài khoản đang đăng nhập (để Admin Tổng không tự xóa mình)
@@ -19,6 +24,11 @@ class UserController extends Controller
     }
 
     // 2. Hiển thị Form tạo nhân viên mới
+    /**
+     * Hiển thị form tạo mới tài khoản người dùng và gán quyền.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function create()
     {
         // Lấy danh sách tất cả các quyền trong database để in ra màn hình dạng Checkbox
@@ -27,6 +37,12 @@ class UserController extends Controller
     }
 
     // 3. Xử lý lưu dữ liệu từ Form
+    /**
+     * Lưu thông tin người dùng mới và các quyền được gán.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
         // Kiểm tra dữ liệu hợp lệ
@@ -52,6 +68,12 @@ class UserController extends Controller
     }
 
     // 4. Xóa nhân viên
+    /**
+     * Xóa một tài khoản người dùng khỏi hệ thống.
+     * 
+     * @param int $id ID của người dùng.
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy($id)
     {
         $user = User::findOrFail($id);
@@ -63,6 +85,12 @@ class UserController extends Controller
     }
 
     // 4b. Trang Sửa nhân viên (MỚI BỔ SUNG)
+    /**
+     * Hiển thị form chỉnh sửa thông tin người dùng và quyền hạn.
+     * 
+     * @param User $user
+     * @return \Illuminate\View\View
+     */
     public function edit(User $user)
     {
         $permissions = Permission::all();
@@ -70,6 +98,13 @@ class UserController extends Controller
     }
 
     // 4c. Cập nhật nhân viên (MỚI BỔ SUNG)
+    /**
+     * Cập nhật thông tin người dùng và đồng bộ lại quyền hạn.
+     * 
+     * @param Request $request
+     * @param User $user
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, User $user)
     {
         $request->validate([
@@ -100,6 +135,12 @@ class UserController extends Controller
     }
 
     // 5. TÍNH NĂNG MỚI: XÓA NHIỀU
+    /**
+     * Xóa hàng loạt tài khoản người dùng qua ID.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function bulkDelete(Request $request)
     {
         $ids = $request->input('ids');

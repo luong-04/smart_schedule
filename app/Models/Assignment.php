@@ -20,6 +20,12 @@ class Assignment extends Model
     /**
      * Các quan hệ (Relationships)
      */
+
+    /**
+     * Lấy thông tin giáo viên được phân công.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function teacher() 
     { 
         return $this->belongsTo(Teacher::class)->withTrashed()->withDefault([
@@ -28,6 +34,11 @@ class Assignment extends Model
         ]); 
     }
 
+    /**
+     * Lấy thông tin môn học được phân công.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function subject() 
     { 
         return $this->belongsTo(Subject::class)->withTrashed()->withDefault([
@@ -35,6 +46,11 @@ class Assignment extends Model
         ]); 
     }
 
+    /**
+     * Lấy thông tin lớp học được phân công.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function classroom() 
     { 
         return $this->belongsTo(Classroom::class, 'class_id')->withDefault([

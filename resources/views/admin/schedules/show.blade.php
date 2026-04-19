@@ -1,10 +1,13 @@
 @extends('layouts.admin')
+
 @section('title', 'TKB Lớp ' . $classroom->name)
 
 @section('content')
+{{-- Nạp thư viện html2pdf đề phòng trường hợp người dùng muốn tải PDF nhanh --}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <div class="space-y-6 max-w-[1100px] mx-auto">
+    {{-- THANH CÔNG CỤ: In và Xuất file --}}
     <div class="bg-white p-4 rounded-[2rem] border border-slate-200 shadow-sm flex justify-between items-center no-print">
         <a href="{{ route('schedules.list') }}" class="flex items-center gap-2 text-slate-500 font-bold text-xs uppercase hover:text-blue-600 bg-slate-50 px-5 py-3 rounded-xl transition-colors">
             <span class="material-symbols-outlined text-sm">arrow_back</span> Quay lại danh sách
@@ -23,8 +26,10 @@
         </div>
     </div>
 
+    {{-- VÙNG HIỂN THỊ NỘI DUNG THỜI KHÓA BIỂU --}}
     <div id="pdf-content" class="bg-white p-10 rounded-2xl shadow-sm border border-slate-200">
         
+        {{-- Header TKB lớp --}}
         <div class="text-center mb-8 relative border-b border-slate-200 pb-6">
             <div class="absolute left-0 top-0 text-left">
                 <p class="text-[11px] font-black text-slate-800 uppercase">{{ $settings['school_name'] ?? 'TRƯỜNG CHƯA CÀI ĐẶT' }}</p>
@@ -35,6 +40,7 @@
             <p class="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">Khối {{ $classroom->grade }} ({{ $classroom->block_name }}) • {{ $classroom->shift == 'morning' ? 'Ca Sáng' : 'Ca Chiều' }} • GVCN: {{ $classroom->homeroomTeacher?->name ?? 'Chưa phân công' }}</p>
         </div>
 
+        {{-- Bảng thời khóa biểu chính --}}
         <table class="w-full text-center border-collapse">
             <thead>
                 <tr>
@@ -45,6 +51,7 @@
                 </tr>
             </thead>
             <tbody>
+                {{-- Xác định ngày Chào cờ và Sinh hoạt dựa trên cài đặt và ca học --}}
                 @php
                     $shiftStr = strtolower($classroom->shift ?? 'morning');
                     $fDay = $settings[$shiftStr.'_flag_day'] ?? 2;
@@ -54,6 +61,7 @@
                 @endphp
 
                 @for($p=1; $p<=10; $p++)
+                    {{-- Dòng ngăn cách giữa Ca Sáng và Ca Chiều --}}
                     @if($p == 6)
                         <tr>
                             <td colspan="7" class="border border-slate-300 bg-slate-50 p-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
@@ -73,16 +81,19 @@
 
                             <td class="border border-slate-300 p-3 h-20 relative align-middle">
                                 @if($isFlagSalute)
+                                    {{-- Ô Chào cờ --}}
                                     <span class="text-xs font-black text-rose-600 uppercase tracking-widest block">CHÀO CỜ</span>
                                     @if($classroom->homeroom_teacher_id && ($settings['assign_gvcn_flag_salute'] ?? 0))
                                         <span class="text-[9px] font-bold text-rose-500 mt-1 block">{{ $classroom->homeroomTeacher?->name }}</span>
                                     @endif
                                 @elseif($isClassMeeting)
+                                    {{-- Ô Sinh hoạt lớp --}}
                                     <span class="text-xs font-black text-emerald-600 uppercase tracking-widest block">SINH HOẠT</span>
                                     @if($classroom->homeroom_teacher_id && ($settings['assign_gvcn_class_meeting'] ?? 0))
                                         <span class="text-[9px] font-bold text-emerald-500 mt-1 block">{{ $classroom->homeroomTeacher?->name }}</span>
                                     @endif
                                 @elseif($current)
+                                    {{-- Ô có môn học đã xếp --}}
                                     <span class="text-[11px] font-black text-blue-700 uppercase block mb-1">{{ $current->assignment->subject->name }}</span>
                                     <span class="text-[10px] font-bold text-slate-600 block">{{ $current->assignment->teacher->name }}</span>
                                     @if($current->room_id)
@@ -96,6 +107,7 @@
             </tbody>
         </table>
 
+        {{-- Chữ ký và Phê duyệt --}}
         <div class="mt-8 flex justify-between items-end px-10">
             <div class="text-center">
                 <p class="text-xs font-black text-slate-600 uppercase">Hiệu Phó Chuyên Môn</p>
@@ -109,6 +121,7 @@
     </div>
 </div>
 
+{{-- CSS TÙY CHỈNH KHI IN --}}
 <style>
     @media print {
         @page { size: A4 landscape; margin: 10mm; }

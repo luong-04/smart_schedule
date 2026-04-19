@@ -5,17 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Hệ thống Quản lý TKB')</title>
+    
+    {{-- Favicon sử dụng UI-Avatars --}}
     <link rel="icon" type="image/png" href="https://ui-avatars.com/api/?name=S&background=886cc0&color=fff&rounded=true">
     
-    
+    {{-- Nạp CSS/JS core và tiện ích Admin thông qua Vite --}}
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/admin/admin-common.js'])
     
+    {{-- Các thư viện bên thứ ba (HTMX, Idiomorph) phục vụ Single Page Experience --}}
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://unpkg.com/idiomorph/dist/idiomorph-ext.min.js"></script>
     
+    {{-- NProgress hiển thị thanh tiến trình load trang --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
 
+    {{-- Fonts từ Google Fonts --}}
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     
@@ -31,7 +36,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #94a3b8; }
 
-        /* Đổi màu thanh loading NProgress thành màu xanh chủ đạo của bạn */
+        /* Tùy chỉnh màu sắc NProgress theo thương hiệu --}}
         #nprogress .bar { background: #135bec !important; height: 3px !important; }
         #nprogress .peg { box-shadow: 0 0 10px #135bec, 0 0 5px #135bec !important; }
         #nprogress .spinner-icon { border-top-color: #135bec !important; border-left-color: #135bec !important; }
@@ -49,13 +54,17 @@
     @hasSection('body_attrs') 
         @yield('body_attrs') 
     @else 
+        {{-- Kích hoạt HTMX boost cho toàn bộ trang để chuyển trang không nạp lại (SPA Mode) --}}
         hx-boost="true" hx-ext="morph" hx-swap="morph:outerHTML" 
     @endif 
     class="bg-[#f6f6f8] text-slate-900 antialiased overflow-x-hidden">
+    
     <div class="flex min-h-screen">
         
+        {{-- SIDEBAR: Menu điều hướng chính --}}
         <aside class="w-[280px] lg:w-[20%] bg-[#F0F7FF] border-r border-slate-200 flex flex-col p-6 gap-6 sticky top-0 h-screen shrink-0 transition-all duration-300">
             
+            {{-- Logo và Thông tin trường học --}}
             <div class="flex items-center gap-3 px-2 overflow-hidden hover:scale-[1.02] transition-transform cursor-default">
                 <div class="bg-blue-600 rounded-2xl p-2.5 text-white shadow-lg shadow-blue-200 shrink-0">
                     <span class="material-symbols-outlined text-3xl">school</span>
@@ -70,6 +79,7 @@
                 </div>
             </div>
 
+            {{-- Nút xem trang chủ (Public View) --}}
             <div class="px-2">
                 <a href="{{ url('/') }}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-emerald-50 text-emerald-600 px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-100 hover:scale-[1.03] transition-all border border-emerald-200 shadow-sm">
                     <span class="material-symbols-outlined text-[16px]">public</span>
@@ -77,8 +87,10 @@
                 </a>
             </div>
 
+            {{-- Danh sách Menu --}}
             <nav id="sidebar-nav" class="flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2 mt-2">
                 
+                {{-- Group 1: Dashboard --}}
                 <div class="space-y-4">
                     <p class="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Thống kê & Tổng quan</p>
                     <div class="flex flex-col gap-1.5">
@@ -93,6 +105,7 @@
                     </div>
                 </div>
 
+                {{-- Group 2: Quản lý danh mục (Resource Management) --}}
                 <div class="space-y-4">
                     <p class="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Quản lý Danh mục</p>
                     <div class="flex flex-col gap-1.5">
@@ -126,6 +139,7 @@
                     </div>
                 </div>
 
+                {{-- Group 3: Nghiệp vụ chuyên môn --}}
                 <div class="space-y-4">
                     <p class="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Nghiệp vụ & Cấu hình</p>
                     <div class="flex flex-col gap-1.5">
@@ -161,6 +175,7 @@
                 </div>
             </nav>
 
+            {{-- Thông tin người đang đăng nhập --}}
             <div class="mt-auto pt-6 border-t border-blue-100 shrink-0">
                 <div class="flex items-center justify-between p-3 bg-white/60 backdrop-blur-md rounded-2xl shadow-sm border border-blue-50/50 hover:bg-white transition-all">
                     <div class="flex items-center gap-3 overflow-hidden">
@@ -185,8 +200,10 @@
             </div>
         </aside>
 
+        {{-- NỘI DUNG CHÍNH (Main Content Area) --}}
         <main class="w-[80%] bg-[#f8f9fa] min-h-screen flex flex-col relative">
             
+            {{-- Header trang --}}
             <header class="flex items-center justify-between px-10 py-6 border-b border-slate-200/60 sticky top-0 bg-white/80 backdrop-blur-xl z-40 shadow-sm">
                 <div class="flex flex-col">
                     <h2 class="text-2xl font-black text-slate-800 tracking-tight uppercase">@yield('title')</h2>
@@ -196,6 +213,7 @@
                     </div>
                 </div>
                 
+                {{-- Trạng thái hệ thống và Đồng hồ --}}
                 <div class="flex items-center gap-5">
                     <div class="hidden md:flex items-center gap-2.5 px-5 py-2.5 bg-emerald-50 border border-emerald-100 rounded-full shadow-sm">
                         <span class="relative flex h-2.5 w-2.5">
@@ -212,10 +230,12 @@
                 </div>
             </header>
 
+            {{-- Vùng render nội dung view --}}
             <div class="p-10 flex-1">
                 @yield('content')
             </div>
 
+            {{-- Footer --}}
             <footer class="p-6 text-center border-t border-slate-200 bg-white mt-auto">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                     &copy; {{ date('Y') }} {{ \App\Models\Setting::getVal('school_name', 'Hệ thống Xếp lịch') }}.
@@ -224,11 +244,11 @@
         </main>
     </div>
 
+    {{-- SCRIPTS TOÀN CỤC: Tối ưu hóa UX, Lưu vị trí cuộn khi chuyển trang AJAX --}}
     <script>
-        // Cấu hình NProgress chạy khi click đổi trang (Native fallback khi không dùng hx-boost)
-        // Delay tiến trình để không hiển thị thanh load nếu trả về quá nhanh
         let nprogressTimer;
         document.addEventListener('DOMContentLoaded', () => {
+            // Gắn sự kiện loading cho các liên kết chuẩn (không dùng hx-boost)
             document.querySelectorAll('a[href]').forEach(link => {
                 link.addEventListener('click', (e) => {
                     const href = link.getAttribute('href');
@@ -241,22 +261,18 @@
             });
         });
         
-        // HTMX config (hiển thị loading khi HTMX gọi AJAX)
+        // Cấu hình HTMX: Thêm CSRF và Hiển thị thanh tiến trình
         document.addEventListener('htmx:configRequest', function(event) { 
             clearTimeout(nprogressTimer);
             nprogressTimer = setTimeout(() => NProgress.start(), 150); 
             
-            // Tự động thêm CSRF Token vào Header cho HTMX (Dùng cho hx-delete, hx-post...)
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             if (csrfToken) {
                 event.detail.headers['X-CSRF-TOKEN'] = csrfToken;
             }
         });
         
-        // ===========================================================================
-        // BÍ QUYẾT XỬ LÝ THANH CUỘN DÀNH RIÊNG CHO HTMX & RELOAD
-        // Lưu vị trí khi chuẩn bị rời trang (full reload hoặc qua HTMX)
-        // ===========================================================================
+        // LƯU VỊ TRÍ CUỘN: Giải quyết vấn đề trang bị nhảy lên top khi cập nhật bằng HTMX
         function saveScrollPositions() {
             const sb = document.getElementById('sidebar-nav');
             if (sb) {
@@ -268,7 +284,7 @@
         window.addEventListener('beforeunload', saveScrollPositions);
         document.addEventListener('htmx:beforeRequest', saveScrollPositions);
 
-        // Phục hồi khi load trang hoặc morph
+        // PHỤC HỒI VỊ TRÍ CUỘN
         function restoreScrollPositions() {
             const sidebar = document.getElementById('sidebar-nav');
             const targetSBPos = sessionStorage.getItem('sidebar_scroll_position');
@@ -281,7 +297,6 @@
                 if (targetMainPos !== null) {
                     window.scrollTo({ top: parseInt(targetMainPos, 10), behavior: 'instant' });
                 } else {
-                    // Nếu không có lịch sử cuộn cho trang này, và đang không có thẻ hash, thì cuộn lên top
                     if (!window.location.hash) {
                         window.scrollTo({ top: 0, behavior: 'instant' });
                     }
@@ -289,23 +304,17 @@
             }, 10);
         }
 
-        // 1. Phục hồi sau khi morph
+        // Xử lý sau khi HTMX cập nhật DOM (Settle)
         document.addEventListener('htmx:afterSettle', function(evt) {
             clearTimeout(nprogressTimer);
             NProgress.done();
             restoreScrollPositions();
-            
-            // Xử lý Alpine sau khi morph vì body thay đổi cấu trúc
-            if (window.Alpine) {
-                // Alpine sẽ tự nhận diện DOM thông qua MutationObserver
-            }
         });
 
-        // 2. Phục hồi cho lần tải đầu tiên (F5)
+        // Phục hồi cho lần tải đầu tiên (F5)
         window.addEventListener('DOMContentLoaded', restoreScrollPositions);
-        // ===========================================================================
 
-        // Logic Đồng hồ (Được tối ưu để không bị lỗi khi chuyển trang bằng AJAX)
+        // ĐỒNG HỒ THỜI GIAN THỰC
         function updateClock() {
             const now = new Date();
             const days = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
@@ -322,7 +331,6 @@
             if (clockElement) clockElement.textContent = timeString;
         }
 
-        // Xóa interval cũ nếu trang bị đổi qua lại (Tránh lỗi nhảy giờ nhanh)
         if (window.clockInterval) clearInterval(window.clockInterval);
         window.clockInterval = setInterval(updateClock, 1000);
         updateClock();

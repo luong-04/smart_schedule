@@ -10,12 +10,23 @@ use Carbon\Carbon;
 
 class ProctorController extends Controller
 {
+    /**
+     * Danh sách các kỳ thi đã được phân công giám thị.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         $exams = Exam::orderBy('created_at', 'desc')->get();
         return view('admin.proctors.index', compact('exams'));
     }
 
+    /**
+     * Thực hiện phân công giám thị cho một kỳ thi mới dựa trên thuật toán ngẫu nhiên có ràng buộc.
+     * 
+     * @param Request $request Request chứa thông tin kỳ thi và danh sách giám thị.
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function assign(Request $request)
     {
         $request->validate([
@@ -158,6 +169,12 @@ class ProctorController extends Controller
                          ->with('success', 'Đã phân công thành công kỳ thi: ' . $exam->name);
     }
 
+    /**
+     * Lấy lịch sử phân công giám thị của một kỳ thi cụ thể dưới dạng JSON.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function history(Request $request)
     {
         $exam = Exam::find($request->exam_id);
@@ -201,6 +218,12 @@ class ProctorController extends Controller
             'data_by_date' => $historyByDate       
         ]);
     }
+    /**
+     * Xóa một kỳ thi và toàn bộ dữ liệu phân công liên quan.
+     * 
+     * @param int $id ID của kỳ thi.
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function destroy($id)
     {
         $exam = Exam::findOrFail($id);
@@ -216,6 +239,12 @@ class ProctorController extends Controller
     }
 
     // TÍNH NĂNG MỚI: XÓA NHIỀU
+    /**
+     * Xóa hàng loạt kỳ thi qua ID.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function bulkDelete(Request $request)
     {
         $ids = $request->input('ids');

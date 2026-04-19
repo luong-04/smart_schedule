@@ -1,5 +1,8 @@
 @extends('layouts.admin')
+
 @section('title', 'Ma trận Xếp lịch')
+
+{{-- Vô hiệu hóa hx-boost cho trang này vì logic kéo thả SortableJS phức tạp cần kiểm soát DOM thủ công --}}
 @section('body_attrs', 'hx-boost="false" hx-history="false"')
 
 @section('content')
@@ -18,7 +21,7 @@
     .drop-zone { max-width: 100%; min-width: 0; overflow: hidden; }
     .matrix-item { width: 100%; max-width: 100%; min-width: 0; overflow: hidden; }
     
-    /* Real-time Conflict Highlighting */
+    {{-- Hiển thị vùng xung đột (GV/Phòng bận ở lớp khác) --}}
     .conflict-zone { 
         background-color: #fef2f2 !important; 
         border: 2px solid #ef4444 !important; 
@@ -36,13 +39,14 @@
         letter-spacing: 1px;
     }
 
-    /* Prevent text selection during drag to avoid "bôi đen" issue */
+    {{-- Ngăn chặn bôi đen văn bản khi đang kéo thả --}}
     .sortable-drag * {
         user-select: none !important;
         -webkit-user-select: none !important;
     }
 </style>
 
+{{-- MODAL CHỌN PHÒNG HỌC: Hiển thị khi thả một môn thực hành vào lưới --}}
 <div id="roomModal" class="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center hidden opacity-0 transition-opacity backdrop-blur-sm">
     <div class="bg-white rounded-3xl p-6 w-[400px] shadow-2xl transform scale-95 transition-transform" id="roomModalContent">
         <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-4">
@@ -64,6 +68,8 @@
         </div>
     </div>
 </div>
+
+{{-- OVERLAY LÀM MỜ: Hiển thị khi đang gửi dữ liệu lưu về server --}}
 <div id="saving-overlay" class="fixed inset-0 bg-slate-900/40 z-[300] flex items-center justify-center hidden backdrop-blur-[2px]">
     <div class="bg-white rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
         <div class="size-16 border-4 border-slate-100 border-t-primary rounded-full animate-spin"></div>
@@ -71,9 +77,7 @@
     </div>
 </div>
 
-<!-- Tailwind Safelist Helper (Ensure classes used in JS aren't purged) -->
-<div class="hidden bg-rose-500 bg-emerald-500"></div>
-
+{{-- TOAST THÔNG BÁO --}}
 <div id="success-toast" class="fixed top-10 left-1/2 -translate-x-1/2 z-[400] transform -translate-y-20 transition-all duration-500 hidden">
     <div id="toast-container" class="bg-emerald-500 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[300px] justify-center">
         <span id="toast-icon" class="material-symbols-outlined animate-bounce">check_circle</span>
@@ -81,18 +85,19 @@
     </div>
 </div>
 
-
 <div class="flex flex-col h-[calc(100vh-100px)]">
+    {{-- THANH CÔNG CỤ (Tool Bar) --}}
     <div class="bg-white p-4 rounded-t-[2rem] border-b border-slate-200 flex justify-between items-center shrink-0">
-    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4">
             <div class="bg-blue-50/50 p-2 rounded-xl text-primary flex items-center justify-center border border-blue-100">
                 <span class="material-symbols-outlined">grid_view</span>
             </div>
             <div>
                 <h2 class="text-sm font-bold text-slate-800 tracking-tight">Xếp thời khóa biểu</h2>
+                {{-- Chọn lớp học để xếp lịch --}}
                 <select onchange="window.location.href='?class_id='+this.value" class="bg-transparent border-none p-0 text-xs font-black text-slate-500 uppercase tracking-widest focus:ring-0 cursor-pointer outline-none hover:text-primary transition-colors">
                     @php
-                        // Sắp xếp chuẩn: Khối (10->12) trước, Tên lớp (A->Z) sau
+                    /** @var \Illuminate\Database\Eloquent\Collection $classes */
                         $sortedClasses = $classes->sortBy(function($c) {
                             return sprintf('%02d-%s', $c->grade, $c->name);
                         });
@@ -105,7 +110,9 @@
                 </select>
             </div>
         </div>
+
         <div class="flex items-center gap-3">
+            {{-- Chọn ngày áp dụng phiên bản TKB --}}
             <div class="flex items-center bg-slate-100/50 rounded-xl px-3 py-1.5 border border-slate-200">
                 <span class="material-symbols-outlined text-slate-400 text-sm mr-2">calendar_month</span>
                 <input type="date" id="applies_from" value="{{ $appliesFrom }}" class="bg-transparent border-none p-0 text-[10px] font-black text-slate-700 focus:ring-0 uppercase">
@@ -113,6 +120,7 @@
                 <input type="date" id="applies_to" value="{{ $appliesTo }}" class="bg-transparent border-none p-0 text-[10px] font-black text-slate-700 focus:ring-0 uppercase">
             </div>
 
+            {{-- Xem lại lịch sử các phiên bản cũ --}}
             @if($historyRanges->count() > 0)
             <div class="relative group">
                 <select onchange="window.location.href='?class_id={{ $selectedClassId }}&date='+this.value" class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest focus:ring-primary focus:border-primary cursor-pointer outline-none hover:bg-slate-50 transition-all appearance-none pr-10 shadow-sm">
@@ -135,6 +143,7 @@
 
     <div class="flex flex-1 overflow-hidden bg-white rounded-b-[2rem] shadow-sm border border-t-0 border-slate-200" hx-disable>
         
+        {{-- SIDEBAR: Danh sách giáo viên & môn học (Nguồn dữ liệu kéo thả) --}}
         <section class="w-[30%] border-r border-slate-200 bg-[#f8f9fa] flex flex-col shrink-0" hx-disable>
             <div class="p-5 border-b border-slate-200 bg-white">
                 <div class="relative">
@@ -150,6 +159,7 @@
                 </div>
 
                 @forelse($assignments as $as)
+                {{-- Item phân công: Chứa đầy đủ metadata để JS xử lý logic ràng buộc --}}
                 <div class="sidebar-item bg-white p-3 rounded-xl border border-slate-200 shadow-sm cursor-move hover:border-primary/50 transition-all group relative" 
                      data-id="{{ $as->id }}" 
                      data-teacher-id="{{ $as->teacher_id }}"
@@ -169,6 +179,7 @@
                         <span class="bg-slate-50 text-slate-400 border border-slate-100 text-[9px] px-2 py-0.5 rounded-lg font-bold shrink-0">ID: {{ $as->teacher->code ?? 'GV' }}</span>
                     </div>
                     
+                    {{-- Badges hiển thị số tiết còn lại --}}
                     <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
                         <div class="flex items-center gap-4">
                             <div class="flex flex-col items-center">
@@ -181,6 +192,7 @@
                                 <span class="subject-badge text-xs font-black {{ $as->remaining_subject_slots <= 0 ? 'text-rose-500' : 'text-emerald-600' }}">{{ $as->remaining_subject_slots }}</span>
                             </div>
                         </div>
+                        {{-- Badge tổng hợp: Chỉ số quan trọng nhất (Min của 2 loại tiết trên) --}}
                         <span class="slot-badge text-[10px] font-black {{ $as->actual_remaining <= 0 ? 'text-rose-500 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100' : 'text-emerald-500' }}">
                             @if($as->actual_remaining > 0)
                                 {{ sprintf("%02d", $as->actual_remaining) }}
@@ -206,13 +218,13 @@
             </div>
         </section>
 
+        {{-- GRID MA TRẬN: Vùng hiển thị thời khóa biểu 6 ngày x 10 tiết --}}
         <section class="flex-1 flex flex-col bg-white overflow-hidden" id="matrix-section" hx-disable>
             <div class="flex-1 overflow-auto p-6 scroll-smooth">
-                @php
-                    $isClassMorning = strtolower($classroom->shift) === 'morning';
-                @endphp
+                @php $isClassMorning = strtolower($classroom->shift) === 'morning'; @endphp
                 <div class="min-w-[700px] border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
                     
+                    {{-- Header ngày trong tuần --}}
                     <div class="schedule-grid bg-slate-50 border-b border-slate-200">
                         <div class="p-3 flex items-center justify-center border-r border-slate-200">
                             <span class="material-symbols-outlined text-slate-400">schedule</span>
@@ -224,24 +236,20 @@
 
                     <div class="divide-y divide-slate-100 bg-[#f8f9fa]">
                         @php
-                            // Check shift
-                            $isClassMorning = strtolower($classroom->shift ?? 'morning') === 'morning';
-
-                            // DRY: Các biến này được tính 1 lần ở Controller, không cần tính lại ở đây
                             $fDay = $shiftVars['flagDay'];
                             $fPer = $shiftVars['flagPeriod'];
                             $mDay = $shiftVars['meetDay'];
                             $mPer = $shiftVars['meetPeriod'];
-                            // DRY: Tính 1 lần trước vòng lặp — không cần lặp 60 lần (6 ngày × 10 tiết)
                             $assignFlag    = $settings['assign_gvcn_flag_salute']   ?? 0;
                             $assignMeeting = $settings['assign_gvcn_class_meeting'] ?? 0;
                             $gvcnName      = $classroom->homeroomTeacher?->name ?? '';
                         @endphp
 
                         @for($p=1; $p<=10; $p++)
+                        {{-- Dòng phân cách giữa Ca Sáng và Ca Chiều --}}
                         @if($p == 6)
                         <div class="schedule-grid bg-slate-100/80 border-y border-slate-200 relative overflow-hidden">
-                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjBMMjAgMEgxNkwwIDE2djRaTTIwIDE2djRMMTYgMjBMMjAgMTZ6IiBmaWxsPSIjZTFlNWU5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-[0.1]"></div>
+                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAyIiBoZWlnaHQ9IjIwMiI...')] opacity-[0.1]"></div>
                             <div class="p-2 border-r border-slate-200 relative z-10"></div>
                             <div class="col-span-6 flex items-center justify-center h-8 relative z-10">
                                 <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] bg-white/80 px-4 rounded-full shadow-sm">Nghỉ trưa / Đổi ca</span>
@@ -255,6 +263,7 @@
                         @endphp
 
                         <div class="schedule-grid group hover:bg-slate-50/50 transition-colors {{ $rowOpacity }}">
+                            {{-- Cột hiển thị số tiết --}}
                             <div class="p-2 flex flex-col items-center justify-center border-r border-slate-200 {{ $isCurrentShift ? 'bg-white' : 'bg-slate-100/50' }} group-hover:bg-slate-50 transition-colors">
                                 <span class="text-[10px] font-black {{ $isCurrentShift ? 'text-primary' : 'text-slate-400' }}">TIẾT {{ $p }}</span>
                             </div>
@@ -266,11 +275,8 @@
                                     $isFixed        = $isFlagSalute || $isClassMeeting;
                                     $fixedLabel     = $isFlagSalute ? 'CHÀO CỜ' : 'SINH HOẠT';
                                     
-                                    // O(1) Lookup - Toàn bộ N+1 và loop in loop đã được triệt tiêu ở Controller
                                     $current = $schedules["{$d}-{$p}"] ?? null;
-                                    
-                                    // $assignFlag, $assignMeeting, $gvcnName đã được khai báo bên ngoài vòng lặp
-                                    $showGvcn       = ($isFlagSalute && $assignFlag) || ($isClassMeeting && $assignMeeting);
+                                    $showGvcn = ($isFlagSalute && $assignFlag) || ($isClassMeeting && $assignMeeting);
 
                                     $fixedBg     = $isFlagSalute ? 'bg-rose-50 border-rose-200'       : 'bg-emerald-50 border-emerald-200';
                                     $fixedText   = $isFlagSalute ? 'text-rose-600'                    : 'text-emerald-600';
@@ -279,19 +285,20 @@
                                 
                                 <div class="p-1.5 border-r last:border-r-0 border-slate-200 h-[85px] flex items-center justify-center relative bg-white">
                                     @if($isFixed)
-                                        <div class="w-full h-full rounded-xl flex flex-col items-center justify-center border {{ $fixedBg }} pointer-events-none select-none relative overflow-hidden" 
-                                             data-day="{{ $d }}" data-period="{{ $p }}">
-                                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMjBMMjAgMEgxNkwwIDE2djRaTTIwIDE2djRMMTYgMjBMMjAgMTZ6IiBmaWxsPSIjZTFlNWU5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-[0.03]"></div>
+                                        {{-- Ô cố định (Chào cờ, Sinh hoạt) - Không được kéo thả --}}
+                                        <div class="w-full h-full rounded-xl flex flex-col items-center justify-center border {{ $fixedBg }} pointer-events-none select-none relative overflow-hidden">
                                             <span class="relative z-10 text-[11px] font-black tracking-widest {{ $fixedText }}">{{ $fixedLabel }}</span>
                                             @if($showGvcn && !empty($gvcnName))
-                                                <span class="relative z-10 text-[9px] font-bold mt-1 px-2 py-0.5 truncate max-w-[95%] rounded {{ $fixedGvcnBg }}" title="{{ $gvcnName }}">{{ $gvcnName }}</span>
+                                                <span class="relative z-10 text-[9px] font-bold mt-1 px-2 py-0.5 truncate max-w-[95%] rounded {{ $fixedGvcnBg }}">{{ $gvcnName }}</span>
                                             @endif
                                         </div>
                                     @else
+                                        {{-- Ô thả (Drop Zone) --}}
                                         <div class="drop-zone w-full h-full rounded-xl flex items-center justify-center overflow-hidden transition-all border-2 border-dashed border-slate-200 hover:border-primary hover:bg-blue-50/20 cursor-pointer relative" 
                                              data-day="{{ $d }}" data-period="{{ $p }}">
                                             
                                             @if($current)
+                                                {{-- Môn học đã được xếp và hiển thị trong lưới --}}
                                                 <div class="matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 transition-all overflow-hidden" 
                                                      data-id="{{ $current->assignment_id }}"
                                                      data-teacher-id="{{ $current->assignment->teacher_id }}"
@@ -309,9 +316,8 @@
                                                         <span class="text-[8px] font-semibold text-slate-600 text-center leading-tight whitespace-normal break-words w-full block mt-0.5" title="{{ $current->assignment->teacher->name }}">
                                                             {{ $current->assignment->teacher->name }}
                                                         </span>
-                                                        
                                                         @if($current->room_id)
-                                                            <span class="text-[7px] font-bold text-orange-700 bg-orange-100 px-1 rounded mt-0.5 max-w-[95%] whitespace-normal break-words block room-tag" title="P: {{ $current->room->name }}">
+                                                            <span class="text-[7px] font-bold text-orange-700 bg-orange-100 px-1 rounded mt-0.5 max-w-[95%] whitespace-normal break-words block room-tag">
                                                                 P: {{ $current->room->name }}
                                                             </span>
                                                         @endif
@@ -328,6 +334,7 @@
                 </div>
             </div>
             
+            {{-- CHÚ GIẢI (Legend) --}}
             <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-500 font-medium shrink-0">
                 <div class="flex items-center gap-5">
                     <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-slate-100 border border-slate-300"></span> Ô trống</span>
@@ -340,6 +347,7 @@
     </div>
 </div>
 
+{{-- Khởi tạo dữ liệu cho JS thông qua Global Object window.ScheduleData --}}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
     window.ScheduleData = {

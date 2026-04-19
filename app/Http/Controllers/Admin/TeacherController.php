@@ -13,6 +13,11 @@ use Illuminate\Http\Request;
 
 class TeacherController extends Controller
 {
+    /**
+     * Danh sách giáo viên kèm theo tổng số tiết dạy đã phân công.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         $teachers = Teacher::with(['assignments.classroom', 'assignments.subject'])
@@ -39,7 +44,12 @@ class TeacherController extends Controller
         return view('admin.teachers.index', compact('groupedTeachers'));
     }
 
-    // Xử lý xóa nhiều qua checkbox
+    /**
+     * Xóa hàng loạt giáo viên qua ID.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function bulkDelete(Request $request)
     {
         $ids = $request->input('ids');
@@ -50,6 +60,11 @@ class TeacherController extends Controller
         return back()->with('error', 'Vui lòng chọn ít nhất 1 giáo viên!');
     }
 
+    /**
+     * Hiển thị form tạo giáo viên mới.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function create()
     {
         return view('admin.teachers.create', [
@@ -58,6 +73,12 @@ class TeacherController extends Controller
         ]);
     }
 
+    /**
+     * Lưu thông tin giáo viên mới vào cơ sở dữ liệu.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -77,6 +98,12 @@ class TeacherController extends Controller
         return redirect()->route('teachers.index')->with('success', 'Đã thêm giáo viên thành công!');
     }
 
+    /**
+     * Hiển thị form chỉnh sửa thông tin giáo viên.
+     * 
+     * @param Teacher $teacher
+     * @return \Illuminate\View\View
+     */
     public function edit(Teacher $teacher)
     {
         return view('admin.teachers.edit', [
@@ -86,6 +113,13 @@ class TeacherController extends Controller
         ]);
     }
 
+    /**
+     * Cập nhật thông tin giáo viên.
+     * 
+     * @param Request $request
+     * @param Teacher $teacher
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, Teacher $teacher)
     {
         $data = $request->validate([
@@ -106,12 +140,24 @@ class TeacherController extends Controller
             ->with('success', 'Đã cập nhật hồ sơ giáo viên thành công!');
     }
 
+    /**
+     * Xóa một giáo viên khỏi hệ thống.
+     * 
+     * @param Teacher $teacher
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy(Teacher $teacher)
     {
         $teacher->delete();
         return back()->with('success', 'Đã xóa giáo viên!');
     }
 
+    /**
+     * Nhập dữ liệu giáo viên hàng loạt từ JSON.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function import(Request $request)
     {
         $request->validate(['import_data' => 'required|string|max:500000']);
@@ -138,6 +184,12 @@ class TeacherController extends Controller
         return back()->with('success', "🎉 Đã import thành công $count Giáo viên!");
     }
 
+    /**
+     * Nhập dữ liệu phân công giảng dạy hàng loạt từ JSON.
+     * 
+     * @param ImportAssignmentRequest $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function importAssignments(ImportAssignmentRequest $request)
     {
         $data = json_decode($request->import_data, true);

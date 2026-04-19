@@ -8,11 +8,22 @@ use Illuminate\Http\Request;
 
 class RoomTypeController extends Controller
 {
+    /**
+     * Hiển thị form tạo loại phòng học mới.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function create()
     {
         return view('admin.room_types.create');
     }
 
+    /**
+     * Lưu thông tin loại phòng học mới vào cơ sở dữ liệu.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request) 
     {
         $data = $request->validate([
@@ -25,11 +36,24 @@ class RoomTypeController extends Controller
         return redirect()->route('rooms.index')->with('success', 'Đã thêm loại phòng mới thành công!');
     }
 
+    /**
+     * Hiển thị form chỉnh sửa thông tin loại phòng học.
+     * 
+     * @param RoomType $roomType
+     * @return \Illuminate\View\View
+     */
     public function edit(RoomType $roomType) 
     {
         return view('admin.room_types.edit', compact('roomType'));
     }
 
+    /**
+     * Cập nhật thông tin loại phòng học.
+     * 
+     * @param Request $request
+     * @param RoomType $roomType
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, RoomType $roomType) 
     {
         $data = $request->validate([
@@ -40,6 +64,12 @@ class RoomTypeController extends Controller
         return redirect()->route('rooms.index')->with('success', 'Đã cập nhật thông tin loại phòng!');
     }
 
+    /**
+     * Xóa một loại phòng học khỏi hệ thống.
+     * 
+     * @param RoomType $roomType
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy(RoomType $roomType) 
     {
         if ($roomType->rooms()->count() > 0) {
@@ -49,7 +79,12 @@ class RoomTypeController extends Controller
         return redirect()->route('rooms.index')->with('success', 'Đã xóa loại phòng thành công!');
     }
 
-    // TÍNH NĂNG MỚI: XÓA NHIỀU LOẠI PHÒNG
+    /**
+     * Xóa hàng loạt loại phòng học qua ID.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function bulkDelete(Request $request) {
         $ids = $request->input('ids');
         if ($ids && is_array($ids)) {

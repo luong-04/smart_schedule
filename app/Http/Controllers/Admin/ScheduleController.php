@@ -19,6 +19,12 @@ use Illuminate\Support\Carbon;
 
 class ScheduleController extends Controller
 {
+    /**
+     * Khởi tạo Controller với các dịch vụ bổ trợ.
+     * 
+     * @param ScheduleValidationService $validator Dịch vụ kiểm tra tính hợp lệ của thời khóa biểu.
+     * @param ScheduleDataService $dataService Dịch vụ cung cấp dữ liệu cho thời khóa biểu.
+     */
     public function __construct(
         private ScheduleValidationService $validator,
         private ScheduleDataService $dataService
@@ -31,6 +37,11 @@ class ScheduleController extends Controller
 
     private static ?string $cachedScheduleName = null;
 
+    /**
+     * Lấy tên bản thời khóa biểu hiện tại (được cấu hình trong cài đặt hoặc lấy bản mới nhất).
+     * 
+     * @return string Tên bản thời khóa biểu.
+     */
     private function getScheduleName(): string
     {
         if (self::$cachedScheduleName) {
@@ -61,6 +72,13 @@ class ScheduleController extends Controller
         return self::$cachedScheduleName = $builtName;
     }
 
+    /**
+     * Lấy các biến cấu hình buổi học (Chào cờ, Sinh hoạt lớp) dựa trên buổi của lớp học.
+     * 
+     * @param Classroom $classroom Đối tượng lớp học.
+     * @param array $settings Mảng các cài đặt hệ thống.
+     * @return array Mảng các biến cấu hình buổi học.
+     */
     private function getShiftVars(Classroom $classroom, array $settings): array
     {
         $shiftStr = strtolower($classroom->shift ?? 'morning');
@@ -78,6 +96,11 @@ class ScheduleController extends Controller
     // ACTIONS
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Hiển thị trang dashboard của quản trị viên với các số liệu thống kê.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function dashboard()
     {
         $scheduleName = $this->getScheduleName();
@@ -116,6 +139,12 @@ class ScheduleController extends Controller
         return view('admin.dashboard', compact('stats', 'recentSchedules', 'scheduledCount'));
     }
 
+    /**
+     * Hiển thị trang lập thời khóa biểu (Ma trận) cho một lớp học cụ thể.
+     * 
+     * @param Request $request
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function index(Request $request)
     {
         $scheduleName = $this->getScheduleName();
@@ -196,6 +225,12 @@ class ScheduleController extends Controller
         ));
     }
 
+    /**
+     * Lưu thông tin thời khóa biểu của một lớp cho một phiên bản (ngày áp dụng).
+     * 
+     * @param StoreScheduleRequest $request Request chứa dữ liệu thời khóa biểu.
+     * @return \Illuminate\Http\JsonResponse Kết quả lưu dạng JSON.
+     */
     public function save(StoreScheduleRequest $request)
     {
         $scheduleName = $this->getScheduleName();
@@ -322,6 +357,13 @@ class ScheduleController extends Controller
         ]);
     }
 
+    /**
+     * Hiển thị danh sách tổng hợp thời khóa biểu của toàn trường.
+     * Tối ưu hóa tải dữ liệu lớn bằng cách pre-aggregate (tổng hợp trước).
+     * 
+     * @param Request $request
+     * @return \Illuminate\View\View
+     */
     public function list(Request $request)
     {
         $scheduleName = $this->getScheduleName();
@@ -399,6 +441,13 @@ class ScheduleController extends Controller
         ));
     }
 
+    /**
+     * Xem chi tiết thời khóa biểu của một lớp dưới dạng bảng tĩnh (read-only).
+     * 
+     * @param Request $request
+     * @param int $class_id ID của lớp học.
+     * @return \Illuminate\View\View
+     */
     public function show(Request $request, $class_id)
     {
         $scheduleName = $this->getScheduleName();
@@ -432,6 +481,12 @@ class ScheduleController extends Controller
         return view('admin.schedules.show', compact('classroom', 'schedules', 'settings', 'appliesFrom', 'appliesTo'));
     }
 
+    /**
+     * Tạo dữ liệu in ấn cho tất cả các lớp (tái sử dụng logic của hàm list).
+     * 
+     * @param Request $request
+     * @return \Illuminate\View\View
+     */
     public function printAll(Request $request)
     {
         // Re-use logic từ list() cho printAll để đảm bảo hiệu suất và đồng bộ

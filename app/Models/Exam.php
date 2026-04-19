@@ -13,12 +13,22 @@ class Exam extends Model
     protected $guarded = [];
 
     // Quan hệ: Một kỳ thi có nhiều Giám thị import
+    /**
+     * Một kỳ thi có nhiều giám thị tham gia.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function proctors()
     {
         return $this->hasMany(ExamProctor::class);
     }
 
     // Quan hệ: Một kỳ thi có nhiều Bản phân công
+    /**
+     * Một kỳ thi có nhiều bản ghi phân công giám thị.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function assignments()
     {
         return $this->hasMany(ProctorAssignment::class);

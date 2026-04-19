@@ -39,21 +39,29 @@ class Classroom extends Model
     ];
 
     /**
-     * Lấy block name với fallback an toàn (tránh null)
+     * Truy xuất tên tổ hợp (block) của lớp học. Mặc định là 'Cơ bản' nếu để trống.
+     * 
+     * @return string
      */
     public function getBlockNameAttribute(): string
     {
         return $this->block ?? self::BLOCK_CO_BAN;
     }
 
-    // Một lớp có nhiều phân công giảng dạy
+    /**
+     * Một lớp học có nhiều bản ghi phân công giảng dạy.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function assignments()
     {
         return $this->hasMany(Assignment::class, 'class_id');
     }
 
     /**
-     * Quan hệ tới GVCN thông qua ID chuẩn
+     * Lấy thông tin Giáo viên chủ nhiệm của lớp.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function homeroomTeacher()
     {

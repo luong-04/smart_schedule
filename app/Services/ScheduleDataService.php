@@ -12,7 +12,12 @@ use Illuminate\Support\Collection;
 class ScheduleDataService
 {
     /**
-     * Lấy các slot đã bận của giáo viên và phòng học từ lịch các lớp khác.
+     * Lấy các slot đã bận của giáo viên và phòng học từ lịch các lớp khác trong cùng một bản thời khóa biểu và ngày áp dụng.
+     * 
+     * @param string $scheduleName Tên bản thời khóa biểu.
+     * @param int $selectedClassId ID lớp học đang xếp (để loại trừ).
+     * @param string $appliesFrom Ngày áp dụng.
+     * @return array Mảng chứa các slot bận của giáo viên và phòng học.
      */
     public function getBusySlots(string $scheduleName, int $selectedClassId, string $appliesFrom): array
     {
@@ -52,7 +57,12 @@ class ScheduleDataService
     }
 
     /**
-     * Lấy số lượng tiết đã sử dụng cho giáo viên và các môn học.
+     * Lấy số lượng tiết đã sử dụng của giáo viên và các môn học trong bản thời khóa biểu cụ thể.
+     * 
+     * @param string $scheduleName Tên bản thời khóa biểu.
+     * @param Collection $allAssignments Danh sách các phân công giảng dạy.
+     * @param string $appliesFrom Ngày áp dụng.
+     * @return array [teacherUsedCounts, assignmentUsedCounts]
      */
     public function getUsedCounts(string $scheduleName, Collection $allAssignments, string $appliesFrom): array
     {
@@ -76,7 +86,13 @@ class ScheduleDataService
     }
 
     /**
-     * Xây dựng danh sách các môn học hợp lệ kèm theo kiểm tra số tiết.
+     * Xây dựng danh sách các phân công giảng dạy hợp lệ, tính toán số tiết còn lại dựa trên định mức và các ràng buộc.
+     * 
+     * @param Collection $allAssignments Danh sách phân công.
+     * @param array $curriculums Định mức tiết học của từng môn.
+     * @param array $counts Số tiết đã sử dụng.
+     * @param array $settings Cài đặt hệ thống.
+     * @return Collection Danh sách phân công đã được tính toán số tiết còn lại.
      */
     public function buildValidAssignments(Collection $allAssignments, array $curriculums, array $counts, array $settings): Collection
     {

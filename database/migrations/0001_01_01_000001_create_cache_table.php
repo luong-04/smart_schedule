@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Bảng lưu trữ Cache hệ thống
         Schema::create('cache', function (Blueprint $table) {
-            $table->string('key')->primary();
-            $table->mediumText('value');
-            $table->integer('expiration')->index();
+            $table->string('key')->primary(); // Khóa cache
+            $table->mediumText('value'); // Giá trị cache
+            $table->integer('expiration')->index(); // Thời gian hết hạn
         });
 
+        // Bảng lưu trữ các khóa lock (chống race condition khi ghi cache)
         Schema::create('cache_locks', function (Blueprint $table) {
             $table->string('key')->primary();
             $table->string('owner');

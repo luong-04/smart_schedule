@@ -1,9 +1,12 @@
 @extends('layouts.admin')
+
 @section('title', 'Danh mục Giáo viên')
 
 @section('content')
+{{-- Khởi tạo Alpine.js để quản lý tìm kiếm và lựa chọn hàng loạt --}}
 <div x-data="{ searchQuery: '', selectedTeachers: [] }" class="space-y-6">
     
+    {{-- Form ẩn để thực hiện xóa hàng loạt (Bulk Delete) --}}
     <form action="{{ route('teachers.bulkDelete') }}" method="POST" id="bulkDeleteForm" class="hidden" hx-boost="false">
         @csrf @method('DELETE')
         <template x-for="id in selectedTeachers" :key="id">
@@ -11,10 +14,10 @@
         </template>
     </form>
 
-    {{-- ===== BẢNG LỖI IMPORT CHI TIẾT (thay thế flash message che màn hình) ===== --}}
+    {{-- Hiển thị thông báo khi có lỗi import dữ liệu từ Excel --}}
     <x-admin.import-alert />
-    {{-- ===== END BẢNG LỖI ===== --}}
 
+    {{-- THANH CÔNG CỤ: Tìm kiếm, Import và Thêm mới --}}
     <x-admin.card class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
             <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Danh sách cán bộ giảng dạy</h3>
@@ -22,6 +25,7 @@
         </div>
         
         <div class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+            {{-- Tìm kiếm nhanh theo tên hoặc mã giáo viên --}}
             <div class="relative w-full sm:w-72 lg:w-80">
                 <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                 <input x-model="searchQuery" type="text" placeholder="Tìm tên hoặc mã GV..." 
@@ -31,6 +35,7 @@
                 </button>
             </div>
             
+            {{-- Nút xóa hàng loạt (chỉ hiện khi có chọn giáo viên) --}}
             <button x-show="selectedTeachers.length > 0" 
                     @click="if(confirm('CẢNH BÁO: Bạn sắp xóa ' + selectedTeachers.length + ' giáo viên. Toàn bộ lịch dạy của họ cũng sẽ bị xóa. Bạn có chắc chắn không?')) document.getElementById('bulkDeleteForm').submit()"
                     x-transition
@@ -38,6 +43,7 @@
                 <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Xóa (<span x-text="selectedTeachers.length"></span>)
             </button>
 
+            {{-- Import Giáo viên từ Excel --}}
             <form action="{{ route('teachers.import') }}" method="POST" id="importFormTeachers" class="hidden" hx-boost="false">
                 @csrf <input type="hidden" name="import_data" id="importDataTeachers">
             </form>
@@ -46,6 +52,7 @@
                 <span class="material-symbols-outlined text-[16px]">upload_file</span> Import GV
             </button>
 
+            {{-- Import Phân công dạy (Assignment) từ Excel --}}
             <form action="{{ route('assignments.import') }}" method="POST" id="importFormAssignments" class="hidden" hx-boost="false">
                 @csrf <input type="hidden" name="import_data" id="importDataAssignments">
             </form>
@@ -54,20 +61,23 @@
                 <span class="material-symbols-outlined text-[16px]">assignment_turned_in</span> Import Phân Công
             </button>
 
-
+            {{-- Nút Thêm mới giáo viên --}}
             <a href="{{ route('teachers.create') }}" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all shrink-0">
                 <span class="material-symbols-outlined text-[16px]">person_add</span> Thêm giáo viên
             </a>
         </div>
     </x-admin.card>
 
+    {{-- DANH SÁCH GIÁO VIÊN THEO TỔ CHUYÊN MÔN --}}
     @foreach($groupedTeachers as $department => $teachers)
     <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+        {{-- Tiêu đề Tổ --}}
         <div class="p-6 bg-slate-50/50 border-b border-slate-100 flex items-center gap-3">
             <span class="w-1.5 h-6 bg-blue-600 rounded-full"></span>
             <h3 class="text-xs font-black text-slate-700 uppercase tracking-widest">{{ $department }} <span class="text-slate-400 font-bold">({{ $teachers->count() }} GV)</span></h3>
         </div>
 
+        {{-- Bảng danh sách --}}
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead class="bg-white text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
@@ -76,6 +86,7 @@
                             $allIdsJson = $teachers->pluck('id')->toJson();
                         @endphp
                         <th class="px-6 py-5 w-12 text-center border-r border-slate-50">
+                            {{-- Checkbox chọn tất cả giáo viên trong tổ --}}
                             <input type="checkbox" 
                                 @change="
                                     let allIds = {{ $allIdsJson }}.map(id => String(id));
@@ -96,6 +107,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-50 text-sm">
                     @forelse($teachers as $t)
+                    {{-- Dòng giáo viên với tính năng highlight khi chọn --}}
                     <tr id="teacher-{{ $t->id }}" x-show="searchQuery === '' || `{{ $t->name }}`.toLowerCase().includes(searchQuery.toLowerCase()) || `{{ $t->code }}`.toLowerCase().includes(searchQuery.toLowerCase())" 
                         class="hover:bg-slate-50 transition-all group"
                         :class="selectedTeachers.includes('{{ $t->id }}') ? 'bg-blue-50/40' : ''">
@@ -116,16 +128,19 @@
                                 $color = $percent > 100 ? 'text-red-600 border-red-200 bg-red-50' : 'text-emerald-600 border-emerald-200 bg-emerald-50';
                             @endphp
                             <div class="flex items-center justify-center gap-2">
+                                {{-- Số lớp giáo viên đang đảm nhận --}}
                                 <span title="Số lớp đang dạy" class="bg-blue-50 text-blue-600 px-2 py-1 rounded-lg font-black text-[10px] uppercase border border-blue-100 flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[12px]">school</span> {{ $t->assignments->count() ?? 0 }} Lớp</span>
+                                {{-- Tiến độ xếp tiết dựa trên định mức hàng tuần --}}
                                 <span title="Số tiết đã xếp trên tổng định mức" class="{{ $color }} px-2 py-1 rounded-lg font-black text-[10px] uppercase border flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[12px]">history_edu</span> {{ $t->total_assigned_slots }}/{{ $t->max_slots_week }} Tiết</span>
                             </div>
                         </td>
                         
                         <td class="px-6 py-3 text-center bg-inherit">
+                            {{-- Các ngày giáo viên đăng ký nghỉ cố định --}}
                             <div class="flex justify-center gap-1">
                                 @if($t->off_days)
                                     @foreach($t->off_days as $day)
-                                        <span class="size-5 rounded-full bg-red-50 text-red-600 border border-red-100 flex items-center justify-center text-[8px] font-black shadow-sm">T{{ $day }}</span>
+                                        <span class="size-5 rounded-full bg-red-50 text-red-600 border border-red-100 flex items-center justify-center text-[8px] font-black shadow-sm" title="Nghỉ Thứ {{ $day }}">T{{ $day }}</span>
                                     @endforeach
                                 @else
                                     <span class="text-[9px] font-bold text-slate-300 uppercase italic">Chưa đăng ký</span>
@@ -133,6 +148,7 @@
                             </div>
                         </td>
                         
+                        {{-- Cột hành động (Sticky bên phải) --}}
                         <td class="px-6 py-3 text-right whitespace-nowrap sticky right-0 bg-white group-hover:bg-slate-50 transition-colors shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.02)] border-l border-slate-50">
                             <div class="flex justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                 <a href="{{ route('teachers.edit', $t->id) }}" class="flex items-center justify-center w-8 h-8 bg-slate-50 border border-slate-200 rounded-lg text-blue-500 hover:bg-blue-600 hover:text-white border-transparent transition-all shadow-sm" title="Sửa hồ sơ">
@@ -152,7 +168,7 @@
                     @empty
                     <tr>
                         <td colspan="5" class="px-8 py-20 text-center">
-                            <p class="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy dữ liệu</p>
+                            <p class="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy dữ liệu giáo viên trong tổ này</p>
                         </td>
                     </tr>
                     @endforelse

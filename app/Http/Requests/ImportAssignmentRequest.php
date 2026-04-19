@@ -10,11 +10,21 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class ImportAssignmentRequest extends FormRequest
 {
+    /**
+     * Kiểm tra quyền của người dùng khi thực hiện yêu cầu này.
+     * 
+     * @return bool
+     */
     public function authorize(): bool
     {
         return $this->user()?->can('quan_ly_giao_vien') ?? false;
     }
 
+    /**
+     * Định nghĩa các quy tắc kiểm tra dữ liệu đầu vào.
+     * 
+     * @return array
+     */
     public function rules(): array
     {
         return [
@@ -22,6 +32,11 @@ class ImportAssignmentRequest extends FormRequest
         ];
     }
 
+    /**
+     * Các thông báo lỗi tùy chỉnh cho từng quy tắc.
+     * 
+     * @return array
+     */
     public function messages(): array
     {
         return [

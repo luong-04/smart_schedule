@@ -8,12 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Tạo bảng thông tin kỳ thi (Dùng cho module phân công giám thị)
         Schema::create('exams', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->index();
-            $table->date('start_date');
-            $table->integer('total_days');
-            $table->integer('rooms_per_day');
+            $table->string('name')->index(); // Tên kỳ thi
+            $table->date('start_date'); // Ngày bắt đầu
+            $table->integer('total_days'); // Tổng số ngày thi
+            $table->integer('rooms_per_day'); // Số phòng thi mỗi ngày
             $table->timestamps();
         });
     }

@@ -8,11 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Tạo bảng môn học
         Schema::create('subjects', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->index();
-            $table->enum('type', ['theory', 'practice'])->default('theory');
-            $table->unsignedBigInteger('room_type_id')->nullable();
+            $table->string('name')->index(); // Tên môn học
+            $table->enum('type', ['theory', 'practice'])->default('theory'); // Loại môn (Lý thuyết/Thực hành)
+            $table->unsignedBigInteger('room_type_id')->nullable(); // Loại phòng yêu cầu (nếu thực hành)
             $table->timestamps();
             $table->softDeletes();
         });

@@ -1,11 +1,15 @@
 @extends('layouts.admin')
+
 @section('title', 'Danh sách Thời khóa biểu')
 
 @section('content')
+{{-- Nạp thư viện hỗ trợ xuất PDF nếu cần (Hiện tại đang dùng giải pháp In trình duyệt tối ưu hơn) --}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-
 <script>
+    /**
+     * Hàm hỗ trợ loại bỏ dấu Tiếng Việt để tìm kiếm không dấu hiệu quả.
+     */
     function removeVietnameseTones(str) {
         str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
         str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
@@ -25,14 +29,15 @@
     }
 </script>
 
+{{-- Container chính sử dụng Alpine.js để quản lý trạng thái giao diện --}}
 <div x-data="{ 
-    viewMode: 'class', 
-    activeGrade: 10, 
-    activeBlock: 'all', 
-    expandedClass: null, 
-    expandedTeacher: null, 
-    searchTeacher: '',
-    matchTeacher(name) {
+    viewMode: 'class',           // Chế độ xem: 'class' (Lớp) hoặc 'teacher' (Giáo viên)
+    activeGrade: 10,             // Khối lớp đang hiển thị (10, 11, 12)
+    activeBlock: 'all',          // Tổ hợp môn (KHTN, KHXH...)
+    expandedClass: null,         // Lớp đang được mở rộng chi tiết
+    expandedTeacher: null,       // Giáo viên đang được mở rộng chi tiết
+    searchTeacher: '',           // Từ khóa tìm kiếm giáo viên
+    matchTeacher(name) {         // Hàm filter giáo viên theo tên (không dấu)
         if (!this.searchTeacher) return true;
         let s = removeVietnameseTones(this.searchTeacher);
         let n = removeVietnameseTones(name);
@@ -40,15 +45,14 @@
     }
 }" class="space-y-6 max-w-7xl mx-auto">
     
-    <!-- Bộ chọn phiên bản TKB -->
+    {{-- PHẦN 1: BỘ CHỌN PHIÊN BẢN (VERSION PICKER) --}}
     <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm mb-6 no-print">
         <form action="{{ route('schedules.list') }}" method="GET" class="flex flex-wrap items-end gap-4">
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Chọn phiên bản TKB</label>
                 <div class="relative">
                     <select name="date" onchange="this.form.submit()" 
-                            style="-webkit-appearance: none !important; -moz-appearance: none !important; appearance: none !important; background-image: none !important;"
-                            class="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 outline-none bg-white text-sm font-bold text-slate-700 cursor-pointer">
+                            class="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 outline-none bg-white text-sm font-bold text-slate-700 cursor-pointer appearance-none">
                         @foreach($historyRanges as $range)
                             @php 
                                 $rangeStart = $range->applies_from->toDateString();
@@ -79,6 +83,7 @@
         </form>
     </div>
 
+    {{-- PHẦN 2: CHỌN CHẾ ĐỘ XEM (CLASS VS TEACHER) --}}
     <div class="flex gap-4 mb-6 no-print">
         <button @click="viewMode = 'class'" :class="viewMode === 'class' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'" class="px-8 py-3.5 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all border border-slate-100 flex items-center gap-2">
             <span class="material-symbols-outlined text-[18px]">meeting_room</span> Xem theo Lớp Học
@@ -88,7 +93,9 @@
         </button>
     </div>
 
+    {{-- PHẦN 3: HIỂN THỊ THEO LỚP HỌC --}}
     <div x-show="viewMode === 'class'" x-transition>
+        {{-- Bộ lọc Khối lớp --}}
         <div class="bg-white p-2 rounded-[2rem] border border-slate-100 flex gap-2 shadow-sm no-print mb-6">
             @foreach([10, 11, 12] as $grade)
             <button @click="activeGrade = {{ $grade }}; expandedClass = null" 
@@ -99,32 +106,21 @@
             @endforeach
         </div>
 
+        {{-- Bộ lọc Tổ hợp môn (Khối A, B...) --}}
         <div class="flex flex-wrap gap-2 mb-6 no-print">
-            <button @click="activeBlock = 'all'" 
-                    :class="activeBlock === 'all' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
+            @foreach(['all' => 'Tất cả Lớp', 'KHTN' => 'Tổ hợp KHTN', 'KHXH' => 'Tổ hợp KHXH', 'Cơ bản' => 'Cơ bản'] as $key => $label)
+            <button @click="activeBlock = '{{ $key }}'" 
+                    :class="activeBlock === '{{ $key }}' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
                     class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
-                Tất cả Lớp
+                {{ $label }}
             </button>
-            <button @click="activeBlock = 'KHTN'" 
-                    :class="activeBlock === 'KHTN' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
-                    class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
-                Tổ hợp KHTN
-            </button>
-            <button @click="activeBlock = 'KHXH'" 
-                    :class="activeBlock === 'KHXH' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
-                    class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
-                Tổ hợp KHXH
-            </button>
-            <button @click="activeBlock = 'Cơ bản'" 
-                    :class="activeBlock === 'Cơ bản' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'"
-                    class="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100">
-                Cơ bản
-            </button>
+            @endforeach
         </div>
 
         @foreach([10, 11, 12] as $grade)
         <div x-show="activeGrade === {{ $grade }}" class="space-y-4">
             
+            {{-- Tiêu đề khối & Nút xuất file hàng loạt --}}
             <div class="flex justify-between items-end px-6 mb-2 no-print">
                 <h2 class="text-xl font-black text-slate-800 uppercase tracking-tight">Khối {{ $grade }}</h2>
                 <div class="flex gap-2">
@@ -137,10 +133,12 @@
                 </div>
             </div>
 
+            {{-- Danh sách các lớp trong khối --}}
             @php $classGroup = $groupedClasses->get($grade) ?? collect(); @endphp
             @forelse($classGroup as $class)
             <div x-show="activeBlock === 'all' || activeBlock === '{{ $class->block_name }}'" class="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:border-blue-300 transition-colors">
                 
+                {{-- Header lớp (Click để mở rộng TKB) --}}
                 <div @click="expandedClass = expandedClass === {{ $class->id }} ? null : {{ $class->id }}" 
                      class="p-5 flex justify-between items-center cursor-pointer bg-white hover:bg-blue-50/30 transition-colors no-print">
                     <div class="flex items-center gap-4">
@@ -153,6 +151,7 @@
                     <span class="material-symbols-outlined text-slate-400 transition-transform" :class="expandedClass === {{ $class->id }} ? 'rotate-180' : ''">expand_more</span>
                 </div>
 
+                {{-- Nút điều khiển xuất file cho từng lớp --}}
                 <div x-show="expandedClass === {{ $class->id }}" x-transition class="border-t border-slate-100 bg-[#f8f9fa] p-6 no-print">
                     <div class="flex justify-end gap-3 mb-6">
                         <button onclick="exportWord({{ $class->id }}, '{{ $class->name }}')" class="bg-blue-700 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-blue-800 shadow-lg shadow-blue-500/20">
@@ -164,7 +163,9 @@
                     </div>
                 </div>
 
+                {{-- VÙNG HIỂN THỊ TKB (Sẽ được dùng để in/xuất file) --}}
                 <div id="pdf-content-class-{{ $class->id }}" class="grade-{{ $grade }}-content bg-white p-6 md:p-10" :class="expandedClass === {{ $class->id }} ? '' : 'hidden print:block'">
+                    {{-- Header khi in (ẩn trên web, hiện khi xuất file) --}}
                     <div class="print-header-pdf" style="text-align: center; border-bottom: 1.5px solid black; padding-bottom: 8px; margin-bottom: 12px; display: none;">
                         <h2 style="font-size: 13px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $settings['school_name'] ?? '' }}</h2>
                         <h1 style="font-size: 28px; font-weight: 900; color: #1d4ed8; margin: 2px 0; text-transform: uppercase;">THỜI KHÓA BIỂU</h1>
@@ -178,6 +179,7 @@
                         <p style="font-size: 13px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">GVCN: {{ $class->homeroomTeacher?->name ?? 'Chưa cập nhật' }}</p>
                     </div>
 
+                    {{-- Bảng thời khóa biểu --}}
                     <table style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
                         <thead>
                             <tr class="bg-slate-100" style="background-color: #f1f5f9;">
@@ -213,22 +215,11 @@
                                             @elseif($cell)
                                                 @php
                                                     $sName = $cell->assignment->subject->name;
+                                                    // Viết tắt tên môn cho gọn khi in
                                                     $abAbbreviations = [
-                                                        'Giáo dục thể chất' => 'GD Thể chất',
-                                                        'Giáo dục quốc phòng và an ninh' => 'GDQP-AN',
-                                                        'GD Kinh tế và Pháp luật' => 'GDKT-PL',
-                                                        'Hoạt động trải nghiệm, hướng nghiệp' => 'HĐTN-HN',
-                                                        'Nội dung giáo dục địa phương' => 'GD Địa phương',
-                                                        'Tiếng Anh' => 'T.Anh',
-                                                        'Ngữ văn' => 'Ngữ văn',
-                                                        'Toán học' => 'Toán-H',
-                                                        'Vật lí' => 'Vật lí',
-                                                        'Hóa học' => 'Hóa học',
-                                                        'Sinh học' => 'Sinh học',
-                                                        'Lịch sử' => 'Lịch sử',
-                                                        'Địa lí' => 'Địa lí',
-                                                        'Tin học' => 'Tin học',
-                                                        'Công nghệ' => 'Công nghệ'
+                                                        'Giáo dục thể chất' => 'GD Thể chất', 'Giáo dục quốc phòng và an ninh' => 'GDQP-AN',
+                                                        'GD Kinh tế và Pháp luật' => 'GDKT-PL', 'Hoạt động trải nghiệm, hướng nghiệp' => 'HĐTN-HN',
+                                                        'Nội dung giáo dục địa phương' => 'GD Địa phương', 'Tiếng Anh' => 'T.Anh'
                                                     ];
                                                     $displayName = $abAbbreviations[$sName] ?? $sName;
                                                     
@@ -251,7 +242,6 @@
                         </tbody>
                     </table>
                 </div>
-                <!-- Page break for printing multiple schedules -->
                 <div class="page-break"></div>
             </div>
             @empty
@@ -263,6 +253,7 @@
         @endforeach
     </div>
     
+    {{-- PHẦN 4: HIỂN THỊ THEO GIÁO VIÊN --}}
     <div x-show="viewMode === 'teacher'" x-transition x-cloak>
         <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm mb-6 no-print">
             <div class="relative">
@@ -296,11 +287,13 @@
                         </div>
                         <div>
                             <h3 class="text-sm font-black text-slate-800 uppercase">{{ $teacher->name }}</h3>
+                            <p class="text-[11px] text-slate-500 font-bold">Bộ môn: {{ $teacher->subject->name ?? 'N/A' }}</p>
                         </div>
                     </div>
                     <span class="material-symbols-outlined text-slate-400 transition-transform" :class="expandedTeacher === {{ $teacher->id }} ? 'rotate-180' : ''">expand_more</span>
                 </div>
 
+                {{-- Nút điều khiển xuất file cho từng giáo viên --}}
                 <div x-show="expandedTeacher === {{ $teacher->id }}" x-transition class="border-t border-slate-100 bg-[#f8f9fa] p-6 no-print">
                     <div class="flex justify-end gap-3 mb-6">
                         <button onclick="exportTeacherWord({{ $teacher->id }}, '{{ $teacher->name }}')" class="bg-blue-700 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-blue-800 shadow-lg shadow-blue-500/20">
@@ -313,7 +306,7 @@
                 </div>
 
                 <div id="pdf-content-teacher-{{ $teacher->id }}" class="teacher-content bg-white p-6 md:p-10" :class="expandedTeacher === {{ $teacher->id }} ? '' : 'hidden print:block'">
-                    
+                    {{-- Header khi in cho giáo viên --}}
                     <div class="print-header-pdf" style="text-align: center; border-bottom: 1.5px solid black; padding-bottom: 8px; margin-bottom: 12px; display: none;">
                         <h2 style="font-size: 13px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $settings['school_name'] ?? '' }}</h2>
                         <h1 style="font-size: 28px; font-weight: 900; color: #1d4ed8; margin: 2px 0; text-transform: uppercase;">THỜI KHÓA BIỂU GIÁO VIÊN</h1>
@@ -322,12 +315,10 @@
                             @if(isset($appliesFrom) && isset($appliesTo))
                                 | ÁP DỤNG: {{ \Carbon\Carbon::parse($appliesFrom)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($appliesTo)->format('d/m/Y') }}
                             @endif
-                            | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
                         </p>
-                        @php $homeroomClass = $homeroomMap->get($teacher->id); @endphp
-                        <p style="font-size: 13px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">MÔN: {{ $teacher->subject->name ?? '........' }} | TỔ: {{ $teacher->department ?? '........' }} {{ $homeroomClass ? '| GVCN LỚP: '.$homeroomClass->name : '' }}</p>
                     </div>
 
+                    {{-- Bảng TKB giáo viên --}}
                     <table style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
                         <thead>
                             <tr class="bg-slate-100" style="background-color: #f1f5f9;">
@@ -339,59 +330,44 @@
                         </thead>
                         <tbody>
                             @php
+                                $homeroomClass = $homeroomMap->get($teacher->id);
                                 if($homeroomClass) {
                                     $sh = strtolower($homeroomClass->shift ?? 'morning');
                                     $fDay = $settings[$sh.'_flag_day'] ?? 2;
                                     $fPer = $settings[$sh.'_flag_period'] ?? ($sh == 'morning' ? 1 : 10);
                                     $mDay = $settings[$sh.'_meeting_day'] ?? 7;
                                     $mPer = $settings[$sh.'_meeting_period'] ?? ($sh == 'morning' ? 5 : 10);
-                                } else {
-                                    $fDay = -1; $fPer = -1; $mDay = -1; $mPer = -1;
-                                }
+                                } else { $fDay = -1; $fPer = -1; $mDay = -1; $mPer = -1; }
                             @endphp
 
-                                @for($p=1; $p<=10; $p++)
-                                    @if($p == 6)
-                                    <tr style="height: 20px;"><td colspan="7" style="border: 1px solid black; background-color: #f8f9fa; text-align: center; font-size: 10px; font-weight: 900; text-transform: uppercase; font-style: italic;">Nghỉ trưa / Chuyển ca</td></tr>
-                                    @endif
-                                    <tr style="height: 48px;">
-                                        <td style="border: 1px solid black; text-align: center; font-weight: 900; font-size: 11px; background-color: #f8f9fa;">{{ $p }}</td>
-                                        @for($d=2; $d<=7; $d++)
-                                        @php
-                                            $isFixed = ($d == $fDay && $p == $fPer) || ($d == $mDay && $p == $mPer);
-                                            $fixedLabel = ($d == $fDay && $p == $fPer) ? 'CHÀO CỜ' : 'SINH HOẠT';
-                                            $cell = $teacherSchedules[$teacher->id][$d][$p] ?? null;
-                                        @endphp
-                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }}; height: 46px; overflow: hidden; padding: 1px;">
-                                            @if($isFixed && $homeroomClass)
-                                                <div style="line-height: 1.1;">
-                                                    <div style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</div>
-                                                    <div style="font-size: 10px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClass->name }}</div>
-                                                </div>
-                                            @elseif($cell)
-                                                @php
-                                                    $sName = $cell->assignment->subject->name;
-                                                    $abc = [
-                                                        'Giáo dục thể chất' => 'GD Thể chất',
-                                                        'Giáo dục quốc phòng và an ninh' => 'GDQP-AN',
-                                                        'GD Kinh tế và Pháp luật' => 'GDKT-PL',
-                                                        'Hoạt động trải nghiệm, hướng nghiệp' => 'HĐTN-HN',
-                                                        'Nội dung giáo dục địa phương' => 'GD Địa phương',
-                                                        'Tiếng Anh' => 'T.Anh',
-                                                        'Vật lí' => 'Vật lí', 'Hóa học' => 'Hóa học', 'Sinh học' => 'Sinh học',
-                                                        'Lịch sử' => 'Lịch sử', 'Địa lí' => 'Địa lí', 'Tin học' => 'Tin học', 'Công nghệ' => 'Công nghệ'
-                                                    ];
-                                                    $displayName = $abc[$sName] ?? $sName;
-                                                @endphp
-                                                <div style="line-height: 1.1; padding: 1px; height: 46px; display: block; overflow: hidden;">
-                                                    <div style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase; margin-bottom: 1px;">Lớp {{ $cell->assignment->classroom->name }}</div>
-                                                    <div style="font-size: 10px; font-weight: 700; color: #4b5563; margin-bottom: 0px;">{{ $displayName }}</div>
-                                                    @if($cell->room_id)
-                                                        <div style="font-size: 10px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</div>
-                                                    @endif
-                                                </div>
-                                            @endif
-                                        </td>
+                            @for($p=1; $p<=10; $p++)
+                                @if($p == 6)
+                                <tr style="height: 20px;"><td colspan="7" style="border: 1px solid black; background-color: #f8f9fa; text-align: center; font-size: 10px; font-weight: 900; text-transform: uppercase; font-style: italic;">Nghỉ trưa</td></tr>
+                                @endif
+                                <tr style="height: 48px;">
+                                    <td style="border: 1px solid black; text-align: center; font-weight: 900; font-size: 11px; background-color: #f8f9fa;">{{ $p }}</td>
+                                    @for($d=2; $d<=7; $d++)
+                                    @php
+                                        $isFixed = ($d == $fDay && $p == $fPer) || ($d == $mDay && $p == $mPer);
+                                        $fixedLabel = ($d == $fDay && $p == $fPer) ? 'CHÀO CỜ' : 'SINH HOẠT';
+                                        $cell = $teacherSchedules[$teacher->id][$d][$p] ?? null;
+                                    @endphp
+                                    <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }}; height: 46px; overflow: hidden; padding: 1px;">
+                                        @if($isFixed && $homeroomClass)
+                                            <div style="line-height: 1.1;">
+                                                <div style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</div>
+                                                <div style="font-size: 10px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClass->name }}</div>
+                                            </div>
+                                        @elseif($cell)
+                                            <div style="line-height: 1.1; padding: 1px; height: 46px; display: block; overflow: hidden;">
+                                                <div style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase; margin-bottom: 1px;">Lớp {{ $cell->assignment->classroom->name }}</div>
+                                                <div style="font-size: 10px; font-weight: 700; color: #4b5563;">{{ $cell->assignment->subject->name }}</div>
+                                                @if($cell->room_id)
+                                                    <div style="font-size: 10px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</div>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    </td>
                                     @endfor
                                 </tr>
                             @endfor
@@ -404,8 +380,11 @@
     </div>
 </div>
 
+{{-- LOGIC XUẤT FILE (WORD & NATIVE PRINT) --}}
 <script>
-    // --- FIX LỖI TẢI WORD GV ---
+    /**
+     * Xuất Word cho từng giáo viên
+     */
     function exportTeacherWord(teacherId, teacherName) {
         const element = document.getElementById(`pdf-content-teacher-${teacherId}`);
         if (!element) return alert("Không tìm thấy nội dung!");
@@ -419,6 +398,9 @@
         link.click();
     }
 
+    /**
+     * Xuất Word hàng loạt cho tất cả giáo viên
+     */
     function exportAllTeachersWord() {
         const container = document.createElement('div');
         document.querySelectorAll(`.teacher-content`).forEach((el, index) => {
@@ -444,6 +426,9 @@
         URL.revokeObjectURL(url);
     }
 
+    /**
+     * In hàng loạt tất cả giáo viên (Mở cửa sổ in của trình duyệt)
+     */
     function exportAllTeachersNative() {
         const classContents = document.querySelectorAll(`.teacher-content`);
         if (classContents.length === 0) return alert("Không tìm thấy dữ liệu giáo viên.");
@@ -454,36 +439,22 @@
             let clone = el.cloneNode(true);
             const header = clone.querySelector('.print-header-pdf');
             if (header) header.style.display = 'block';
-
             fullHtml += `<div style="${index < classContents.length - 1 ? 'page-break-after: always;' : ''} padding: 5mm; background:white;">${clone.innerHTML}</div>`;
         });
 
         newWindow.document.write(`
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>In Tất Cả Giáo Viên</title>
-                <script src="https://cdn.tailwindcss.com"><\/script>
-                <style>
-                    @page { size: A4 landscape; margin: 5mm; }
-                    body { background: white; -webkit-print-color-adjust: exact !important; font-family: 'Segoe UI', sans-serif; }
-                    .print-table th, .print-table td { border: 1px solid black !important; }
-                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                    .hidden { display: block !important; }
-                </style>
-            </head>
-            <body>${fullHtml}</body>
-            </html>
+            <html><head><meta charset="UTF-8"><title>In Tất Cả Giáo Viên</title>
+            <script src="https://cdn.tailwindcss.com"><\/script>
+            <style>@page { size: A4 landscape; margin: 5mm; } body { background: white; -webkit-print-color-adjust: exact !important; font-family: 'Segoe UI', sans-serif; }</style>
+            </head><body>${fullHtml}</body></html>
         `);
         newWindow.document.close();
-        setTimeout(() => {
-            newWindow.focus();
-            newWindow.print();
-            newWindow.close();
-        }, 1200);
+        setTimeout(() => { newWindow.focus(); newWindow.print(); newWindow.close(); }, 1200);
     }
 
-    // --- FIX LỖI TẢI WORD ---
+    /**
+     * Xuất Word cho một lớp cụ thể
+     */
     function exportWord(classId, className) {
         const element = document.getElementById(`pdf-content-class-${classId}`);
         if (!element) return alert("Không tìm thấy nội dung!");
@@ -504,6 +475,9 @@
         URL.revokeObjectURL(url);
     }
 
+    /**
+     * Xuất Word cho toàn bộ các lớp thuộc một khối
+     */
     function exportGradeWord(grade) {
         const classContents = document.querySelectorAll(`.grade-${grade}-content`);
         if (classContents.length === 0) return alert("Không tìm thấy dữ liệu khối " + grade);
@@ -513,11 +487,7 @@
             let clone = el.cloneNode(true);
             const header = clone.querySelector('.print-header-pdf');
             if (header) header.style.display = 'block';
-
-            combinedHtml += `
-                <div class="word-page">${clone.innerHTML}</div>
-                ${index < classContents.length - 1 ? '<br clear="all" style="mso-special-character:line-break; page-break-before:always">' : ''}
-            `;
+            combinedHtml += `<div class="word-page">${clone.innerHTML}</div>${index < classContents.length - 1 ? '<br clear="all" style="mso-special-character:line-break; page-break-before:always">' : ''}`;
         });
 
         const finalHtml = generateWordTemplate(combinedHtml);
@@ -532,6 +502,9 @@
         URL.revokeObjectURL(url);
     }
 
+    /**
+     * Template HTML chuẩn để MS Word nhận diện định dạng (Bao gồm hướng giấy ngang - Landscape)
+     */
     function generateWordTemplate(content) {
         return `
             <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -545,7 +518,9 @@
         `;
     }
 
-    // --- FIX LỖI TRANG TRẮNG KHI IN ---
+    /**
+     * In một phần nội dung cụ thể bằng hộp thoại in trình duyệt
+     */
     function exportNative(elementId) {
         const element = document.getElementById(elementId);
         let clone = element.cloneNode(true);
@@ -554,31 +529,23 @@
 
         const newWindow = window.open('', '_blank');
         newWindow.document.write(`
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>In Thời Khóa Biểu</title>
+            <html><head><meta charset="UTF-8"><title>In Thời Khóa Biểu</title>
                 <script src="https://cdn.tailwindcss.com"><\/script>
                 <style>
                     @page { size: A4 landscape; margin: 5mm !important; }
                     body { background: white; -webkit-print-color-adjust: exact !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
                     table { border-collapse: collapse; width: 100%; border: 1.5pt solid black !important; table-layout: fixed; }
                     th, td { border: 1.2pt solid black !important; padding: 2px; text-align: center; vertical-align: middle; }
-                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 </style>
-            </head>
-            <body><div style="width: 100%; max-width: 297mm; margin: 0 auto;">${clone.innerHTML}</div></body>
-            </html>
+            </head><body><div style="width: 100%; max-width: 297mm; margin: 0 auto;">${clone.innerHTML}</div></body></html>
         `);
         newWindow.document.close();
-        
-        setTimeout(() => {
-            newWindow.focus();
-            newWindow.print();
-            newWindow.close();
-        }, 1000);
+        setTimeout(() => { newWindow.focus(); newWindow.print(); newWindow.close(); }, 1000);
     }
 
+    /**
+     * In hàng loạt tất cả các lớp trong một khối
+     */
     function exportGradeNative(grade) {
         const classContents = document.querySelectorAll(`.grade-${grade}-content`);
         if (classContents.length === 0) return alert("Không tìm thấy dữ liệu khối " + grade);
@@ -589,33 +556,17 @@
             let clone = el.cloneNode(true);
             const header = clone.querySelector('.print-header-pdf');
             if (header) header.style.display = 'block';
-
             fullHtml += `<div style="${index < classContents.length - 1 ? 'page-break-after: always;' : ''} padding: 5mm; background:white;">${clone.innerHTML}</div>`;
         });
 
         newWindow.document.write(`
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>In Khối ${grade}</title>
-                <script src="https://cdn.tailwindcss.com"><\/script>
-                <style>
-                    @page { size: A4 landscape; margin: 5mm; }
-                    body { background: white; -webkit-print-color-adjust: exact !important; font-family: 'Segoe UI', sans-serif; }
-                    .print-table th, .print-table td { border: 1px solid black !important; }
-                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                    .hidden { display: block !important; }
-                </style>
-            </head>
-            <body>${fullHtml}</body>
-            </html>
+            <html><head><meta charset="UTF-8"><title>In Khối ${grade}</title>
+            <script src="https://cdn.tailwindcss.com"><\/script>
+            <style>@page { size: A4 landscape; margin: 5mm; } body { background: white; -webkit-print-color-adjust: exact !important; font-family: 'Segoe UI', sans-serif; } .print-table th, .print-table td { border: 1px solid black !important; }</style>
+            </head><body>${fullHtml}</body></html>
         `);
         newWindow.document.close();
-        setTimeout(() => {
-            newWindow.focus();
-            newWindow.print();
-            newWindow.close();
-        }, 1200);
+        setTimeout(() => { newWindow.focus(); newWindow.print(); newWindow.close(); }, 1200);
     }
 </script>
 @endsection

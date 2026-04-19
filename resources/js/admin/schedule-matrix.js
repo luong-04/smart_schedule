@@ -1,26 +1,31 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const MAX_CONSECUTIVE = window.ScheduleData.maxConsecutive;
-    const MAX_DAYS_PER_WEEK = window.ScheduleData.maxDaysPerWeek;
-    const CHECK_TEACHER_CONFLICT = window.ScheduleData.checkTeacherConflict;
-    const CHECK_ROOM_CONFLICT = window.ScheduleData.checkRoomConflict;
+    // Lấy các tham số cấu hình từ global window object (do server-side nạp vào)
+    const MAX_CONSECUTIVE = window.ScheduleData.maxConsecutive; // Số tiết liên tiếp tối đa cho phép
+    const MAX_DAYS_PER_WEEK = window.ScheduleData.maxDaysPerWeek; // Số ngày dạy tối đa trong tuần
+    const CHECK_TEACHER_CONFLICT = window.ScheduleData.checkTeacherConflict; // Cờ kiểm tra trùng lịch giáo viên
+    const CHECK_ROOM_CONFLICT = window.ScheduleData.checkRoomConflict; // Cờ kiểm tra trùng phòng học
 
-    const allRooms = window.ScheduleData.allRooms;
-    const teacherBusySlots = window.ScheduleData.teacherBusySlots;
-    const teacherOtherDays = window.ScheduleData.teacherOtherDays;
-    const roomBusySlots = window.ScheduleData.roomBusySlots;
+    const allRooms = window.ScheduleData.allRooms; // Danh sách toàn bộ phòng học chuyên dụng
+    const teacherBusySlots = window.ScheduleData.teacherBusySlots; // Các slot bận của giáo viên ở lớp khác
+    const teacherOtherDays = window.ScheduleData.teacherOtherDays; // Các ngày giáo viên đã có lịch ở lớp khác
+    const roomBusySlots = window.ScheduleData.roomBusySlots; // Các slot bận của phòng học ở lớp khác
 
-    let teacherSlots = {};
-    let subjectSlots = {};
-    let pendingItem = null; // Fix: Khai báo biến đang chờ xử lý phòng học
+    let teacherSlots = {}; // Theo dõi số tiết còn lại của từng giáo viên trong phiên này
+    let subjectSlots = {}; // Theo dõi số tiết còn lại của từng môn học (phân công)
+    let pendingItem = null; // Lưu trữ phần tử đang chờ xử lý chọn phòng học
     let pendingTargetDay = null;
     let pendingTargetPeriod = null;
 
     /**
-     * TÔ MÀU XUNG ĐỘT TRỰC TIẾP (Real-time Conflict Highlighting)
-     * Highlight các ô mà giáo viên hoặc phòng học đang bận ở lớp khác.
+     * TÔ MÀU XUNG ĐỘT THỜI GIAN THỰC (Real-time Conflict Highlighting)
+     * Đánh dấu đỏ các ô mà giáo viên hoặc phòng học đang truyền vào bận ở các lớp khác.
+     * 
+     * @param {number} teacherId ID Giáo viên
+     * @param {number|null} roomId ID Phòng học
+     * @param {boolean} active Trạng thái kích hoạt (bật/tắt highlight)
      */
     function updateConflictHighlights(teacherId, roomId, active) {
-        // Xóa highlight cũ
+        // Xóa highlight cũ trên toàn bộ lưới
         document.querySelectorAll('.drop-zone').forEach(zone => {
             zone.classList.remove('conflict-zone');
         });
@@ -35,13 +40,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const period = zone.dataset.period;
             const slotKey = `${day}-${period}`;
 
+            // Nếu slot này trùng với lịch bận của GV hoặc phòng học thì tô màu đỏ
             if (busySlots.includes(slotKey) || roomBusy.includes(slotKey)) {
                 zone.classList.add('conflict-zone');
             }
         });
     }
 
-    // Khởi tạo số tiết còn lại từ Sidebar
+    // Khởi tạo trạng thái số tiết từ Sidebar khi trang vừa nạp xong
     document.querySelectorAll('.sidebar-item').forEach(el => {
         let tid = el.dataset.teacherId;
         let asId = el.dataset.id;
@@ -54,6 +60,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    /**
+     * Cập nhật giao diện Sidebar (badges số tiết, trạng thái mờ đi khi hết tiết).
+     */
     function updateSidebarUI() {
         document.querySelectorAll('.sidebar-item').forEach(el => {
             let tid = el.dataset.teacherId;
@@ -81,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 mainBadge.className = `slot-badge text-xs font-black ${minSlots <= 0 ? 'text-rose-500' : 'text-emerald-500'}`;
             }
 
+            // Mờ item nếu không còn tiết để xếp
             if (tSlots <= 0 || sSlots <= 0) {
                 el.classList.add('opacity-50', 'bg-slate-50');
             } else {
@@ -89,24 +99,34 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * Gắn sự kiện Double-click để xóa môn học khỏi ma trận.
+     */
     function attachDoubleClickEvent(item) {
         if (!item) return;
         item.addEventListener('dblclick', function () {
             let asId = this.dataset.id;
             let tid = this.dataset.teacherId;
 
-            // Trả lại tiết cho cả phân công và giáo viên
+            // Hoàn lại số tiết cho cả môn học và giáo viên
             if (asId && subjectSlots[asId] !== undefined) subjectSlots[asId]++;
             if (tid && teacherSlots[tid] !== undefined) teacherSlots[tid]++;
 
-            // Xóa phần tử khỏi ma trận và cập nhật lại Sidebar ngay lập tức
-            this.remove();
-            updateSidebarUI();
+            this.remove(); // Xóa khỏi giao diện ma trận
+            updateSidebarUI(); // Cập nhật Sidebar ngay lập tức
         });
     }
 
+    // Gán sự kiện dblclick cho các item đã có sẵn trên ma trận (khi load trang)
     document.querySelectorAll('.matrix-item').forEach(item => { attachDoubleClickEvent(item); });
 
+    /**
+     * Tính số tiết dạy liên tiếp tối đa của một giáo viên trong cùng một ngày.
+     * 
+     * @param {number} teacherId 
+     * @param {number} day 
+     * @param {number} targetPeriod Tiết đang dự định xếp vào.
+     */
     function getConsecutiveSlotsCount(teacherId, day, targetPeriod) {
         let periods = [];
         document.querySelectorAll(`.drop-zone[data-day="${day}"]`).forEach(box => {
@@ -130,8 +150,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Tính tổng số ngày giáo viên này đã có lịch (trong ma trận + các lớp khác).
-     * Dùng để kiểm tra giới hạn MAX_DAYS_PER_WEEK.
+     * Tính tổng số ngày giáo viên này đã có lịch dạy trong tuần.
+     * Kiểm tra cả trong ma trận hiện tại và các lớp học khác đã xếp xong.
      */
     function getTeacherTotalDays(teacherId, targetDayToAdd) {
         let daysInMatrix = new Set();
@@ -153,6 +173,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return daysInMatrix.size;
     }
 
+    /**
+     * Đóng Modal chọn phòng học.
+     */
     function closeModal() {
         const modal = document.getElementById('roomModal');
         const content = document.getElementById('roomModalContent');
@@ -162,6 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => modal.classList.add('hidden'), 200);
     }
 
+    // Sự kiện hủy chọn phòng học
     const btnCancelRoom = document.getElementById('btnCancelRoom');
     if (btnCancelRoom) {
         btnCancelRoom.addEventListener('click', function () {
@@ -171,13 +195,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (asId) subjectSlots[asId]++;
                 if (tid) teacherSlots[tid]++;
                 updateSidebarUI();
-                pendingItem.remove();
+                pendingItem.remove(); // Hủy bỏ dragging item
                 pendingItem = null;
             }
             closeModal();
         });
     }
 
+    // Sự kiện xác nhận chọn phòng học cho môn thực hành
     const btnConfirmRoom = document.getElementById('btnConfirmRoom');
     if (btnConfirmRoom) {
         btnConfirmRoom.addEventListener('click', function () {
@@ -186,6 +211,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const roomId = select.value;
             const roomName = select.options[select.selectedIndex].text;
 
+            // Kiểm tra xung đột phòng học nếu cấu hình yêu cầu
             if (CHECK_ROOM_CONFLICT == 1) {
                 let slotKey = pendingTargetDay + '-' + pendingTargetPeriod;
                 if (roomBusySlots[roomId] && roomBusySlots[roomId].includes(slotKey)) {
@@ -200,6 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const subjectName = pendingItem.dataset.subjectName || (pendingItem.querySelector('.subject-name') ? pendingItem.querySelector('.subject-name').innerText : 'Môn học');
                 const teacherName = pendingItem.dataset.teacherName || (pendingItem.querySelector('.teacher-name') ? pendingItem.querySelector('.teacher-name').innerText : 'Giáo viên');
 
+                // Cập nhật giao diện item trong ma trận (chế độ thu gọn)
                 pendingItem.className = "matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 transition-all overflow-hidden";
 
                 pendingItem.innerHTML = `
@@ -219,6 +246,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Khởi tạo SortableJS cho toàn bộ các ô trong ma trận (Drop Zones)
     document.querySelectorAll('.drop-zone').forEach(el => {
         new Sortable(el, {
             group: 'shared',
@@ -233,6 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     offDays = JSON.parse(rawOffDays).map(Number);
                 } catch (e) { }
 
+                // Khóa các ngày giáo viên nghỉ khi bắt đầu kéo
                 document.querySelectorAll('.drop-zone').forEach(zone => {
                     const day = parseInt(zone.dataset.day);
                     if (offDays.includes(day)) {
@@ -262,13 +291,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 const targetPeriod = evt.to.dataset.period;
                 const needsTransformation = item && item.classList && item.classList.contains('sidebar-item');
 
-                // HELPER: Đưa môn về chỗ cũ nếu lỗi
+                /**
+                 * Đưa môn học/giáo viên về trạng thái trước đó nếu không thể thả vào ô này.
+                 */
                 function bounceBack() {
                     if (needsTransformation) {
-                        item.remove(); // Xóa bản sao từ sidebar (thẻ thật vẫn ở sidebar)
+                        item.remove(); // Xóa bản sao đang được kéo
                     } else {
                         if (evt.from) {
-                            evt.from.appendChild(item); // Trả về ô cũ trong lưới
+                            evt.from.appendChild(item); // Trả về ô cũ
                         } else {
                             item.remove();
                         }
@@ -276,7 +307,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateSidebarUI();
                 }
 
-                // 1. KIỂM TRA Ô ĐÃ CÓ MÔN CHƯA (Bounce back if occupied)
+                // 1. KIỂM TRA Ô ĐÃ CÓ MÔN CHƯA
                 const existingItems = Array.from(evt.to.children).filter(child => child !== item && (child.classList.contains('matrix-item') || child.classList.contains('sidebar-item')));
                 
                 if (existingItems.length > 0) {
@@ -291,6 +322,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 updateConflictHighlights(null, null, false);
 
+                // 2. KIỂM TRA NGÀY NGHỈ CỦA GIÁO VIÊN
                 let offDays = [];
                 try {
                     const rawOffDays = item.dataset.offDays || '[]';
@@ -303,6 +335,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
+                // 3. KIỂM TRA QUỸ TIẾT DẠY
                 if (needsTransformation) {
                     if (teacherSlots[tid] <= 0) {
                         showToast('Giáo viên đã hết tiết trong tuần!', 'error');
@@ -316,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
 
+                // 4. KIỂM TRA TRÙNG LỊCH BẬN (LỚP KHÁC)
                 if (CHECK_TEACHER_CONFLICT == 1) {
                     let slotKey = targetDay + '-' + targetPeriod;
                     if (teacherBusySlots[tid] && teacherBusySlots[tid].includes(slotKey)) {
@@ -325,6 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
 
+                // 5. KIỂM TRA SỐ NGÀY DẠY TỐI ĐA
                 let totalDays = getTeacherTotalDays(tid, targetDay);
                 if (totalDays > MAX_DAYS_PER_WEEK) {
                     showToast(`GV vượt quá ${MAX_DAYS_PER_WEEK} ngày dạy/tuần!`, 'error');
@@ -332,6 +367,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
+                // 6. KIỂM TRA TIẾT LIÊN TIẾP
                 let currentConsecutive = getConsecutiveSlotsCount(tid, targetDay, targetPeriod);
                 if (currentConsecutive > MAX_CONSECUTIVE) {
                     showToast(`GV dạy quá ${MAX_CONSECUTIVE} tiết liên tiếp!`, 'error');
@@ -339,24 +375,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                // Dọn dẹp ô (Safety)
-                Array.from(evt.to.children).forEach(child => {
-                    if (child !== item && (child.classList.contains('matrix-item') || child.classList.contains('sidebar-item'))) {
-                        if (child.dataset.id) {
-                            subjectSlots[child.dataset.id]++;
-                            teacherSlots[child.dataset.teacherId]++;
-                        }
-                        child.remove();
-                    }
-                });
-
+                // Nếu hợp lệ, xử lý nốt logic biến hình item (nếu kéo từ sidebar)
                 if (needsTransformation) {
                     subjectSlots[asId]--;
                     teacherSlots[tid]--;
 
                     const subjectType = item.dataset.subjectType;
-                    console.log(`[Matrix] Transform started for: ${item.dataset.subjectName} (${subjectType})`);
 
+                    // Nếu là môn thực hành cần có phòng học chuyên dụng
                     if (subjectType === 'practice' && reqRoomType && reqRoomType !== "" && reqRoomType !== "null") {
                         const filteredRooms = allRooms.filter(r => r.room_type_id == reqRoomType);
 
@@ -368,6 +394,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             return;
                         }
 
+                        // Hiển thị Modal để người dùng chọn phòng cụ thể
                         const select = document.getElementById('roomSelect');
                         if (select) {
                             select.innerHTML = '';
@@ -379,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         pendingItem = item;
                         pendingTargetDay = targetDay;
                         pendingTargetPeriod = targetPeriod;
-                        item.style.display = 'none';
+                        item.style.display = 'none'; // Tạm ẩn item cho đến khi chọn xong phòng
 
                         const modal = document.getElementById('roomModal');
                         const content = document.getElementById('roomModalContent');
@@ -395,15 +422,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         return;
                     }
 
-                    // Transformation for Theory subjects or Practice that didn't need a room
+                    // Xử lý biến hình cho Môn Lý thuyết hoặc Thực hành không yêu cầu phòng cụ thể
                     try {
                         const subjectName = (item.dataset.subjectName || 'Môn học').trim();
                         const teacherName = (item.dataset.teacherName || 'Giáo viên').trim();
 
-                        // Wipe ALL sidebar specific classes and styling
+                        // Xóa sạch style sidebar và thay bằng giao diện ma trận thu gọn
                         item.className = "matrix-item group relative w-full h-full rounded-xl flex flex-col items-center justify-center bg-primary/10 border-2 border-primary/20 cursor-move hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 transition-all overflow-hidden";
-                        item.style.padding = "0"; // Force override sidebar padding
-                        item.style.background = ""; // Clear sidebar bg
+                        item.style.padding = "0";
+                        item.style.background = "";
                         
                         item.innerHTML = `
                             <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary shrink-0"></div>
@@ -414,7 +441,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         `;
 
                         attachDoubleClickEvent(item);
-                        console.log(`[Matrix] Transform complete for: ${subjectName}`);
                     } catch (e) {
                         console.error('[Matrix] Transformation Error:', e);
                         item.innerHTML = '<div class="text-[9px] font-bold text-red-500">Lỗi hiển thị</div>';
@@ -425,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // Khởi tạo kéo thả cho Sidebar (Nguồn dữ liệu)
     const externalEvents = document.getElementById('external-events');
     if (externalEvents) {
         new Sortable(externalEvents, {
@@ -464,6 +491,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 updateConflictHighlights(null, null, false);
             },
             onMove: function (evt) {
+                // Ngăn chặn thả vào các ngày GV nghỉ
                 if (evt.to && evt.to.dataset.disabled === "true") {
                     return false;
                 }
@@ -471,6 +499,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Xử lý bộ lọc tìm kiếm giáo viên và môn học ở Sidebar
     const searchTeacher = document.getElementById('search-teacher');
     if (searchTeacher) {
         searchTeacher.addEventListener('input', function (e) {
@@ -483,6 +512,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /**
+     * Hiển thị thông báo (Toast) cho người dùng.
+     * 
+     * @param {string} message 
+     * @param {string} type 'success' hoặc 'error'
+     */
     function showToast(message, type = 'success') {
         const toast = document.getElementById('success-toast');
         const container = document.getElementById('toast-container');
@@ -509,13 +544,13 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => {
             toast.classList.add('-translate-y-20');
             setTimeout(() => toast.classList.add('hidden'), 500);
-        }, 5000); // 5 seconds for visibility
+        }, 5000);
     }
 
-    // EXPOSE TO WINDOW: Đảm bảo button onclick="saveSchedule()" trong HTML có thể gọi được
+    // XỬ LÝ LƯU THỜI KHÓA BIỂU
     let isSaving = false;
     window.saveSchedule = function () {
-        // 1. NGĂN CHẶN CONCURRENCY NGAY LẬP TỨC
+        // NGĂN CHẶN CLICK NHIỀU LẦN (Race condition)
         if (isSaving) return;
         isSaving = true;
 
@@ -533,6 +568,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const seenSlots = new Set();
             let hasDuplicate = false;
 
+            // Thu thập dữ liệu từ toàn bộ lưới ma trận
             document.querySelectorAll('.drop-zone').forEach(box => {
                 const item = box.querySelector('.matrix-item') || box.querySelector('.sidebar-item');
                 if (item) {
@@ -566,6 +602,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            // Gửi dữ liệu về Backend qua AJAX/Fetch
             fetch(window.ScheduleData.saveUrl, {
                 method: 'POST',
                 headers: {
@@ -597,6 +634,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         window.ScheduleData.lastUpdatedAt = res.last_updated_at;
                     }
                     showToast('Lưu bản cập nhật thành công!');
+                    // Tải lại trang sau khi lưu thành công để đồng bộ lại dữ liệu slot bận của giáo viên
                     setTimeout(() => {
                         window.location.reload();
                     }, 800);
@@ -609,7 +647,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (overlay) overlay.classList.add('hidden');
                 showToast(err.message, 'error');
                 
-                // Giải phóng lock để người dùng có thể sửa lỗi và lưu lại
+                // Giải phóng lock để người dùng có thể thử lại
                 isSaving = false;
                 if (saveBtn) {
                     saveBtn.disabled = false;
@@ -624,4 +662,3 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 });
-

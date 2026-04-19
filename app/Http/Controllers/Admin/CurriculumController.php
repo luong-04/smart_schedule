@@ -10,6 +10,11 @@ use Illuminate\Http\Request;
 class CurriculumController extends Controller
 {
     // Hiển thị danh sách định mức đã tạo
+    /**
+     * Hiển thị danh sách định mức chương trình học (số tiết mỗi môn theo khối/tổ hợp).
+     * 
+     * @return \Illuminate\View\View
+     */
     public function index()
     {
         // Lấy dữ liệu và nhóm theo trường 'grade'
@@ -21,6 +26,11 @@ class CurriculumController extends Controller
     }
 
     // Trang thêm mới định mức
+    /**
+     * Hiển thị form thêm mới định mức chương trình học.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function create()
     {
         $subjects = Subject::all();
@@ -28,6 +38,12 @@ class CurriculumController extends Controller
     }
 
     // Lưu định mức mới
+    /**
+     * Lưu định mức chương trình học mới vào cơ sở dữ liệu.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -54,6 +70,12 @@ class CurriculumController extends Controller
     }
 
     // Trang chỉnh sửa
+    /**
+     * Hiển thị form chỉnh sửa định mức chương trình học.
+     * 
+     * @param SubjectConfiguration $curriculum
+     * @return \Illuminate\View\View
+     */
     public function edit(SubjectConfiguration $curriculum)
     {
         $subjects = Subject::all();
@@ -61,6 +83,13 @@ class CurriculumController extends Controller
     }
 
     // Cập nhật
+    /**
+     * Cập nhật thông tin định mức chương trình học.
+     * 
+     * @param Request $request
+     * @param SubjectConfiguration $curriculum
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, SubjectConfiguration $curriculum)
     {
         $data = $request->validate([
@@ -75,6 +104,12 @@ class CurriculumController extends Controller
     }
 
     // Xóa 1 định mức
+    /**
+     * Xóa một định mức chương trình học.
+     * 
+     * @param SubjectConfiguration $curriculum
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy(SubjectConfiguration $curriculum)
     {
         $curriculum->delete();
@@ -82,6 +117,12 @@ class CurriculumController extends Controller
     }
 
     // TÍNH NĂNG MỚI: XÓA NHIỀU ĐỊNH MỨC CÙNG LÚC
+    /**
+     * Xóa hàng loạt định mức chương trình học qua ID.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function bulkDelete(Request $request) 
     {
         $ids = $request->input('ids');
@@ -92,6 +133,12 @@ class CurriculumController extends Controller
         return back()->with('error', 'Vui lòng chọn ít nhất 1 định mức để xóa!');
     }
     //IMPORT ĐỊNH MỨC TỪ EXCEL
+    /**
+     * Nhập dữ liệu định mức chương trình học hàng loạt từ JSON.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function import(Request $request) 
     {
         $request->validate(['import_data' => 'required|string']);

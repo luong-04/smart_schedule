@@ -10,9 +10,13 @@ use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
+    /**
+     * Chạy toàn bộ tiến trình seeder chính của hệ thống.
+     * Bao gồm: Phân quyền, Tài khoản Admin, và Dữ liệu mẫu.
+     */
     public function run(): void
     {
-        // 1. Tạo sẵn các quyền (tương ứng với các menu của bạn)
+        // 1. Tạo sẵn các quyền (tương ứng với các chức năng chính)
         $permissions = [
             'quan_ly_giao_vien',
             'quan_ly_mon_hoc',
@@ -27,10 +31,10 @@ class DatabaseSeeder extends Seeder
             Permission::findOrCreate($permission);
         }
 
-        // 2. Tạo chức vụ Admin Tổng
+        // 2. Tạo vai trò Admin Tổng (Super Admin)
         $superAdmin = Role::findOrCreate('Super Admin');
 
-        // 3. Tạo tài khoản đăng nhập cho bạn
+        // 3. Tạo tài khoản đăng nhập mặc định
         $admin = User::firstOrCreate(
             ['email' => 'admin@nguyenbinhkhiem.com'],
             [
@@ -39,10 +43,10 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 4. Gán chức vụ Admin Tổng cho bạn
+        // 4. Gán vai trò Super Admin cho tài khoản
         $admin->assignRole($superAdmin);
 
-        // 5. Thêm dữ liệu mẫu
+        // 5. Nạp dữ liệu mẫu để chạy thử nghiệm
         $this->call([
             SampleDataSeeder::class,
             SampleScheduleSeeder::class,

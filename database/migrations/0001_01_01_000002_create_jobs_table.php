@@ -11,13 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Bảng lưu trữ danh sách các công việc hàng đợi (Queue Jobs)
         Schema::create('jobs', function (Blueprint $table) {
             $table->id();
-            $table->string('queue');
-            $table->longText('payload');
-            $table->unsignedTinyInteger('attempts');
-            $table->unsignedInteger('reserved_at')->nullable();
-            $table->unsignedInteger('available_at');
+            $table->string('queue'); // Tên hàng đợi
+            $table->longText('payload'); // Dữ liệu công việc
+            $table->unsignedTinyInteger('attempts'); // Số lần thử lại
+            $table->unsignedInteger('reserved_at')->nullable(); // Thời điểm đang xử lý
+            $table->unsignedInteger('available_at'); // Thời điểm khả dụng
             $table->unsignedInteger('created_at');
 
             $table->index(['queue', 'reserved_at', 'available_at']);
@@ -36,14 +37,15 @@ return new class extends Migration
             $table->integer('finished_at')->nullable();
         });
 
+        // Bảng lưu trữ các công việc bị lỗi (Failed Jobs)
         Schema::create('failed_jobs', function (Blueprint $table) {
             $table->id();
-            $table->string('uuid')->unique();
-            $table->text('connection');
-            $table->text('queue');
-            $table->longText('payload');
-            $table->longText('exception');
-            $table->timestamp('failed_at')->useCurrent();
+            $table->string('uuid')->unique(); // Mã định danh duy nhất
+            $table->text('connection'); // Kết nối DB
+            $table->text('queue'); // Tên hàng đợi
+            $table->longText('payload'); // Dữ liệu payload
+            $table->longText('exception'); // Nội dung lỗi ngoại lệ
+            $table->timestamp('failed_at')->useCurrent(); // Thời điểm lỗi
         });
     }
 

@@ -149,7 +149,7 @@ class HomeController extends Controller
             }
         }
 
-        return view('welcome', compact(
+        return view('trangchu', compact(
             'schoolName', 'schoolYear', 'semester', 'scheduleName',
             'principal', 'vicePrincipal',
             'searchQuery', 'classroom', 'teacher', 'schedules', 'gvcnClasses', 'gvcnName',

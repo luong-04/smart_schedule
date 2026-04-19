@@ -14,16 +14,23 @@ use App\Models\SubjectConfiguration;
 use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Seeder nạp dữ liệu thực tế cho môi trường Production.
+ * Dữ liệu bao gồm các môn học chuẩn MOET 2018, danh sách giáo viên, lớp học và thời khóa biểu mẫu.
+ */
 class ProductionDataSeeder extends Seeder
 {
-    private $teacherLoad = []; // Track slots per teacher
+    private $teacherLoad = []; // Theo dõi số tiết đã phân cho giáo viên
 
+    /**
+     * Chạy tiến trình khởi tạo dữ liệu.
+     */
     public function run()
     {
         // 1. DỌN DẸP DỮ LIỆU CŨ
         $this->cleanup();
 
-        // 1b. KHỞI TẠO CÀI ĐẶT
+        // 1b. KHỞI TẠO CÀI ĐẶT MẶC ĐỊNH
         $this->seedSettings();
 
         // 2. TẠO LOẠI PHÒNG & PHÒNG HỌC
@@ -44,7 +51,7 @@ class ProductionDataSeeder extends Seeder
         Room::create(['name' => 'Kỹ thuật 01', 'room_type_id' => $rtTech->id]);
         Room::create(['name' => 'Sân vận động', 'room_type_id' => $rtGym->id]);
 
-        // 3. TẠO MÔN HỌC (Chuẩn MOET 2018) - Tách biệt từng Tổ
+        // 3. TẠO MÔN HỌC (Chuẩn MOET 2018)
         $subjects = [
             ['name' => 'Toán học', 'type' => 'theory', 'room_type_id' => null, 'dept' => 'Tổ Toán'],
             ['name' => 'Ngữ văn', 'type' => 'theory', 'room_type_id' => null, 'dept' => 'Tổ Ngữ Văn'],
@@ -70,7 +77,7 @@ class ProductionDataSeeder extends Seeder
             ]);
         }
 
-        // 4. DANH SÁCH TÊN GIÁO VIÊN VIỆT NAM
+        // 4. DANH SÁCH GIÁO VIÊN (MÔ PHỎNG)
         $vnNames = [
             'Nguyễn Văn An', 'Trần Thị Bình', 'Lê Hoàng Cường', 'Phạm Minh Đức', 'Vũ Thu Thảo',
             'Đặng Quang Hải', 'Bùi Thị Lan', 'Đỗ Mạnh Hùng', 'Ngô Thanh Hà', 'Hoàng Văn Nam',
@@ -91,14 +98,13 @@ class ProductionDataSeeder extends Seeder
         ];
         shuffle($vnNames);
 
-        // Tạo 60 Giáo viên (Phân bổ theo tổ)
+        // Tạo 60 Giáo viên
         $teacherPool = [];
         $depts = collect($subjects)->pluck('dept')->unique();
-        foreach ($depts as $d) $teacherPool[$d] = []; // Initialize keys
+        foreach ($depts as $d) $teacherPool[$d] = [];
 
         $nameIndex = 0;
         foreach ($depts as $dept) {
-            // Mỗi tổ ít nhất 4-6 giáo viên để gánh tải
             $count = ($dept === 'Tổ Toán' || $dept === 'Tổ Ngữ Văn' || $dept === 'Tổ Ngoại Ngữ') ? 8 : 4;
             for ($i=0; $i<$count; $i++) {
                 if ($nameIndex >= count($vnNames)) break;
@@ -131,14 +137,17 @@ class ProductionDataSeeder extends Seeder
             $cls->homeroom_teacher_id = $allTeachers[$index]->id; $cls->save();
         }
 
-        // 6. CẤU HÌNH & PHÂN CÔNG (Strict 17 slots)
+        // 6. CẤU HÌNH & PHÂN CÔNG
         $this->seedCurriculum($subjectModels);
         $this->seedAssignmentsBalanced($classrooms, $subjects, $teacherPool);
 
-        // 7. XẾP TKB
+        // 7. TẠO THỜI KHÓA BIỂU MẪU
         $this->seedSchedules($classrooms);
     }
 
+    /**
+     * Phân công giảng dạy cân bằng tải cho giáo viên.
+     */
     private function seedAssignmentsBalanced($classrooms, $subjectData, $teacherPool)
     {
         $this->teacherLoad = [];
@@ -151,7 +160,6 @@ class ProductionDataSeeder extends Seeder
                 $subjectName = $cfg->subject->name;
                 $deptName = collect($subjectData)->where('name', $subjectName)->first()['dept'];
                 
-                // Tìm giáo viên trong tổ có load thấp nhất và còn slot
                 $availableTeachers = collect($teacherPool[$deptName])->filter(function($t) use ($slots) {
                     return ($this->teacherLoad[$t->id] + $slots) <= 17;
                 })->sortBy(function($t) {
@@ -159,7 +167,6 @@ class ProductionDataSeeder extends Seeder
                 });
 
                 if ($availableTeachers->isEmpty()) {
-                    // Fallback: Tìm bất kỳ ai cùng tổ (nếu quá tải toàn bộ thì buộc phải vượt nhẹ hoặc lấy người rảnh nhất)
                     $t = collect($teacherPool[$deptName])->sortBy(fn($x) => $this->teacherLoad[$x->id])->first();
                 } else {
                     $t = $availableTeachers->first();
@@ -171,6 +178,9 @@ class ProductionDataSeeder extends Seeder
         }
     }
 
+    /**
+     * Dọn dẹp database.
+     */
     private function cleanup()
     {
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
@@ -179,6 +189,9 @@ class ProductionDataSeeder extends Seeder
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
     }
 
+    /**
+     * Khởi tạo cài đặt hệ thống.
+     */
     private function seedSettings()
     {
         $defaults = [
@@ -190,6 +203,9 @@ class ProductionDataSeeder extends Seeder
         foreach ($defaults as $k => $v) Setting::updateOrCreate(['key' => $k], ['value' => $v]);
     }
 
+    /**
+     * Khởi tạo định mức chương trình GDPT 2018.
+     */
     private function seedCurriculum($sm)
     {
         $grades = [10, 11, 12]; $blocks = ['KHTN', 'KHXH', 'Cơ bản'];
@@ -223,6 +239,9 @@ class ProductionDataSeeder extends Seeder
         }
     }
 
+    /**
+     * Tự động tạo thời khóa biểu dựa trên các ràng buộc.
+     */
     private function seedSchedules($classrooms)
     {
         $name = 'Học kỳ 1 - 2024-2025';
@@ -235,30 +254,25 @@ class ProductionDataSeeder extends Seeder
         ];
 
         foreach ($versions as $v) {
-            $tSlots = []; // Reset teacher availability for each version
-            $rSlots = []; // Reset room availability
+            $tSlots = []; // Lưu trữ các slot bận của giáo viên
+            $rSlots = []; // Lưu trữ các slot bận của phòng học
             
             foreach ($classrooms as $cls) {
                 $assignments = Assignment::with('subject')->where('class_id', $cls->id)->get();
                 $shift = $cls->shift; 
                 $s = $settings[$shift]; 
                 $cSlots = [];
-                $oppShift = ($shift === 'morning') ? 'afternoon' : 'morning';
-                $os = $settings[$oppShift];
 
                 foreach ($assignments as $as) {
                     $count = SubjectConfiguration::where('grade', $cls->grade)->where('block', $cls->block)->where('subject_id', $as->subject_id)->first()->slots_per_week ?? 0;
-                    $isOpp = in_array($as->subject->name, ['Giáo dục thể chất', 'Giáo dục quốc phòng và an ninh']);
-                    $targetRange = $isOpp ? $os['range'] : $s['range'];
-                    $targetFixed = $isOpp ? $os['fixed'] : $s['fixed'];
+                    $possible = [];
+                    foreach ([2,3,4,5,6,7] as $d) { foreach ($s['range'] as $p) { $possible[] = ['d'=>$d, 'p'=>$p]; } }
+                    shuffle($possible);
 
-                    $placed = 0; $possible = [];
-                    foreach ([2,3,4,5,6,7] as $d) { foreach ($targetRange as $p) { $possible[] = ['d'=>$d, 'p'=>$p]; } }
-                    shuffle($possible); // Different shuffle each time ensures v1 and v2 are different
-
+                    $placed = 0;
                     while ($placed < $count && !empty($possible)) {
                         $slot = array_shift($possible); $key = "{$slot['d']}-{$slot['p']}";
-                        if (in_array($key, $cSlots) || in_array($key, $targetFixed)) continue;
+                        if (in_array($key, $cSlots) || in_array($key, $s['fixed'])) continue;
                         if (isset($tSlots[$as->teacher_id]) && in_array($key, $tSlots[$as->teacher_id])) continue;
 
                         $roomID = null;

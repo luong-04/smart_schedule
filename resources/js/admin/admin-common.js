@@ -1,12 +1,13 @@
 import * as XLSX from 'xlsx';
 
-window.XLSX = XLSX; // Make it global for simple inline onchange handlers or attach event listeners here
+window.XLSX = XLSX; // Đưa vào global để sử dụng trong các handler inline hoặc trình lắng nghe sự kiện
 
-import * as XLSX from 'xlsx';
-
-window.XLSX = XLSX;
-
-// 1. Script Import Giáo Viên
+/**
+ * Xử lý Import danh sách Giáo viên từ file Excel.
+ * Sử dụng thư viện SheetJS (XLSX) để đọc dữ liệu từ máy khách trước khi gửi lên server.
+ * 
+ * @param {Event} event Sự kiện thay đổi file input.
+ */
 window.handleImportTeachers = function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -19,6 +20,7 @@ window.handleImportTeachers = function(event) {
         
         let parsedData = jsonData.map(row => {
             let cleanRow = {};
+            // Chuẩn hóa tên cột (trim và viết thường) để dễ dàng đối chiếu
             for (let key in row) cleanRow[key.trim().toLowerCase()] = row[key];
             return {
                 code: cleanRow['mã gv'] || cleanRow['mã'] || '',
@@ -29,6 +31,7 @@ window.handleImportTeachers = function(event) {
         });
 
         if(parsedData.length > 0) {
+            // Chèn dữ liệu đã xử lý vào hidden input và submit form
             document.getElementById('importDataTeachers').value = JSON.stringify(parsedData);
             document.getElementById('importFormTeachers').submit();
         }
@@ -36,7 +39,11 @@ window.handleImportTeachers = function(event) {
     reader.readAsArrayBuffer(file);
 };
 
-// 2. Script Import Phân Công
+/**
+ * Xử lý Import danh sách Phân công giảng dạy từ file Excel.
+ * 
+ * @param {Event} event Sự kiện thay đổi file input.
+ */
 window.handleImportAssignments = function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -58,6 +65,7 @@ window.handleImportAssignments = function(event) {
             };
         });
 
+        // Lọc bỏ các dòng trống hoặc không hợp lệ
         parsedData = parsedData.filter(item => item.teacher_code !== '' && item.class_name !== '' && item.subject_name !== '');
 
         if(parsedData.length > 0) {
@@ -70,7 +78,11 @@ window.handleImportAssignments = function(event) {
     reader.readAsArrayBuffer(file);
 };
 
-// 3. Script Import Lớp Học
+/**
+ * Xử lý Import danh sách Lớp học từ file Excel.
+ * 
+ * @param {Event} event Sự kiện thay đổi file input.
+ */
 window.handleImportClassrooms = function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -101,4 +113,3 @@ window.handleImportClassrooms = function(event) {
     };
     reader.readAsArrayBuffer(file);
 };
-

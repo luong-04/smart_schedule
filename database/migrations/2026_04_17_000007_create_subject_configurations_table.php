@@ -8,12 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Tạo bảng định mức tiết học (Số tiết/tuần theo Khối và Tổ hợp)
         Schema::create('subject_configurations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('subject_id')->constrained()->onDelete('cascade');
-            $table->integer('grade')->index();
-            $table->string('block')->index();
-            $table->integer('slots_per_week')->default(0);
+            $table->foreignId('subject_id')->constrained()->onDelete('cascade'); // ID Môn học
+            $table->integer('grade')->index(); // Khối (10, 11, 12)
+            $table->string('block')->index(); // Tổ hợp (KHTN, KHXH, Cơ bản)
+            $table->integer('slots_per_week')->default(0); // Số tiết quy định mỗi tuần
             $table->timestamps();
         });
     }

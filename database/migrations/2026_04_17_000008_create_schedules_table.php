@@ -8,21 +8,22 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Tạo bảng lưu trữ Thời khóa biểu (Schedules)
         Schema::create('schedules', function (Blueprint $table) {
             $table->id();
-            $table->string('schedule_name')->index();
-            $table->date('applies_from')->index();
-            $table->date('applies_to')->index();
+            $table->string('schedule_name')->index(); // Tên bản thời khóa biểu (Ví dụ: Học kỳ 1 - 2024)
+            $table->date('applies_from')->index(); // Ngày bắt đầu áp dụng
+            $table->date('applies_to')->index(); // Ngày kết thúc áp dụng
             
-            $table->foreignId('assignment_id')->constrained()->onDelete('cascade');
-            $table->foreignId('room_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('assignment_id')->constrained()->onDelete('cascade'); // Liên kết phân công giảng dạy
+            $table->foreignId('room_id')->nullable()->constrained()->onDelete('set null'); // ID Phòng học (nếu có)
             
             // Trường denormalize để tăng tốc truy vấn ma trận và check xung đột
-            $table->foreignId('teacher_id')->constrained('teachers')->onDelete('cascade');
-            $table->foreignId('class_id')->constrained('classes')->onDelete('cascade');
+            $table->foreignId('teacher_id')->constrained('teachers')->onDelete('cascade'); // ID Giáo viên (denormalized)
+            $table->foreignId('class_id')->constrained('classes')->onDelete('cascade'); // ID Lớp học (denormalized)
             
-            $table->integer('day_of_week'); // 2-7
-            $table->integer('period');      // 1-10
+            $table->integer('day_of_week'); // Thứ trong tuần (2-7)
+            $table->integer('period');      // Tiết trong ngày (1-10)
             $table->timestamps();
 
             // Unique Constraints - Chống Race Condition tuyệt đối & Đảm bảo tính toàn vẹn temporal

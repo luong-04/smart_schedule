@@ -8,10 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Tạo bảng phòng học
         Schema::create('rooms', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->index();
-            $table->foreignId('room_type_id')->constrained()->onDelete('cascade');
+            $table->string('name')->index(); // Tên phòng
+            $table->foreignId('room_type_id')->constrained()->onDelete('cascade'); // Liên kết loại phòng
             $table->timestamps();
         });
     }

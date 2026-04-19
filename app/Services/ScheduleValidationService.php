@@ -166,7 +166,15 @@ class ScheduleValidationService
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Kiểm tra không được xếp lịch đè lên tiết Chào cờ hoặc Sinh hoạt lớp
+     * Kiểm tra không được xếp lịch đè lên các tiết học cố định như Chào cờ hoặc Sinh hoạt lớp.
+     * 
+     * @param int $d Thứ.
+     * @param int $p Tiết.
+     * @param int $flagDay Thứ chào cờ.
+     * @param int $flagPeriod Tiết chào cờ.
+     * @param int $meetDay Thứ sinh hoạt lớp.
+     * @param int $meetPeriod Tiết sinh hoạt lớp.
+     * @return array|null Trả về mảng chứa thông báo lỗi nếu vi phạm, ngược lại trả về null.
      */
     private function validateFixedPeriods(int $d, int $p, $flagDay, $flagPeriod, $meetDay, $meetPeriod): ?array
     {
@@ -177,7 +185,11 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra ngày nghỉ đăng ký của giáo viên
+     * Kiểm tra xem tiết học có rơi vào ngày nghỉ đăng ký của giáo viên hay không.
+     * 
+     * @param mixed $assignment Đối tượng phân công (có quan hệ teacher).
+     * @param int $d Thứ trong tuần.
+     * @return array|null
      */
     private function validateTeacherOffDay($assignment, int $d): ?array
     {
@@ -192,7 +204,15 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra giáo viên bị trùng lịch với lớp khác (Sử dụng Memory Array)
+     * Kiểm tra trùng lịch dạy của giáo viên với các lớp học khác tại cùng một thời điểm.
+     * 
+     * @param int $teacherId ID giáo viên.
+     * @param string $slotKey Mã slot (Thứ-Tiết).
+     * @param mixed $assignment Đối tượng phân công.
+     * @param int $d Thứ.
+     * @param int $p Tiết.
+     * @param array $teacherBusySlots Danh sách các slot bận của giáo viên đã load sẵn.
+     * @return array|null
      */
     private function validateTeacherConflictMemory(int $teacherId, string $slotKey, $assignment, int $d, int $p, array $teacherBusySlots): ?array
     {
@@ -207,7 +227,15 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra phòng học bị trùng với lớp khác (Sử dụng Memory Array)
+     * Kiểm tra trùng phòng học với các lớp học khác tại cùng một thời điểm.
+     * 
+     * @param int $roomId ID phòng học.
+     * @param string $slotKey Mã slot (Thứ-Tiết).
+     * @param int $d Thứ.
+     * @param int $p Tiết.
+     * @param array $roomBusySlots Danh sách các slot bận của phòng học đã load sẵn.
+     * @param \Illuminate\Support\Collection $allRooms Danh sách các phòng học.
+     * @return array|null
      */
     private function validateRoomConflictMemory($roomId, string $slotKey, int $d, int $p, array $roomBusySlots, $allRooms): ?array
     {
@@ -222,7 +250,14 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra không vượt quá định mức tiết/tuần của môn học theo lớp
+     * Kiểm tra xem số lượng tiết học của từng môn trong tuần có vượt quá định mức (curriculum) hay không.
+     * 
+     * @param array $assignmentCounts Số tiết đã xếp cho từng phân công.
+     * @param mixed $allAssignments Danh sách phân công.
+     * @param Classroom $classroom Đối tượng lớp học.
+     * @param array $settings Cài đặt hệ thống.
+     * @param array $curriculums Định mức tiết học load sẵn.
+     * @return array|null
      */
     private function validateSlotLimits(array $assignmentCounts, $allAssignments, Classroom $classroom, array $settings, array $curriculums = []): ?array
     {
@@ -252,7 +287,14 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra số ngày dạy tối đa trong tuần của giáo viên (Sử dụng Memory Array)
+     * Kiểm tra xem giáo viên có vượt quá số ngày dạy tối đa trong tuần theo cấu hình không.
+     * 
+     * @param int $tId ID giáo viên.
+     * @param array $days Danh sách các ngày dạy trong lớp hiện tại.
+     * @param mixed $allAssignments Danh sách phân công.
+     * @param int $maxDaysPerWeek Số ngày tối đa cho phép.
+     * @param array $teacherOtherDays Danh sách các ngày giáo viên đã dạy ở lớp khác.
+     * @return array|null
      */
     private function validateMaxDaysMemory(int $tId, array $days, $allAssignments, int $maxDaysPerWeek, array $teacherOtherDays): ?array
     {
@@ -271,7 +313,13 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra giáo viên không dạy quá số tiết liên tiếp cho phép
+     * Kiểm tra giáo viên không được dạy quá số tiết liên tiếp tối đa cho phép trong một buổi.
+     * 
+     * @param int $tId ID giáo viên.
+     * @param array $days Danh sách các tiết theo ngày.
+     * @param mixed $allAssignments Danh sách phân công.
+     * @param int $maxConsecutive Số tiết liên tiếp tối đa.
+     * @return array|null
      */
     private function validateConsecutiveSlots(int $tId, array $days, $allAssignments, int $maxConsecutive): ?array
     {
@@ -299,8 +347,14 @@ class ScheduleValidationService
     }
 
     /**
-     * Kiểm tra "tiết trống" giữa các buổi dạy (Gap Session).
-     * Một buổi (Sáng: 1-5, Chiều: 6-10) không nên có tiết trống xen kẽ.
+     * Kiểm tra xem giáo viên hoặc lớp học có bị tình trạng "tiết trống" xen kẽ giữa các tiết học trong một buổi không.
+     * Đảm bảo các tiết học được xếp liên tục nhau.
+     * 
+     * @param mixed $id ID của đối tượng (giáo viên hoặc lớp).
+     * @param array $days Danh sách tiết học theo ngày.
+     * @param mixed|null $allAssignments Danh sách phân công (nếu kiểm tra cho giáo viên).
+     * @param string $type Loại đối tượng ('giáo viên' hoặc 'lớp học').
+     * @return array|null
      */
     private function validateGapSession($id, array $days, $allAssignments, string $type): ?array
     {

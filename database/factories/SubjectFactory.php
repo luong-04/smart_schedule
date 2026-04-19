@@ -9,6 +9,11 @@ class SubjectFactory extends Factory
 {
     protected $model = Subject::class;
 
+    /**
+     * Định nghĩa trạng thái mặc định của Model Môn học (Subject).
+     * 
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         return [

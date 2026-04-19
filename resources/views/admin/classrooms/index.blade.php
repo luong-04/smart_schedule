@@ -28,7 +28,7 @@
         </div>
 
         <div>
-            <form action="{{ route('classrooms.import') }}" method="POST" id="importFormClassrooms" class="hidden">
+            <form action="{{ route('classrooms.import') }}" method="POST" id="importFormClassrooms" class="hidden" hx-boost="false">
                 @csrf <input type="hidden" name="import_data" id="importDataClassrooms">
             </form>
             <input type="file" id="excelFileClassrooms" class="hidden" accept=".xlsx, .xls" onchange="handleImportClassrooms(event)">

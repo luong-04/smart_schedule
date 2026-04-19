@@ -71,6 +71,9 @@
     </div>
 </div>
 
+<!-- Tailwind Safelist Helper (Ensure classes used in JS aren't purged) -->
+<div class="hidden bg-rose-500 bg-emerald-500"></div>
+
 <div id="success-toast" class="fixed top-10 left-1/2 -translate-x-1/2 z-[400] transform -translate-y-20 transition-all duration-500 hidden">
     <div id="toast-container" class="bg-emerald-500 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[300px] justify-center">
         <span id="toast-icon" class="material-symbols-outlined animate-bounce">check_circle</span>

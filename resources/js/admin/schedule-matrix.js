@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (CHECK_ROOM_CONFLICT == 1) {
                 let slotKey = pendingTargetDay + '-' + pendingTargetPeriod;
                 if (roomBusySlots[roomId] && roomBusySlots[roomId].includes(slotKey)) {
-                    alert(`⚠️ HỆ THỐNG CHẶN: [${roomName}] đã được lớp khác sử dụng vào Thứ ${pendingTargetDay} - Tiết ${pendingTargetPeriod}! Vui lòng chọn phòng khác.`);
+                    showToast(`[${roomName}] đã bận vào Thứ ${pendingTargetDay} - Tiết ${pendingTargetPeriod}!`, 'error');
                     return;
                 }
             }
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const existingItems = Array.from(evt.to.children).filter(child => child !== item && (child.classList.contains('matrix-item') || child.classList.contains('sidebar-item')));
                 
                 if (existingItems.length > 0) {
-                    alert(`⚠️ Ô này đã có môn học! Vui lòng xóa môn cũ trước khi xếp môn mới.`);
+                    showToast('Ô này đã có môn học!', 'error');
                     bounceBack();
                     return;
                 }
@@ -298,19 +298,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 } catch (e) { offDays = []; }
 
                 if (offDays.includes(parseInt(targetDay))) {
-                    alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên này đã đăng ký NGHỈ CỐ ĐỊNH vào Thứ ${targetDay}!`);
+                    showToast(`GV đã đăng ký NGHỈ vào Thứ ${targetDay}!`, 'error');
                     bounceBack();
                     return;
                 }
 
                 if (needsTransformation) {
                     if (teacherSlots[tid] <= 0) {
-                        alert("⚠️ HỆ THỐNG CHẶN: Giáo viên này đã giảng dạy hết số tiết trong tuần!");
+                        showToast('Giáo viên đã hết tiết trong tuần!', 'error');
                         bounceBack();
                         return;
                     }
                     if (subjectSlots[asId] <= 0) {
-                        alert("⚠️ HỆ THỐNG CHẶN: Môn này đã được xếp đủ số tiết cho lớp!");
+                        showToast('Môn này đã đủ số tiết!', 'error');
                         bounceBack();
                         return;
                     }
@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (CHECK_TEACHER_CONFLICT == 1) {
                     let slotKey = targetDay + '-' + targetPeriod;
                     if (teacherBusySlots[tid] && teacherBusySlots[tid].includes(slotKey)) {
-                        alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên bị TRÙNG LỊCH! (Đã có tiết dạy ở lớp khác vào Thứ ${targetDay} - Tiết ${targetPeriod})`);
+                        showToast(`GV bận dạy lớp khác vào Thứ ${targetDay} - Tiết ${targetPeriod}!`, 'error');
                         bounceBack();
                         return;
                     }
@@ -327,14 +327,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 let totalDays = getTeacherTotalDays(tid, targetDay);
                 if (totalDays > MAX_DAYS_PER_WEEK) {
-                    alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên này vượt quá số ngày dạy tối đa (Tối đa ${MAX_DAYS_PER_WEEK} ngày/tuần)!`);
+                    showToast(`GV vượt quá ${MAX_DAYS_PER_WEEK} ngày dạy/tuần!`, 'error');
                     bounceBack();
                     return;
                 }
 
                 let currentConsecutive = getConsecutiveSlotsCount(tid, targetDay, targetPeriod);
                 if (currentConsecutive > MAX_CONSECUTIVE) {
-                    alert(`⚠️ HỆ THỐNG CHẶN: Giáo viên bị giới hạn dạy tối đa ${MAX_CONSECUTIVE} tiết liên tiếp!`);
+                    showToast(`GV dạy quá ${MAX_CONSECUTIVE} tiết liên tiếp!`, 'error');
                     bounceBack();
                     return;
                 }
@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         const filteredRooms = allRooms.filter(r => r.room_type_id == reqRoomType);
 
                         if (filteredRooms.length === 0) {
-                            alert("⚠️ LỖI: Hệ thống chưa có phòng học nào thuộc loại phòng yêu cầu cho môn này!");
+                            showToast('Hệ thống chưa có loại phòng này!', 'error');
                             subjectSlots[asId]++;
                             teacherSlots[tid]++;
                             bounceBack();
@@ -562,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     saveBtn.innerHTML = '<span class="material-symbols-outlined text-sm">save</span> Lưu Phiên bản';
                 }
                 isSaving = false;
-                alert('⚠️ LỖI: Phát hiện có nhiều môn học trong cùng một tiết! Vui lòng kiểm tra lại ma trận trước khi lưu.');
+                showToast('Phát hiện trùng môn trong cùng một tiết!', 'error');
                 return;
             }
 

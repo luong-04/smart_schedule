@@ -20,7 +20,7 @@ class ScheduleValidationService
      *
      * @param array     $schedules       Mảng lịch từ request [{assignment_id, day_of_week, period, room_id}]
      * @param Classroom $classroom       Đối tượng lớp học đang được xếp lịch
-     * @param array     $allAssignments  Collection assignment đã load sẵn (keyBy id)
+     * @param \Illuminate\Support\Collection $allAssignments  Collection assignment đã load sẵn (keyBy id)
      * @param array     $settings        Mảng settings [key => value]
      * @param string    $scheduleName    Tên học kỳ hiện tại
      * @param string    $shiftStr        'morning' hoặc 'afternoon'

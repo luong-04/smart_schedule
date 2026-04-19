@@ -38,7 +38,7 @@
                 <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Xóa (<span x-text="selectedTeachers.length"></span>)
             </button>
 
-            <form action="{{ route('teachers.import') }}" method="POST" id="importFormTeachers" class="hidden">
+            <form action="{{ route('teachers.import') }}" method="POST" id="importFormTeachers" class="hidden" hx-boost="false">
                 @csrf <input type="hidden" name="import_data" id="importDataTeachers">
             </form>
             <input type="file" id="excelFileTeachers" class="hidden" accept=".xlsx, .xls" onchange="handleImportTeachers(event)">
@@ -46,7 +46,7 @@
                 <span class="material-symbols-outlined text-[16px]">upload_file</span> Import GV
             </button>
 
-            <form action="{{ route('assignments.import') }}" method="POST" id="importFormAssignments" class="hidden">
+            <form action="{{ route('assignments.import') }}" method="POST" id="importFormAssignments" class="hidden" hx-boost="false">
                 @csrf <input type="hidden" name="import_data" id="importDataAssignments">
             </form>
             <input type="file" id="excelFileAssignments" class="hidden" accept=".xlsx, .xls" onchange="handleImportAssignments(event)">

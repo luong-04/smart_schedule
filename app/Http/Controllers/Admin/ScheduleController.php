@@ -22,7 +22,8 @@ class ScheduleController extends Controller
     public function __construct(
         private ScheduleValidationService $validator,
         private ScheduleDataService $dataService
-    ) {}
+    ) {
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // HELPER
@@ -38,13 +39,16 @@ class ScheduleController extends Controller
 
         $configured = Setting::getVal('active_schedule');
         if ($configured && Schedule::where('schedule_name', $configured)->exists()) {
-            return self::$cachedScheduleName = $configured;
+            $name = $configured;
+            if (app()->environment('testing'))
+                return $name;
+            return self::$cachedScheduleName = $name;
         }
 
-        $semester   = Setting::getVal('semester', 'Học kỳ 1');
+        $semester = Setting::getVal('semester', 'Học kỳ 1');
         $schoolYear = Setting::getVal('school_year', '2024-2025');
-        $builtName  = $semester . ' - ' . $schoolYear;
-        
+        $builtName = $semester . ' - ' . $schoolYear;
+
         if (Schedule::where('schedule_name', $builtName)->exists()) {
             return self::$cachedScheduleName = $builtName;
         }
@@ -59,12 +63,12 @@ class ScheduleController extends Controller
 
     private function getShiftVars(Classroom $classroom, array $settings): array
     {
-        $shiftStr   = strtolower($classroom->shift ?? 'morning');
-        $isMorning  = ($shiftStr === 'morning');
+        $shiftStr = strtolower($classroom->shift ?? 'morning');
+        $isMorning = ($shiftStr === 'morning');
 
-        $flagDay    = $settings[$shiftStr . '_flag_day']    ?? Setting::DEFAULT_FLAG_DAY;
+        $flagDay = $settings[$shiftStr . '_flag_day'] ?? Setting::DEFAULT_FLAG_DAY;
         $flagPeriod = $settings[$shiftStr . '_flag_period'] ?? ($isMorning ? Setting::DEFAULT_FLAG_PER_M : Setting::DEFAULT_FLAG_PER_A);
-        $meetDay    = $settings[$shiftStr . '_meeting_day']    ?? Setting::DEFAULT_MEET_DAY;
+        $meetDay = $settings[$shiftStr . '_meeting_day'] ?? Setting::DEFAULT_MEET_DAY;
         $meetPeriod = $settings[$shiftStr . '_meeting_period'] ?? ($isMorning ? Setting::DEFAULT_MEET_PER_M : Setting::DEFAULT_MEET_PER_A);
 
         return compact('shiftStr', 'flagDay', 'flagPeriod', 'meetDay', 'meetPeriod');
@@ -79,22 +83,37 @@ class ScheduleController extends Controller
         $scheduleName = $this->getScheduleName();
 
         $stats = [
-            'teachers'    => Teacher::count(),
-            'classrooms'  => Classroom::count(),
-            'rooms'       => Room::count(),
+            'teachers' => Teacher::count(),
+            'classrooms' => Classroom::count(),
+            'rooms' => Room::count(),
             'assignments' => Assignment::count(),
         ];
 
-        $recentSchedules = Schedule::where('schedule_name', $scheduleName)
-            ->with(['assignment.classroom', 'assignment.teacher', 'assignment.subject'])
-            ->latest('updated_at')
-            ->get()
-            ->unique(function ($item) {
-                return $item->assignment->class_id;
-            })
-            ->take(5);
+        // Tối ưu: Lấy 5 ID lớp có thay đổi gần nhất bằng truy vấn SQL thay vì tải toàn bộ TKB vào memory
+        $recentClassIds = Schedule::where('schedule_name', $scheduleName)
+            ->select('class_id')
+            ->orderBy('updated_at', 'desc')
+            ->distinct()
+            ->limit(6)
+            ->pluck('class_id');
 
-        return view('admin.dashboard', compact('stats', 'recentSchedules'));
+        $recentSchedules = collect();
+        foreach ($recentClassIds as $cId) {
+            $s = Schedule::where('schedule_name', $scheduleName)
+                ->where('class_id', $cId)
+                ->with(['assignment.classroom.homeroomTeacher', 'assignment.teacher', 'assignment.subject'])
+                ->latest('updated_at')
+                ->first();
+            if ($s)
+                $recentSchedules->push($s);
+        }
+
+        // Tính tổng số lớp ĐÃ có ít nhất 1 tiết trong bản TKB hiện tại
+        $scheduledCount = Schedule::where('schedule_name', $scheduleName)
+            ->distinct('class_id')
+            ->count('class_id');
+
+        return view('admin.dashboard', compact('stats', 'recentSchedules', 'scheduledCount'));
     }
 
     public function index(Request $request)
@@ -109,13 +128,13 @@ class ScheduleController extends Controller
 
         $selectedClassId = $request->input('class_id', $classes->first()?->id);
         // Tối ưu N+1: Eager load homeroomTeacher
-        $classroom       = Classroom::with('homeroomTeacher')->findOrFail($selectedClassId);
-        $settings        = Setting::pluck('value', 'key')->all();
-        $rooms           = Room::all();
-        $shiftVars       = $this->getShiftVars($classroom, $settings);
+        $classroom = Classroom::with('homeroomTeacher')->findOrFail($selectedClassId);
+        $settings = Setting::pluck('value', 'key')->all();
+        $rooms = Room::all();
+        $shiftVars = $this->getShiftVars($classroom, $settings);
 
         $currentDate = $request->input('date', now()->toDateString());
-        
+
         $historyRanges = Schedule::where('schedule_name', $scheduleName)
             ->where('class_id', $selectedClassId)
             ->select('applies_from', 'applies_to')
@@ -127,23 +146,23 @@ class ScheduleController extends Controller
         $activeRange = null;
         if ($request->has('date')) {
             $lookDate = $request->input('date');
-            $activeRange = $historyRanges->filter(function($r) use ($lookDate) {
-                $from = $r->applies_from instanceof Carbon ? $r->applies_from->toDateString() : (string)$r->applies_from;
-                $to   = $r->applies_to instanceof Carbon ? $r->applies_to->toDateString() : (string)$r->applies_to;
+            $activeRange = $historyRanges->filter(function ($r) use ($lookDate) {
+                $from = $r->applies_from instanceof Carbon ? $r->applies_from->toDateString() : (string) $r->applies_from;
+                $to = $r->applies_to instanceof Carbon ? $r->applies_to->toDateString() : (string) $r->applies_to;
                 return $from && $to && $lookDate >= $from && $lookDate <= $to;
             })->first();
         }
-        
+
         if (!$activeRange) {
-            $activeRange = $historyRanges->filter(function($r) use ($currentDate) {
-                $from = $r->applies_from instanceof Carbon ? $r->applies_from->toDateString() : (string)$r->applies_from;
-                $to   = $r->applies_to instanceof Carbon ? $r->applies_to->toDateString() : (string)$r->applies_to;
+            $activeRange = $historyRanges->filter(function ($r) use ($currentDate) {
+                $from = $r->applies_from instanceof Carbon ? $r->applies_from->toDateString() : (string) $r->applies_from;
+                $to = $r->applies_to instanceof Carbon ? $r->applies_to->toDateString() : (string) $r->applies_to;
                 return $from && $to && $currentDate >= $from && $currentDate <= $to;
             })->first() ?? $historyRanges->first();
         }
 
-        $appliesFrom = ($activeRange && $activeRange->applies_from) ? ($activeRange->applies_from instanceof Carbon ? $activeRange->applies_from->toDateString() : (string)$activeRange->applies_from) : now()->startOfWeek()->toDateString();
-        $appliesTo   = ($activeRange && $activeRange->applies_to)   ? ($activeRange->applies_to instanceof Carbon ? $activeRange->applies_to->toDateString() : (string)$activeRange->applies_to) : now()->startOfWeek()->addDays(6)->toDateString();
+        $appliesFrom = ($activeRange && $activeRange->applies_from) ? ($activeRange->applies_from instanceof Carbon ? $activeRange->applies_from->toDateString() : (string) $activeRange->applies_from) : now()->startOfWeek()->toDateString();
+        $appliesTo = ($activeRange && $activeRange->applies_to) ? ($activeRange->applies_to instanceof Carbon ? $activeRange->applies_to->toDateString() : (string) $activeRange->applies_to) : now()->startOfWeek()->addDays(6)->toDateString();
 
         $allAssignments = Assignment::with(['teacher', 'subject'])->where('class_id', $selectedClassId)->get();
         $curriculums = SubjectConfiguration::where('grade', $classroom->grade)->where('block', $classroom->block_name)->pluck('slots_per_week', 'subject_id')->all();
@@ -160,21 +179,32 @@ class ScheduleController extends Controller
         $assignments = $this->dataService->buildValidAssignments($allAssignments, $curriculums, $counts, $settings);
 
         return view('admin.schedules.index', compact(
-            'classes', 'assignments', 'schedules', 'selectedClassId', 'classroom',
-            'settings', 'rooms', 'teacherBusySlots', 'teacherOtherDays', 'roomBusySlots',
-            'shiftVars', 'appliesFrom', 'appliesTo', 'historyRanges'
+            'classes',
+            'assignments',
+            'schedules',
+            'selectedClassId',
+            'classroom',
+            'settings',
+            'rooms',
+            'teacherBusySlots',
+            'teacherOtherDays',
+            'roomBusySlots',
+            'shiftVars',
+            'appliesFrom',
+            'appliesTo',
+            'historyRanges'
         ));
     }
 
     public function save(StoreScheduleRequest $request)
     {
         $scheduleName = $this->getScheduleName();
-        $classId      = $request->input('class_id');
-        $schedules    = $request->input('schedules');
-        $lastUpdated  = $request->input('last_updated_at');
-        
-        $classroom    = Classroom::findOrFail($classId);
-        $settings     = Setting::pluck('value', 'key')->all();
+        $classId = $request->input('class_id');
+        $schedules = $request->input('schedules');
+        $lastUpdated = $request->input('last_updated_at');
+
+        $classroom = Classroom::findOrFail($classId);
+        $settings = Setting::pluck('value', 'key')->all();
 
         try {
             if ($lastUpdated) {
@@ -187,12 +217,12 @@ class ScheduleController extends Controller
             \Illuminate\Support\Facades\Log::warning("Schedule Save Conflict Check Error: " . $e->getMessage());
         }
 
-        $assignmentIds  = collect($schedules)->pluck('assignment_id')->unique()->toArray();
+        $assignmentIds = collect($schedules)->pluck('assignment_id')->unique()->toArray();
         $allAssignments = Assignment::with(['teacher', 'subject', 'classroom'])->whereIn('id', $assignmentIds)->get()->keyBy('id');
 
         $shiftStr = strtolower($classroom->shift ?? 'morning');
         $appliesFrom = $request->input('applies_from');
-        $appliesTo   = $request->input('applies_to');
+        $appliesTo = $request->input('applies_to');
 
         if (!$appliesFrom || !$appliesTo) {
             return response()->json(['status' => 'error', 'message' => 'Thiếu ngày áp dụng!'], 422);
@@ -204,7 +234,8 @@ class ScheduleController extends Controller
 
         try {
             $error = $this->validator->validate($schedules, $classroom, $allAssignments, $settings, $scheduleName, $shiftStr, $busyData, $curriculums);
-            if ($error) return response()->json(['status' => 'error', 'message' => $error['message']], 422);
+            if ($error)
+                return response()->json(['status' => 'error', 'message' => $error['message']], 422);
         } catch (\Throwable $e) {
             return response()->json(['status' => 'error', 'message' => 'Lỗi kiểm tra: ' . $e->getMessage()], 500);
         }
@@ -225,23 +256,24 @@ class ScheduleController extends Controller
                 // 2. Chuẩn bị dữ liệu Bulk Insert
                 $now = now();
                 $insertData = [];
-                
+
                 foreach ($schedules as $item) {
                     $realAssignment = $allAssignments->get($item['assignment_id']);
-                    if (!$realAssignment) continue;
+                    if (!$realAssignment)
+                        continue;
 
                     $insertData[] = [
                         'assignment_id' => $item['assignment_id'],
-                        'day_of_week'   => (int) $item['day_of_week'],
-                        'period'        => (int) $item['period'],
-                        'room_id'       => $item['room_id'] ?? null,
-                        'teacher_id'    => $realAssignment->teacher_id,
-                        'class_id'      => $classId,
+                        'day_of_week' => (int) $item['day_of_week'],
+                        'period' => (int) $item['period'],
+                        'room_id' => $item['room_id'] ?? null,
+                        'teacher_id' => $realAssignment->teacher_id,
+                        'class_id' => $classId,
                         'schedule_name' => $scheduleName,
-                        'applies_from'  => $appliesFrom,
-                        'applies_to'    => $appliesTo,
-                        'created_at'    => $now,
-                        'updated_at'    => $now,
+                        'applies_from' => $appliesFrom,
+                        'applies_to' => $appliesTo,
+                        'created_at' => $now,
+                        'updated_at' => $now,
                     ];
                 }
 
@@ -253,20 +285,33 @@ class ScheduleController extends Controller
                 $classroom->touch();
             });
         } catch (\Illuminate\Database\QueryException $e) {
-            $errorCode = $e->getCode();
+            $errorCode = $e->errorInfo[1] ?? 0;
             $msg = $e->getMessage();
 
-            if (strpos($msg, 'teacher_slot_unique_v3') !== false) {
-                return response()->json(['status' => 'error', 'message' => 'Trùng lịch giáo viên: Giáo viên này đã có tiết dạy lớp khác vào thời gian này!'], 422);
-            }
-            if (strpos($msg, 'room_slot_unique_v3') !== false) {
-                return response()->json(['status' => 'error', 'message' => 'Trùng phòng học: Phòng này đã được lớp khác sử dụng vào thời gian này!'], 422);
-            }
-            if (strpos($msg, 'class_slot_unique_v3') !== false) {
-                return response()->json(['status' => 'error', 'message' => 'Trùng lịch lớp: Tiết học này đã được xếp môn khác cho lớp!'], 422);
+            // 1062 = Duplicate entry (MySQL)
+            if ($errorCode === 1062) {
+                if (strpos($msg, 'teacher_slot_unique_v3') !== false) {
+                    return response()->json(['status' => 'error', 'message' => 'Trùng lịch giáo viên: Giáo viên này đã có tiết dạy ở lớp khác vào thời điểm này!'], 422);
+                }
+                if (strpos($msg, 'room_slot_unique_v3') !== false) {
+                    return response()->json(['status' => 'error', 'message' => 'Trùng phòng học: Phòng học này đã được sử dụng bởi lớp khác vào thời điểm này!'], 422);
+                }
+                if (strpos($msg, 'class_slot_unique_v3') !== false) {
+                    return response()->json(['status' => 'error', 'message' => 'Lỗi dữ liệu: Lớp học này đã có tiết khác tại thời điểm đang lưu!'], 422);
+                }
             }
 
-            return response()->json(['status' => 'error', 'message' => 'Lỗi DB: ' . $msg], 500);
+            // Fallback cho SQLite hoặc các lỗi khác (Giữ lại tính tương thích ngược)
+            if (strpos($msg, 'UNIQUE constraint failed') !== false) {
+                if (strpos($msg, 'teacher_id') !== false)
+                    return response()->json(['status' => 'error', 'message' => 'Trùng lịch giáo viên (SQLite)!'], 422);
+                if (strpos($msg, 'room_id') !== false)
+                    return response()->json(['status' => 'error', 'message' => 'Trùng phòng học (SQLite)!'], 422);
+                if (strpos($msg, 'class_id') !== false)
+                    return response()->json(['status' => 'error', 'message' => 'Lỗi dữ liệu lớp học (SQLite)!'], 422);
+            }
+
+            return response()->json(['status' => 'error', 'message' => 'Lỗi cơ sở dữ liệu: ' . $msg], 500);
         } catch (\Throwable $e) {
             return response()->json(['status' => 'error', 'message' => 'Lỗi hệ thống: ' . $e->getMessage()], 500);
         }
@@ -279,13 +324,13 @@ class ScheduleController extends Controller
 
     public function list(Request $request)
     {
-        $scheduleName   = $this->getScheduleName();
-        $classes        = Classroom::orderBy('grade')->orderBy('name')->get();
+        $scheduleName = $this->getScheduleName();
+        $classes = Classroom::orderBy('grade')->orderBy('name')->get();
         $groupedClasses = $classes->groupBy('grade');
-        $teachers       = Teacher::orderBy('name')->get();
-        $settings       = Setting::pluck('value', 'key')->all();
-        $currentDate    = $request->input('date', now()->toDateString());
-        
+        $teachers = Teacher::orderBy('name')->get();
+        $settings = Setting::pluck('value', 'key')->all();
+        $currentDate = $request->input('date', now()->toDateString());
+
         $historyRanges = Schedule::where('schedule_name', $scheduleName)
             ->select('applies_from', 'applies_to')
             ->distinct()
@@ -298,30 +343,30 @@ class ScheduleController extends Controller
         // 3. Cuối cùng là ngày hiện tại
         $lookDate = $request->input('date');
         $pickerDate = $request->input('lookup_date');
-        
+
         $activeRange = null;
         if ($lookDate) {
             $activeRange = $historyRanges->first(fn($r) => (optional($r->applies_from)->toDateString() == $lookDate));
         }
-        
+
         if (!$activeRange && $pickerDate) {
-            $activeRange = $historyRanges->filter(function($r) use ($pickerDate) {
+            $activeRange = $historyRanges->filter(function ($r) use ($pickerDate) {
                 $from = optional($r->applies_from)->toDateString();
-                $to   = optional($r->applies_to)->toDateString();
+                $to = optional($r->applies_to)->toDateString();
                 return $from && $to && $pickerDate >= $from && $pickerDate <= $to;
             })->first();
         }
 
         if (!$activeRange) {
-            $activeRange = $historyRanges->filter(function($r) use ($currentDate) {
+            $activeRange = $historyRanges->filter(function ($r) use ($currentDate) {
                 $from = optional($r->applies_from)->toDateString();
-                $to   = optional($r->applies_to)->toDateString();
+                $to = optional($r->applies_to)->toDateString();
                 return $from && $to && $currentDate >= $from && $currentDate <= $to;
             })->first() ?? $historyRanges->first();
         }
 
-        $appliesFrom = ($activeRange && $activeRange->applies_from) ? ($activeRange->applies_from instanceof Carbon ? $activeRange->applies_from->toDateString() : (string)$activeRange->applies_from) : now()->startOfWeek()->toDateString();
-        $appliesTo   = ($activeRange && $activeRange->applies_to)   ? ($activeRange->applies_to instanceof Carbon ? $activeRange->applies_to->toDateString() : (string)$activeRange->applies_to) : now()->startOfWeek()->addDays(6)->toDateString();
+        $appliesFrom = ($activeRange && $activeRange->applies_from) ? ($activeRange->applies_from instanceof Carbon ? $activeRange->applies_from->toDateString() : (string) $activeRange->applies_from) : now()->startOfWeek()->toDateString();
+        $appliesTo = ($activeRange && $activeRange->applies_to) ? ($activeRange->applies_to instanceof Carbon ? $activeRange->applies_to->toDateString() : (string) $activeRange->applies_to) : now()->startOfWeek()->addDays(6)->toDateString();
 
         // 🚀 TỐI ƯU HIỆU SUẤT TRANG DANH SÁCH 🚀
         // 1. Pre-aggregate TKB: Group theo teacher_id, day, period
@@ -331,7 +376,7 @@ class ScheduleController extends Controller
             ->get();
 
         $teacherSchedules = [];
-        $classSchedules   = [];
+        $classSchedules = [];
         foreach ($rawSchedules as $s) {
             $teacherSchedules[$s->teacher_id][$s->day_of_week][$s->period] = $s;
             $classSchedules[$s->class_id][$s->day_of_week][$s->period] = $s;
@@ -341,18 +386,25 @@ class ScheduleController extends Controller
         $homeroomMap = $classes->keyBy('homeroom_teacher_id');
 
         return view('admin.schedules.list', compact(
-            'groupedClasses', 'classes', 'teachers', 'settings', 
-            'appliesFrom', 'appliesTo', 'historyRanges',
-            'teacherSchedules', 'classSchedules', 'homeroomMap'
+            'groupedClasses',
+            'classes',
+            'teachers',
+            'settings',
+            'appliesFrom',
+            'appliesTo',
+            'historyRanges',
+            'teacherSchedules',
+            'classSchedules',
+            'homeroomMap'
         ));
     }
 
     public function show(Request $request, $class_id)
     {
         $scheduleName = $this->getScheduleName();
-        $classroom    = Classroom::findOrFail($class_id);
-        $settings     = Setting::pluck('value', 'key')->all();
-        $currentDate  = $request->input('date', now()->toDateString());
+        $classroom = Classroom::findOrFail($class_id);
+        $settings = Setting::pluck('value', 'key')->all();
+        $currentDate = $request->input('date', now()->toDateString());
 
         $historyRanges = Schedule::where('schedule_name', $scheduleName)
             ->where('class_id', $class_id)
@@ -361,14 +413,14 @@ class ScheduleController extends Controller
             ->orderBy('applies_from', 'desc')
             ->get();
 
-        $activeRange = $historyRanges->filter(function($r) use ($currentDate) {
-            $from = $r->applies_from instanceof Carbon ? $r->applies_from->toDateString() : (string)$r->applies_from;
-            $to   = $r->applies_to instanceof Carbon ? $r->applies_to->toDateString() : (string)$r->applies_to;
+        $activeRange = $historyRanges->filter(function ($r) use ($currentDate) {
+            $from = $r->applies_from instanceof Carbon ? $r->applies_from->toDateString() : (string) $r->applies_from;
+            $to = $r->applies_to instanceof Carbon ? $r->applies_to->toDateString() : (string) $r->applies_to;
             return $from && $to && $currentDate >= $from && $currentDate <= $to;
         })->first() ?? $historyRanges->first();
 
-        $appliesFrom = ($activeRange && $activeRange->applies_from) ? ($activeRange->applies_from instanceof Carbon ? $activeRange->applies_from->toDateString() : (string)$activeRange->applies_from) : now()->startOfWeek()->toDateString();
-        $appliesTo   = ($activeRange && $activeRange->applies_to)   ? ($activeRange->applies_to instanceof Carbon ? $activeRange->applies_to->toDateString() : (string)$activeRange->applies_to) : now()->startOfWeek()->addDays(6)->toDateString();
+        $appliesFrom = ($activeRange && $activeRange->applies_from) ? ($activeRange->applies_from instanceof Carbon ? $activeRange->applies_from->toDateString() : (string) $activeRange->applies_from) : now()->startOfWeek()->toDateString();
+        $appliesTo = ($activeRange && $activeRange->applies_to) ? ($activeRange->applies_to instanceof Carbon ? $activeRange->applies_to->toDateString() : (string) $activeRange->applies_to) : now()->startOfWeek()->addDays(6)->toDateString();
 
         $schedules = Schedule::where('schedule_name', $scheduleName)
             ->where('applies_from', $appliesFrom)

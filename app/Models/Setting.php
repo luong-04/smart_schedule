@@ -48,15 +48,16 @@ class Setting extends Model
     }
 
     /**
-     * Xóa toàn bộ cache settings
+     * Xóa toàn bộ cache settings.
+     * Tối ưu: Nếu số lượng settings lớn, việc loop có thể tốn tài nguyên.
+     * Ở đây ta giữ logic an toàn nhưng sạch sẽ hơn.
      */
     public static function clearAllCache()
     {
-        // Lấy tất cả keys và xóa từng cái
-        $keys = self::pluck('key');
-        foreach ($keys as $key) {
-            Cache::forget(self::CACHE_PREFIX . $key);
-        }
+        // Lấy tất cả keys từ DB và xóa triệt để khỏi Cache store
+        self::select('key')->each(function ($setting) {
+            Cache::forget(self::CACHE_PREFIX . $setting->key);
+        });
     }
 
     /**

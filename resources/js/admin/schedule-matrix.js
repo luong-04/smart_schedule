@@ -226,6 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ghostClass: 'sortable-ghost',
             onStart: function (evt) {
                 const item = evt.item;
+                if (!item) return;
                 let offDays = [];
                 try {
                     const rawOffDays = item.dataset.offDays || '[]';
@@ -259,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const item = evt.item;
                 const targetDay = evt.to.dataset.day;
                 const targetPeriod = evt.to.dataset.period;
-                const needsTransformation = item.classList.contains('sidebar-item');
+                const needsTransformation = item && item.classList && item.classList.contains('sidebar-item');
 
                 // HELPER: Đưa môn về chỗ cũ nếu lỗi
                 function bounceBack() {
@@ -432,6 +433,7 @@ document.addEventListener('DOMContentLoaded', function () {
             animation: 150,
             onStart: function (evt) {
                 const item = evt.item;
+                if (!item) return;
                 let offDays = [];
                 try {
                     const rawOffDays = item.dataset.offDays || '[]';

@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-@section('title', 'Thêm Nhân Viên')
+@section('title', 'Sửa Nhân Viên')
 
 @section('content')
 
@@ -20,11 +20,12 @@
     <a href="{{ route('users.index') }}" class="text-sm font-semibold text-gray-500 hover:text-[#886cc0] flex items-center gap-1 w-fit mb-2 transition">
         <span class="material-symbols-outlined text-[18px]">arrow_back</span> Quay lại danh sách
     </a>
-    <h2 class="text-2xl font-bold text-gray-800">Thêm Nhân Viên Mới</h2>
+    <h2 class="text-2xl font-bold text-gray-800">Chỉnh sửa tài khoản: {{ $user->name }}</h2>
 </div>
 
-<form action="{{ route('users.store') }}" method="POST">
+<form action="{{ route('users.update', $user->id) }}" method="POST">
     @csrf
+    @method('PUT')
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
@@ -37,20 +38,21 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Họ và Tên <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" required placeholder="Nhập tên nhân viên..." 
+                        <input type="text" name="name" value="{{ $user->name }}" required placeholder="Nhập tên nhân viên..." 
                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-[#886cc0]/50 focus:border-[#886cc0] outline-none transition">
                     </div>
 
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
-                        <input type="email" name="email" required placeholder="example@school.edu.vn" 
+                        <input type="email" name="email" value="{{ $user->email }}" required placeholder="example@school.edu.vn" 
                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-[#886cc0]/50 focus:border-[#886cc0] outline-none transition">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Mật khẩu <span class="text-red-500">*</span></label>
-                        <input type="password" name="password" required placeholder="Tối thiểu 8 ký tự" minlength="8"
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Mật khẩu mới</label>
+                        <input type="password" name="password" placeholder="Để trống nếu không muốn đổi" minlength="8"
                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-[#886cc0]/50 focus:border-[#886cc0] outline-none transition">
+                        <p class="text-[10px] text-gray-400 mt-1 italic">* Tối thiểu 8 ký tự nếu nhập</p>
                     </div>
                 </div>
             </div>
@@ -65,12 +67,13 @@
                     <span class="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-1 rounded-md">Lựa chọn nhiều quyền</span>
                 </div>
                 
-                <p class="text-sm text-gray-500 mb-6">Tích chọn các ô bên dưới để cho phép nhân viên này nhìn thấy và quản lý các danh mục tương ứng trên Menu.</p>
+                <p class="text-sm text-gray-500 mb-6">Tích chọn các ô bên dưới để cập nhật quyền hạn cho nhân viên này.</p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @foreach($permissions as $perm)
                         <label class="relative flex items-center p-4 border border-gray-200 rounded-xl cursor-pointer hover:bg-purple-50 hover:border-purple-200 transition-all group">
-                            <input type="checkbox" name="permissions[]" value="{{ $perm->name }}" class="peer sr-only">
+                            <input type="checkbox" name="permissions[]" value="{{ $perm->name }}" 
+                                   class="peer sr-only" {{ $user->hasPermissionTo($perm->name) ? 'checked' : '' }}>
                             
                             <div class="w-6 h-6 rounded border-2 border-gray-300 mr-3 peer-checked:bg-[#886cc0] peer-checked:border-[#886cc0] flex items-center justify-center transition">
                                 <span class="material-symbols-outlined text-white text-[16px] opacity-0 peer-checked:opacity-100 transition-opacity">check</span>
@@ -89,11 +92,11 @@
                 </div>
 
                 <div class="mt-8 flex justify-end gap-3 pt-6 border-t border-gray-100">
-                    <button type="reset" class="px-6 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition">
-                        Làm lại
-                    </button>
-                    <button type="submit" class="px-6 py-2.5 bg-[#886cc0] hover:bg-[#725ab0] text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/30 transition flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">save</span> Lưu tài khoản
+                    <a href="{{ route('users.index') }}" class="px-6 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition">
+                        Hủy bỏ
+                    </a>
+                    <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">update</span> Cập nhật tài khoản
                     </button>
                 </div>
             </div>

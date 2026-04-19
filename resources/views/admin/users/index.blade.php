@@ -11,7 +11,8 @@
         'quan_ly_lop_hoc' => 'Quản lý Lớp học',
         'quan_ly_xep_lich' => 'Quản lý Xếp lịch',
         'quan_ly_giam_thi' => 'Quản lý Giám thị',
-        'quan_ly_cai_dat' => 'Quản lý Cài đặt'
+        'quan_ly_cai_dat' => 'Quản lý Cài đặt',
+        'quan_ly_co_so_vat_chat' => 'Quản lý Cơ sở vật chất'
     ];
 @endphp
 
@@ -127,6 +128,9 @@
                         </td>
                         <td class="px-8 py-4 text-right">
                             <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                <a href="{{ route('users.edit', $user->id) }}" class="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all" title="Chỉnh sửa tài khoản">
+                                    <span class="material-symbols-outlined text-[18px]">edit_note</span>
+                                </a>
                                 <form action="{{ route('users.destroy', $user->id) }}" method="POST"
                                     class="inline" hx-boost="false" onsubmit="return confirm('Bạn có chắc chắn muốn xóa nhân viên này?')">
                                     @csrf @method('DELETE')

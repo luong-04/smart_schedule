@@ -14,7 +14,7 @@ class UserController extends Controller
     public function index()
     {
         // Lấy tất cả user trừ tài khoản đang đăng nhập (để Admin Tổng không tự xóa mình)
-        $users = User::where('id', '!=', auth()->id())->get();
+        $users = User::with('permissions')->where('id', '!=', auth()->id())->get();
         return view('admin.users.index', compact('users'));
     }
 
@@ -60,6 +60,43 @@ class UserController extends Controller
         }
         $user->delete();
         return redirect()->route('users.index')->with('success', 'Đã xóa tài khoản!');
+    }
+
+    // 4b. Trang Sửa nhân viên (MỚI BỔ SUNG)
+    public function edit(User $user)
+    {
+        $permissions = Permission::all();
+        return view('admin.users.edit', compact('user', 'permissions'));
+    }
+
+    // 4c. Cập nhật nhân viên (MỚI BỔ SUNG)
+    public function update(Request $request, User $user)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:8', // Để trống là không đổi mật khẩu
+        ]);
+
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+        ];
+
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        // Đồng bộ lại quyền
+        if ($request->has('permissions')) {
+            $user->syncPermissions($request->permissions);
+        } else {
+            $user->syncPermissions([]); // Xóa hết quyền nếu không tick ô nào
+        }
+
+        return redirect()->route('users.index')->with('success', 'Cập nhật tài khoản thành công!');
     }
 
     // 5. TÍNH NĂNG MỚI: XÓA NHIỀU

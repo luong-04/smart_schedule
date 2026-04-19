@@ -15,7 +15,7 @@ class AssignmentController extends Controller
     {
         $data = $request->validate([
             'teacher_id' => 'required|exists:teachers,id',
-            'class_id'   => 'required|exists:classrooms,id',
+            'class_id'   => 'required|exists:classes,id',
             'subject_id' => 'required|exists:subjects,id',
         ], [
             'class_id.required'   => 'Vui lòng chọn lớp học.',

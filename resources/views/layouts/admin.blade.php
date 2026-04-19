@@ -110,12 +110,12 @@
                         </a>
                         @endcan
 
-                        @canany(['quan_ly_mon_hoc', 'quan_ly_lop_hoc'])
+                        @can('quan_ly_co_so_vat_chat')
                         <a href="{{ route('rooms.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('rooms.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
                             <span class="material-symbols-outlined {{ request()->routeIs('rooms.*') ? 'text-blue-600' : 'text-slate-400' }}">domain</span>
                             <span class="text-sm">Cơ sở vật chất</span>
                         </a>
-                        @endcanany
+                        @endcan
                     </div>
                 </div>
 

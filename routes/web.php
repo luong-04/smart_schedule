@@ -57,14 +57,17 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         Route::resource('subjects', SubjectController::class);
     });
 
-    // 4. NHÓM LỚP HỌC & PHÒNG HỌC
+    // 4. NHÓM LỚP HỌC
     Route::middleware(['can:quan_ly_lop_hoc'])->group(function () {
         Route::delete('classrooms/bulk-delete', [ClassroomController::class, 'bulkDelete'])->name('classrooms.bulkDelete');
-        Route::delete('room-types/bulk-delete', [RoomTypeController::class, 'bulkDelete'])->name('room-types.bulkDelete');
-        Route::delete('rooms/bulk-delete', [RoomController::class, 'bulkDelete'])->name('rooms.bulkDelete');
-
         Route::post('classrooms/import', [ClassroomController::class, 'import'])->name('classrooms.import');
         Route::resource('classrooms', ClassroomController::class);
+    });
+
+    // 4b. NHÓM CƠ SỞ VẬT CHẤT (MỚI BỔ SUNG)
+    Route::middleware(['can:quan_ly_co_so_vat_chat'])->group(function () {
+        Route::delete('room-types/bulk-delete', [RoomTypeController::class, 'bulkDelete'])->name('room-types.bulkDelete');
+        Route::delete('rooms/bulk-delete', [RoomController::class, 'bulkDelete'])->name('rooms.bulkDelete');
         Route::resource('room-types', RoomTypeController::class);
         Route::resource('rooms', RoomController::class);
     });

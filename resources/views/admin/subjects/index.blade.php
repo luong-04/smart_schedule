@@ -16,7 +16,7 @@
         
         <div class="flex items-center gap-3">
             <button x-show="selectedSubjects.length > 0" 
-                    @click="if(confirm('CẢNH BÁO: Bạn sẽ xóa ' + selectedSubjects.length + ' môn học. Thao tác này có thể ảnh hưởng đến TKB đang xếp. Có chắc chắn xóa?')) document.getElementById('bulkDeleteForm').submit()"
+                    @click="if(confirm('CẢNH BÁO: Bạn sẽ xóa ' + selectedSubjects.length + ' môn học. Thao tác này có thể ảnh hưởng đến TKB đang xếp. Có chắc chắn xóa?')) document.getElementById('bulkDeleteForm').requestSubmit()"
                     x-transition
                     class="bg-red-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-600 transition-all flex items-center gap-2">
                 <span class="material-symbols-outlined text-sm">delete_sweep</span> Xóa (<span x-text="selectedSubjects.length"></span>)
@@ -95,9 +95,11 @@
                             <a href="{{ route('subjects.edit', $s->id) }}" class="text-blue-500 hover:text-blue-700 font-bold text-[11px] uppercase tracking-widest transition-colors flex items-center gap-1">
                                 <span class="material-symbols-outlined text-sm">edit</span> Sửa
                             </a>
-                            <form action="{{ route('subjects.destroy', $s->id) }}" method="POST" onsubmit="return confirm('Xác nhận xóa môn học này?')">
+                            <form action="{{ route('subjects.destroy', $s->id) }}" method="POST"
+                                class="inline" hx-boost="false" onsubmit="return confirm('Xác nhận xóa môn học này?')">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="text-red-400 hover:text-red-600 font-bold text-[11px] uppercase tracking-widest transition-colors flex items-center gap-1">
+                                <button type="submit" 
+                                    class="text-red-400 hover:text-red-600 font-bold text-[11px] uppercase tracking-widest transition-colors flex items-center gap-1">
                                     <span class="material-symbols-outlined text-sm">delete</span> Xóa
                                 </button>
                             </form>

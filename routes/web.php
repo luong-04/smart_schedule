@@ -11,10 +11,10 @@ use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\ClassroomController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\RoomTypeController;
-use App\Http\Controllers\Admin\CurriculumController; 
+use App\Http\Controllers\Admin\CurriculumController;
 use App\Http\Controllers\Admin\SettingsController;
-use App\Http\Controllers\Admin\ProctorController; 
-use App\Http\Controllers\Admin\UserController; 
+use App\Http\Controllers\Admin\ProctorController;
+use App\Http\Controllers\Admin\UserController;
 
 use App\Http\Controllers\HomeController;
 
@@ -35,7 +35,7 @@ Route::middleware('auth')->group(function () {
 // TOÀN BỘ ROUTE ADMIN (ĐÃ PHÂN QUYỀN ROUTE)
 // ==========================================
 Route::prefix('admin')->middleware(['auth'])->group(function () {
-    
+
     // 1. NHÓM DÀNH CHO TẤT CẢ NHÂN VIÊN (Chỉ cần đăng nhập là xem được)
     Route::get('/dashboard', [ScheduleController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/schedules/list', [ScheduleController::class, 'list'])->name('schedules.list');
@@ -44,28 +44,29 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
     // 2. NHÓM GIÁO VIÊN
     Route::middleware(['can:quan_ly_giao_vien'])->group(function () {
+        Route::delete('teachers/bulk-delete', [TeacherController::class, 'bulkDelete'])->name('teachers.bulkDelete');
         Route::post('teachers/import', [TeacherController::class, 'import'])->name('teachers.import');
         Route::post('assignments/import', [TeacherController::class, 'importAssignments'])->name('assignments.import');
-        Route::delete('teachers/bulk-delete', [TeacherController::class, 'bulkDelete'])->name('teachers.bulkDelete');
         Route::resource('teachers', TeacherController::class);
     });
 
     // 3. NHÓM MÔN HỌC
     Route::middleware(['can:quan_ly_mon_hoc'])->group(function () {
+        Route::delete('subjects/bulk-delete', [SubjectController::class, 'bulkDelete'])->name('subjects.bulkDelete');
         Route::post('subjects/import', [SubjectController::class, 'import'])->name('subjects.import');
         Route::resource('subjects', SubjectController::class);
-        Route::delete('subjects/bulk-delete', [SubjectController::class, 'bulkDelete'])->name('subjects.bulkDelete');
     });
 
     // 4. NHÓM LỚP HỌC & PHÒNG HỌC
     Route::middleware(['can:quan_ly_lop_hoc'])->group(function () {
-        Route::post('classrooms/import', [ClassroomController::class, 'import'])->name('classrooms.import');
         Route::delete('classrooms/bulk-delete', [ClassroomController::class, 'bulkDelete'])->name('classrooms.bulkDelete');
+        Route::delete('room-types/bulk-delete', [RoomTypeController::class, 'bulkDelete'])->name('room-types.bulkDelete');
+        Route::delete('rooms/bulk-delete', [RoomController::class, 'bulkDelete'])->name('rooms.bulkDelete');
+
+        Route::post('classrooms/import', [ClassroomController::class, 'import'])->name('classrooms.import');
         Route::resource('classrooms', ClassroomController::class);
         Route::resource('room-types', RoomTypeController::class);
         Route::resource('rooms', RoomController::class);
-        Route::delete('room-types/bulk-delete', [RoomTypeController::class, 'bulkDelete'])->name('room-types.bulkDelete');
-        Route::delete('rooms/bulk-delete', [RoomController::class, 'bulkDelete'])->name('rooms.bulkDelete');
     });
 
     // 5. NHÓM XẾP LỊCH (Phân công, Ma trận, Chương trình)
@@ -78,8 +79,8 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         Route::post('/matrix/save', [ScheduleController::class, 'save'])->name('admin.schedules.save');
 
         Route::delete('curriculum/bulk-delete', [CurriculumController::class, 'bulkDelete'])->name('curriculum.bulkDelete');
-        Route::resource('curriculum', CurriculumController::class);
         Route::post('curriculum/import', [CurriculumController::class, 'import'])->name('curriculum.import');
+        Route::resource('curriculum', CurriculumController::class);
     });
 
     // 6. NHÓM GIÁM THỊ
@@ -93,12 +94,11 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
     // 7. NHÓM SUPER ADMIN (Tạo nhân viên, Cài đặt hệ thống)
     Route::middleware(['role:Super Admin'])->group(function () {
+        Route::delete('/users/bulk-delete', [UserController::class, 'bulkDelete'])->name('users.bulkDelete');
         Route::get('/settings', [SettingsController::class, 'index'])->name('admin.settings.index');
         Route::post('/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
-        
-        Route::delete('/users/bulk-delete', [UserController::class, 'bulkDelete'])->name('users.bulkDelete');
         Route::resource('users', UserController::class);
     });
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

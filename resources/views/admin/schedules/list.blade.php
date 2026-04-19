@@ -165,16 +165,20 @@
                 </div>
 
                 <div id="pdf-content-class-{{ $class->id }}" class="grade-{{ $grade }}-content bg-white p-6 md:p-10" :class="expandedClass === {{ $class->id }} ? '' : 'hidden print:block'">
-                    <div class="text-center mb-6 border-b-2 border-slate-800 pb-4 print-header-pdf" style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
-                        <h2 style="font-size: 14px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $settings['school_name'] ?? 'TRƯỜNG CHƯA CÀI ĐẶT' }}</h2>
-                        <h1 style="font-size: 24px; font-weight: 900; color: #1d4ed8; margin: 5px 0; text-transform: uppercase;">THỜI KHÓA BIỂU</h1>
-                        <p style="font-size: 12px; font-weight: 700; color: #1f2937; margin: 5px 0;">
-                            LỚP: <span class="class-name-data">{{ $class->name }}</span> ({{ $class->block_name }}) | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
+                    <div class="print-header-pdf" style="text-align: center; border-bottom: 1.5px solid black; padding-bottom: 8px; margin-bottom: 12px; display: none;">
+                        <h2 style="font-size: 13px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $settings['school_name'] ?? '' }}</h2>
+                        <h1 style="font-size: 28px; font-weight: 900; color: #1d4ed8; margin: 2px 0; text-transform: uppercase;">THỜI KHÓA BIỂU</h1>
+                        <p style="font-size: 13px; font-weight: 900; color: #1f2937; margin: 4px 0;">
+                            LỚP: <span class="class-name-data">{{ $class->name }}</span> ({{ $class->block_name }}) 
+                            @if(isset($appliesFrom) && isset($appliesTo))
+                                | ÁP DỤNG: {{ \Carbon\Carbon::parse($appliesFrom)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($appliesTo)->format('d/m/Y') }}
+                            @endif
+                            | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
                         </p>
-                        <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">GVCN: {{ $class->homeroomTeacher?->name ?? 'Chưa cập nhật' }}</p>
+                        <p style="font-size: 13px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">GVCN: {{ $class->homeroomTeacher?->name ?? 'Chưa cập nhật' }}</p>
                     </div>
 
-                    <table class="w-full border-collapse border-b-2 border-black print-table" style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
+                    <table style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
                         <thead>
                             <tr class="bg-slate-100" style="background-color: #f1f5f9;">
                                 <th style="border: 1px solid black; padding: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; width: 35px; text-align: center;">T</th>
@@ -203,13 +207,13 @@
                                             $fixedLabel = ($d == $fDay && $p == $fPer) ? 'CHÀO CỜ' : 'SINH HOẠT';
                                             $cell = $classSchedules[$class->id][$d][$p] ?? null;
                                         @endphp
-                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }}; height: 48px; overflow: hidden; padding: 1px;">
+                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }}; height: 46px; overflow: hidden; padding: 1px;">
                                             @if($isFixed)
-                                                <span style="font-size: 10px; font-weight: 900; color: #6b7280; line-height: 1;">{{ $fixedLabel }}</span>
+                                                <span style="font-size: 11px; font-weight: 900; color: #6b7280; line-height: 1;">{{ $fixedLabel }}</span>
                                             @elseif($cell)
                                                 @php
                                                     $sName = $cell->assignment->subject->name;
-                                                    $abbreviations = [
+                                                    $abAbbreviations = [
                                                         'Giáo dục thể chất' => 'GD Thể chất',
                                                         'Giáo dục quốc phòng và an ninh' => 'GDQP-AN',
                                                         'GD Kinh tế và Pháp luật' => 'GDKT-PL',
@@ -226,17 +230,17 @@
                                                         'Tin học' => 'Tin học',
                                                         'Công nghệ' => 'Công nghệ'
                                                     ];
-                                                    $displayName = $abbreviations[$sName] ?? $sName;
+                                                    $displayName = $abAbbreviations[$sName] ?? $sName;
                                                     
                                                     $tName = $cell->assignment->teacher->name;
                                                     $tParts = explode(' ', $tName);
-                                                    $tShort = count($tParts) > 1 ? end($tParts) : $tName; // Lấy tên cuối
+                                                    $tShort = count($tParts) > 1 ? end($tParts) : $tName; 
                                                 @endphp
-                                                <div style="display: flex; flex-direction: column; line-height: 1.1; padding: 2px;">
-                                                    <span style="font-size: 11px; font-weight: 900; color: #1e40af; text-transform: uppercase; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">{{ $displayName }}</span>
-                                                    <span style="font-size: 9px; font-weight: 700; color: #4b5563;">GV: {{ $tShort }}</span>
+                                                <div style="line-height: 1.1; padding: 1px; height: 46px; display: block; overflow: hidden;">
+                                                    <div style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-bottom: 1px;">{{ $displayName }}</div>
+                                                    <div style="font-size: 10px; font-weight: 700; color: #4b5563; margin-bottom: 0px;">GV: {{ $tShort }}</div>
                                                     @if($cell->room_id)
-                                                        <span style="font-size: 9px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</span>
+                                                        <div style="font-size: 10px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</div>
                                                     @endif
                                                 </div>
                                             @endif
@@ -310,35 +314,37 @@
 
                 <div id="pdf-content-teacher-{{ $teacher->id }}" class="teacher-content bg-white p-6 md:p-10" :class="expandedTeacher === {{ $teacher->id }} ? '' : 'hidden print:block'">
                     
-                    <div class="text-center mb-6 border-b-2 border-slate-800 pb-4 print-header-pdf" style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
-                        <h2 style="font-size: 14px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $settings['school_name'] ?? 'TRƯỜNG CHƯA CÀI ĐẶT' }}</h2>
-                        <h1 style="font-size: 24px; font-weight: 900; color: #1d4ed8; margin: 5px 0; text-transform: uppercase;">THỜI KHÓA BIỂU GIÁO VIÊN</h1>
-                        <p style="font-size: 12px; font-weight: 700; color: #1f2937; margin: 5px 0;">
-                            HỌ TÊN: <span class="teacher-name-data uppercase">{{ $teacher->name }}</span> | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
+                    <div class="print-header-pdf" style="text-align: center; border-bottom: 1.5px solid black; padding-bottom: 8px; margin-bottom: 12px; display: none;">
+                        <h2 style="font-size: 13px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $settings['school_name'] ?? '' }}</h2>
+                        <h1 style="font-size: 28px; font-weight: 900; color: #1d4ed8; margin: 2px 0; text-transform: uppercase;">THỜI KHÓA BIỂU GIÁO VIÊN</h1>
+                        <p style="font-size: 13px; font-weight: 900; color: #1f2937; margin: 4px 0;">
+                            HỌ TÊN: <span class="teacher-name-data uppercase font-black">{{ $teacher->name }}</span> 
+                            @if(isset($appliesFrom) && isset($appliesTo))
+                                | ÁP DỤNG: {{ \Carbon\Carbon::parse($appliesFrom)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($appliesTo)->format('d/m/Y') }}
+                            @endif
+                            | NĂM HỌC: {{ $settings['school_year'] ?? '2024 - 2025' }}
                         </p>
-                        @php
-                            $homeroomClass = $homeroomMap->get($teacher->id);
-                        @endphp
-                        <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">MÔN: {{ $teacher->subject->name ?? '........' }} {{ $homeroomClass ? '| GVCN LỚP: '.$homeroomClass->name : '' }}</p>
+                        @php $homeroomClass = $homeroomMap->get($teacher->id); @endphp
+                        <p style="font-size: 13px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">MÔN: {{ $teacher->subject->name ?? '........' }} | TỔ: {{ $teacher->department ?? '........' }} {{ $homeroomClass ? '| GVCN LỚP: '.$homeroomClass->name : '' }}</p>
                     </div>
 
-                    <table class="w-full border-collapse border-b-2 border-black print-table" style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
+                    <table style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
                         <thead>
                             <tr class="bg-slate-100" style="background-color: #f1f5f9;">
-                                <th style="border: 1px solid black; padding: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; width: 35px; text-align: center;">T</th>
+                                <th style="border: 1px solid black; padding: 4px; font-size: 11px; font-weight: 900; text-transform: uppercase; width: 35px; text-align: center;">T</th>
                                 @for($d=2; $d<=7; $d++)
-                                <th style="border: 1px solid black; padding: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; text-align: center; width: 16%;">Thứ {{ $d }}</th>
+                                <th style="border: 1px solid black; padding: 4px; font-size: 11px; font-weight: 900; text-transform: uppercase; text-align: center; width: 16%;">Thứ {{ $d }}</th>
                                 @endfor
                             </tr>
                         </thead>
                         <tbody>
                             @php
                                 if($homeroomClass) {
-                                    $shiftStr = strtolower($homeroomClass->shift ?? 'morning');
-                                    $fDay = $settings[$shiftStr.'_flag_day'] ?? 2;
-                                    $fPer = $settings[$shiftStr.'_flag_period'] ?? ($shiftStr == 'morning' ? 1 : 10);
-                                    $mDay = $settings[$shiftStr.'_meeting_day'] ?? 7;
-                                    $mPer = $settings[$shiftStr.'_meeting_period'] ?? ($shiftStr == 'morning' ? 5 : 10);
+                                    $sh = strtolower($homeroomClass->shift ?? 'morning');
+                                    $fDay = $settings[$sh.'_flag_day'] ?? 2;
+                                    $fPer = $settings[$sh.'_flag_period'] ?? ($sh == 'morning' ? 1 : 10);
+                                    $mDay = $settings[$sh.'_meeting_day'] ?? 7;
+                                    $mPer = $settings[$sh.'_meeting_period'] ?? ($sh == 'morning' ? 5 : 10);
                                 } else {
                                     $fDay = -1; $fPer = -1; $mDay = -1; $mPer = -1;
                                 }
@@ -356,37 +362,32 @@
                                             $fixedLabel = ($d == $fDay && $p == $fPer) ? 'CHÀO CỜ' : 'SINH HOẠT';
                                             $cell = $teacherSchedules[$teacher->id][$d][$p] ?? null;
                                         @endphp
-                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }}; height: 48px; overflow: hidden; padding: 1px;">
+                                        <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ $isFixed ? '#f8f9fa' : '#ffffff' }}; height: 46px; overflow: hidden; padding: 1px;">
                                             @if($isFixed && $homeroomClass)
-                                                <div style="display: flex; flex-direction: column; line-height: 1;">
-                                                    <span style="font-size: 10px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</span>
-                                                    <span style="font-size: 9px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClass->name }}</span>
+                                                <div style="line-height: 1.1;">
+                                                    <div style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</div>
+                                                    <div style="font-size: 10px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClass->name }}</div>
                                                 </div>
                                             @elseif($cell)
                                                 @php
                                                     $sName = $cell->assignment->subject->name;
-                                                    $abbreviations = [
+                                                    $abc = [
                                                         'Giáo dục thể chất' => 'GD Thể chất',
                                                         'Giáo dục quốc phòng và an ninh' => 'GDQP-AN',
                                                         'GD Kinh tế và Pháp luật' => 'GDKT-PL',
                                                         'Hoạt động trải nghiệm, hướng nghiệp' => 'HĐTN-HN',
                                                         'Nội dung giáo dục địa phương' => 'GD Địa phương',
                                                         'Tiếng Anh' => 'T.Anh',
-                                                        'Vật lí' => 'Vật lí',
-                                                        'Hóa học' => 'Hóa học',
-                                                        'Sinh học' => 'Sinh học',
-                                                        'Lịch sử' => 'Lịch sử',
-                                                        'Địa lí' => 'Địa lí',
-                                                        'Tin học' => 'Tin học',
-                                                        'Công nghệ' => 'Công nghệ'
+                                                        'Vật lí' => 'Vật lí', 'Hóa học' => 'Hóa học', 'Sinh học' => 'Sinh học',
+                                                        'Lịch sử' => 'Lịch sử', 'Địa lí' => 'Địa lí', 'Tin học' => 'Tin học', 'Công nghệ' => 'Công nghệ'
                                                     ];
-                                                    $displayName = $abbreviations[$sName] ?? $sName;
+                                                    $displayName = $abc[$sName] ?? $sName;
                                                 @endphp
-                                                <div style="display: flex; flex-direction: column; line-height: 1.1; padding: 2px;">
-                                                    <span style="font-size: 11px; font-weight: 900; color: #1e40af; text-transform: uppercase;">Lớp {{ $cell->assignment->classroom->name }}</span>
-                                                    <span style="font-size: 10px; font-weight: 700; color: #4b5563; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">{{ $displayName }}</span>
+                                                <div style="line-height: 1.1; padding: 1px; height: 46px; display: block; overflow: hidden;">
+                                                    <div style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase; margin-bottom: 1px;">Lớp {{ $cell->assignment->classroom->name }}</div>
+                                                    <div style="font-size: 10px; font-weight: 700; color: #4b5563; margin-bottom: 0px;">{{ $displayName }}</div>
                                                     @if($cell->room_id)
-                                                        <span style="font-size: 9px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</span>
+                                                        <div style="font-size: 10px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</div>
                                                     @endif
                                                 </div>
                                             @endif
@@ -419,23 +420,28 @@
     }
 
     function exportAllTeachersWord() {
-        const classContents = document.querySelectorAll(`.teacher-content`);
-        if (classContents.length === 0) return alert("Không tìm thấy dữ liệu giáo viên.");
-
-        let combinedHtml = "";
-        classContents.forEach((el, index) => {
-            combinedHtml += `
-                <div class="word-page">${el.innerHTML}</div>
-                ${index < classContents.length - 1 ? '<br clear="all" style="mso-special-character:line-break; page-break-before:always">' : ''}
+        const container = document.createElement('div');
+        document.querySelectorAll(`.teacher-content`).forEach((el, index) => {
+            let clone = el.cloneNode(true);
+            const header = clone.querySelector('.print-header-pdf');
+            if (header) header.style.display = 'block';
+            
+            container.innerHTML += `
+                <div class="word-page">${clone.innerHTML}</div>
+                ${index < document.querySelectorAll(`.teacher-content`).length - 1 ? '<br clear="all" style="mso-special-character:line-break; page-break-before:always">' : ''}
             `;
         });
 
-        const finalHtml = generateWordTemplate(combinedHtml);
+        const finalHtml = generateWordTemplate(container.innerHTML);
         const blob = new Blob(['\ufeff', finalHtml], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
+        link.href = url;
         link.download = `TKB_TatCa_GiaoVien.doc`;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 
     function exportAllTeachersNative() {
@@ -445,18 +451,24 @@
         const newWindow = window.open('', '_blank');
         let fullHtml = "";
         classContents.forEach((el, index) => {
-            fullHtml += `<div style="${index < classContents.length - 1 ? 'page-break-after: always;' : ''} padding: 5mm; background:white;">${el.innerHTML}</div>`;
+            let clone = el.cloneNode(true);
+            const header = clone.querySelector('.print-header-pdf');
+            if (header) header.style.display = 'block';
+
+            fullHtml += `<div style="${index < classContents.length - 1 ? 'page-break-after: always;' : ''} padding: 5mm; background:white;">${clone.innerHTML}</div>`;
         });
 
         newWindow.document.write(`
             <html>
             <head>
                 <meta charset="UTF-8">
+                <title>In Tất Cả Giáo Viên</title>
                 <script src="https://cdn.tailwindcss.com"><\/script>
                 <style>
-                    @page { size: A4 landscape; margin: 0; }
-                    body { background: white; -webkit-print-color-adjust: exact !important; font-family: sans-serif; }
+                    @page { size: A4 landscape; margin: 5mm; }
+                    body { background: white; -webkit-print-color-adjust: exact !important; font-family: 'Segoe UI', sans-serif; }
                     .print-table th, .print-table td { border: 1px solid black !important; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                     .hidden { display: block !important; }
                 </style>
             </head>
@@ -476,13 +488,20 @@
         const element = document.getElementById(`pdf-content-class-${classId}`);
         if (!element) return alert("Không tìm thấy nội dung!");
         
-        const content = element.innerHTML;
-        const finalHtml = generateWordTemplate(content);
+        let clone = element.cloneNode(true);
+        const header = clone.querySelector('.print-header-pdf');
+        if (header) header.style.display = 'block';
+
+        const finalHtml = generateWordTemplate(clone.innerHTML);
         const blob = new Blob(['\ufeff', finalHtml], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `TKB_Lop_${className}.doc`;
+        link.href = url;
+        link.download = `TKB_Lop_${className.replace(/\s+/g, '_')}.doc`;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 
     function exportGradeWord(grade) {
@@ -491,18 +510,26 @@
 
         let combinedHtml = "";
         classContents.forEach((el, index) => {
+            let clone = el.cloneNode(true);
+            const header = clone.querySelector('.print-header-pdf');
+            if (header) header.style.display = 'block';
+
             combinedHtml += `
-                <div class="word-page">${el.innerHTML}</div>
+                <div class="word-page">${clone.innerHTML}</div>
                 ${index < classContents.length - 1 ? '<br clear="all" style="mso-special-character:line-break; page-break-before:always">' : ''}
             `;
         });
 
         const finalHtml = generateWordTemplate(combinedHtml);
         const blob = new Blob(['\ufeff', finalHtml], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
+        link.href = url;
         link.download = `TKB_Khoi_${grade}.doc`;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 
     function generateWordTemplate(content) {
@@ -511,16 +538,20 @@
             <head><meta charset="utf-8"><style>
                 @page WordSection1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 0.5in 0.5in 0.5in 0.5in; }
                 div.WordSection1 { page: WordSection1; }
-                table { border-collapse: collapse; width: 100%; border: 1pt solid black !important; }
-                th, td { border: 1pt solid black !important; padding: 5px; text-align: center; font-family: 'Arial', sans-serif; }
+                table { border-collapse: collapse; width: 100%; border: 1.5pt solid black !important; table-layout: fixed; }
+                th, td { border: 1.2pt solid black !important; padding: 2px; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; vertical-align: middle; }
             </style></head>
-            <body><div class="WordSection1">${content}</div></body></html>
+            <body style="font-family: 'Segoe UI', sans-serif;"><div class="WordSection1" style="width: 100%; margin: 0 auto; text-align: center;">${content}</div></body></html>
         `;
     }
 
     // --- FIX LỖI TRANG TRẮNG KHI IN ---
     function exportNative(elementId) {
-        const content = document.getElementById(elementId).innerHTML;
+        const element = document.getElementById(elementId);
+        let clone = element.cloneNode(true);
+        const header = clone.querySelector('.print-header-pdf');
+        if (header) header.style.display = 'block';
+
         const newWindow = window.open('', '_blank');
         newWindow.document.write(`
             <html>
@@ -529,17 +560,18 @@
                 <title>In Thời Khóa Biểu</title>
                 <script src="https://cdn.tailwindcss.com"><\/script>
                 <style>
-                    @page { size: A4 landscape; margin: 0; }
-                    body { background: white; -webkit-print-color-adjust: exact !important; padding: 10mm; font-family: sans-serif; }
-                    .print-table th, .print-table td { border: 1px solid black !important; }
+                    @page { size: A4 landscape; margin: 5mm !important; }
+                    body { background: white; -webkit-print-color-adjust: exact !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+                    table { border-collapse: collapse; width: 100%; border: 1.5pt solid black !important; table-layout: fixed; }
+                    th, td { border: 1.2pt solid black !important; padding: 2px; text-align: center; vertical-align: middle; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 </style>
             </head>
-            <body>${content}</body>
+            <body><div style="width: 100%; max-width: 297mm; margin: 0 auto;">${clone.innerHTML}</div></body>
             </html>
         `);
         newWindow.document.close();
         
-        // Chờ 1 giây để CSS kịp nhận diện rồi mới mở hộp thoại in
         setTimeout(() => {
             newWindow.focus();
             newWindow.print();
@@ -554,18 +586,24 @@
         const newWindow = window.open('', '_blank');
         let fullHtml = "";
         classContents.forEach((el, index) => {
-            fullHtml += `<div style="${index < classContents.length - 1 ? 'page-break-after: always;' : ''} padding: 5mm; background:white;">${el.innerHTML}</div>`;
+            let clone = el.cloneNode(true);
+            const header = clone.querySelector('.print-header-pdf');
+            if (header) header.style.display = 'block';
+
+            fullHtml += `<div style="${index < classContents.length - 1 ? 'page-break-after: always;' : ''} padding: 5mm; background:white;">${clone.innerHTML}</div>`;
         });
 
         newWindow.document.write(`
             <html>
             <head>
                 <meta charset="UTF-8">
+                <title>In Khối ${grade}</title>
                 <script src="https://cdn.tailwindcss.com"><\/script>
                 <style>
-                    @page { size: A4 landscape; margin: 0; }
-                    body { background: white; -webkit-print-color-adjust: exact !important; font-family: sans-serif; }
+                    @page { size: A4 landscape; margin: 5mm; }
+                    body { background: white; -webkit-print-color-adjust: exact !important; font-family: 'Segoe UI', sans-serif; }
                     .print-table th, .print-table td { border: 1px solid black !important; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                     .hidden { display: block !important; }
                 </style>
             </head>

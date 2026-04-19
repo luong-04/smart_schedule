@@ -32,7 +32,7 @@
         
         <div class="flex items-center gap-3">
             <button x-show="selectedUsers.length > 0" 
-                    @click="if(confirm('CẢNH BÁO: Bạn sắp xóa ' + selectedUsers.length + ' tài khoản nhân viên. Thao tác này không thể hoàn tác. Tiếp tục?')) document.getElementById('bulkDeleteForm').submit()"
+                    @click="if(confirm('CẢNH BÁO: Bạn sắp xóa ' + selectedUsers.length + ' tài khoản nhân viên. Thao tác này không thể hoàn tác. Tiếp tục?')) document.getElementById('bulkDeleteForm').requestSubmit()"
                     x-transition
                     class="bg-red-500 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-200 hover:bg-red-600 transition-all flex items-center gap-2">
                 <span class="material-symbols-outlined text-[18px]">delete_sweep</span> Xóa (<span x-text="selectedUsers.length"></span>)
@@ -127,11 +127,12 @@
                         </td>
                         <td class="px-8 py-4 text-right">
                             <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa nhân viên này?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Xóa tài khoản">
-                                        <span class="material-symbols-outlined text-[20px]">delete</span>
+                                <form action="{{ route('users.destroy', $user->id) }}" method="POST"
+                                    class="inline" hx-boost="false" onsubmit="return confirm('Bạn có chắc chắn muốn xóa nhân viên này?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" 
+                                        class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Xóa tài khoản">
+                                        <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </form>
                             </div>

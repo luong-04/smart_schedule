@@ -154,11 +154,10 @@
                     <div id="pdf-content-{{ $targetType }}-{{ $targetId }}" class="print-area bg-white rounded-[2rem] p-6 md:p-10 border border-slate-200 max-w-5xl mx-auto mb-10 shadow-sm overflow-x-auto">
                         
                         <!-- Header identical to admin -->
-                        <div class="print-header-pdf" style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
-                            <h2 style="font-size: 14px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $schoolName }}</h2>
-                            <h1 style="font-size: 24px; font-weight: 900; color: #1d4ed8; margin: 5px 0; text-transform: uppercase;">THỜI KHÓA BIỂU{{ $teacher ? ' GIÁO VIÊN' : '' }}</h1>
-                            <p style="font-size: 12px; font-weight: 700; color: #1f2937; margin: 5px 0;">
-                                <span style="background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 10px;">PHIÊN BẢN HIỆN TẠI</span>
+                        <div class="print-header-pdf" style="text-align: center; border-bottom: 1.5px solid black; padding-bottom: 8px; margin-bottom: 12px;">
+                            <h2 style="font-size: 13px; font-weight: 900; color: #4b5563; margin: 0; text-transform: uppercase;">{{ $schoolName }}</h2>
+                            <h1 style="font-size: 28px; font-weight: 900; color: #1d4ed8; margin: 2px 0; text-transform: uppercase;">THỜI KHÓA BIỂU{{ $teacher ? ' GIÁO VIÊN' : '' }}</h1>
+                            <p style="font-size: 13px; font-weight: 900; color: #1f2937; margin: 4px 0;">
                                 {{ $classroom ? 'LỚP: ' .  $targetName : 'HỌ TÊN: ' . $targetName }} 
                                 @if($appliesFromDate && $appliesToDate)
                                     | ÁP DỤNG: {{ $appliesFromDate->format('d/m/Y') }} - {{ $appliesToDate->format('d/m/Y') }}
@@ -168,6 +167,7 @@
                             <p style="font-size: 12px; font-weight: 700; color: #4b5563; margin: 0; text-transform: uppercase;">
                                 {{ $extraInfo }} 
                                 @if($teacher && $teacher->subject) | MÔN: {{ $teacher->subject->name }} @endif
+                                @if($teacher && $teacher->department) | TỔ: {{ $teacher->department }} @endif
                             </p>
                         </div>
 
@@ -176,7 +176,7 @@
                                 <tr style="background-color: #f1f5f9;">
                                     <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; width: 60px; text-align: center;">Tiết</th>
                                     @for($d=2; $d<=7; $d++)
-                                    <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; text-align: center;">Thứ {{ $d }}</th>
+                                    <th style="border: 1px solid black; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; text-align: center; width: 15.5%;">Thứ {{ $d }}</th>
                                     @endfor
                                 </tr>
                             </thead>
@@ -208,10 +208,10 @@
                                                 if ($teacher && !$cell && $gvcnClasses->isNotEmpty()) {
                                                     foreach($gvcnClasses as $c) {
                                                         $sShift = strtolower($c->shift ?? 'morning');
-                                                        $tfDay = Setting::getVal($sShift.'_flag_day', 2);
-                                                        $tfPer = Setting::getVal($sShift.'_flag_period', ($sShift == 'morning' ? 1 : 10));
-                                                        $tmDay = Setting::getVal($sShift.'_meeting_day', 7);
-                                                        $tmPer = Setting::getVal($sShift.'_meeting_period', ($sShift == 'morning' ? 5 : 10));
+                                                        $tfDay = \App\Models\Setting::getVal($sShift.'_flag_day', 2);
+                                                        $tfPer = \App\Models\Setting::getVal($sShift.'_flag_period', ($sShift == 'morning' ? 1 : 10));
+                                                        $tmDay = \App\Models\Setting::getVal($sShift.'_meeting_day', 7);
+                                                        $tmPer = \App\Models\Setting::getVal($sShift.'_meeting_period', ($sShift == 'morning' ? 5 : 10));
 
                                                         if ($assignFlag && $d == $tfDay && $p == $tfPer) { $isHomeroomFixed = true; $homeroomLabel = 'CHÀO CỜ'; $homeroomClassName = $c->name; break; }
                                                         if ($assignMeeting && $d == $tmDay && $p == $tmPer) { $isHomeroomFixed = true; $homeroomLabel = 'SINH HOẠT'; $homeroomClassName = $c->name; break; }
@@ -219,20 +219,20 @@
                                                 }
                                             @endphp
 
-                                            <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ ($isFixed || $isHomeroomFixed) ? '#f8f9fa' : '#ffffff' }}; padding: 4px;">
+                                            <td style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: {{ ($isFixed || $isHomeroomFixed) ? '#f8f9fa' : '#ffffff' }}; padding: 1px; width: 15.5%; height: 46px;">
                                                 @if($isFixed)
                                                     <span style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $fixedLabel }}</span>
                                                 @elseif($isHomeroomFixed)
-                                                    <div style="display: flex; flex-direction: column; line-height: 1.2;">
-                                                        <span style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $homeroomLabel }}</span>
-                                                        <span style="font-size: 10px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClassName }}</span>
+                                                    <div style="line-height: 1.2;">
+                                                        <div style="font-size: 11px; font-weight: 900; color: #6b7280;">{{ $homeroomLabel }}</div>
+                                                        <div style="font-size: 10px; font-weight: 700; color: #4b5563;">Lớp {{ $homeroomClassName }}</div>
                                                     </div>
                                                 @elseif($cell)
-                                                    <div style="display: flex; flex-direction: column; line-height: 1.1;">
-                                                        <span style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase;">{{ $classroom ? $cell->assignment->subject->name : "LỚP " . $cell->assignment->classroom->name }}</span>
-                                                        <span style="font-size: 10px; font-weight: 700; color: #4b5563;">{{ $classroom ? $cell->assignment->teacher->name : $cell->assignment->subject->name }}</span>
+                                                    <div style="line-height: 1.1;">
+                                                        <div style="font-size: 12px; font-weight: 900; color: #1e40af; text-transform: uppercase; margin-bottom: 1px;">{{ $classroom ? $cell->assignment->subject->name : "LỚP " . $cell->assignment->classroom->name }}</div>
+                                                        <div style="font-size: 10px; font-weight: 700; color: #4b5563; margin-bottom: 0px;">{{ $classroom ? $cell->assignment->teacher->name : $cell->assignment->subject->name }}</div>
                                                         @if($cell->room_id)
-                                                            <span style="font-size: 9px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</span>
+                                                            <div style="font-size: 10px; font-weight: 900; color: #c2410c;">P: {{ $cell->room->name }}</div>
                                                         @endif
                                                     </div>
                                                 @endif
@@ -280,10 +280,14 @@
             const finalHtml = generateWordTemplate(content);
             
             const blob = new Blob(['\ufeff', finalHtml], { type: 'application/msword' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `TKB_${targetName}.doc`;
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `TKB_${targetName.replace(/\s+/g, '_')}.doc`;
+            document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
 
         function generateWordTemplate(content) {
@@ -292,10 +296,11 @@
                 <head><meta charset="utf-8"><style>
                     @page WordSection1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 0.5in 0.5in 0.5in 0.5in; }
                     div.WordSection1 { page: WordSection1; }
-                    table { border-collapse: collapse; width: 100%; border: 1pt solid black !important; }
-                    th, td { border: 1pt solid black !important; padding: 5px; text-align: center; font-family: 'Arial', sans-serif; }
+                    table { border-collapse: collapse; width: 100%; border: 1.5pt solid black !important; table-layout: fixed; }
+                    th, td { border: 1.2pt solid black !important; padding: 2px; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; vertical-align: middle; }
+                    .WordSection1 { zoom: 1; }
                 </style></head>
-                <body><div class="WordSection1">${content}</div></body></html>
+                <body style="font-family: 'Segoe UI', sans-serif;"><div class="WordSection1" style="width: 100%; margin: 0 auto; text-align: center;">${content}</div></body></html>
             `;
         }
 
@@ -308,14 +313,18 @@
                     <meta charset="UTF-8">
                     <title>In Thời Khóa Biểu</title>
                     <script src="https://cdn.tailwindcss.com"><\/script>
-                    <style>
-                        @page { size: A4 landscape; margin: 0; }
-                        body { background: white; -webkit-print-color-adjust: exact !important; padding: 10mm; font-family: sans-serif; }
-                        .print-table th, .print-table td { border: 1px solid black !important; }
-                    </style>
+                <style>
+                    @page { size: A4 landscape; margin: 5mm !important; }
+                    body { background: white; -webkit-print-color-adjust: exact !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+                    table { border-collapse: collapse; width: 100%; border: 1.5pt solid black !important; table-layout: fixed; }
+                    th, td { border: 1.2pt solid black !important; padding: 2px; text-align: center; vertical-align: middle; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                </style>
                 </head>
                 <body>
-                    ${content}
+                    <div style="width: 100%; max-width: 297mm; margin: 0 auto; background: white;">
+                        ${content}
+                    </div>
                 </body>
                 </html>
             `);

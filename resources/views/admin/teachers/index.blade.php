@@ -138,9 +138,11 @@
                                 <a href="{{ route('teachers.edit', $t->id) }}" class="flex items-center justify-center w-8 h-8 bg-slate-50 border border-slate-200 rounded-lg text-blue-500 hover:bg-blue-600 hover:text-white border-transparent transition-all shadow-sm" title="Sửa hồ sơ">
                                     <span class="material-symbols-outlined text-[16px]">edit_note</span>
                                 </a>
-                                <form action="{{ route('teachers.destroy', $t->id) }}" method="POST" onsubmit="return confirm('Xác nhận xóa hồ sơ giáo viên này?')">
+                                <form action="{{ route('teachers.destroy', $t->id) }}" method="POST"
+                                    class="inline" hx-boost="false" onsubmit="return confirm('Xác nhận xóa hồ sơ giáo viên này?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="flex items-center justify-center w-8 h-8 bg-slate-50 border border-slate-200 rounded-lg text-red-400 hover:bg-red-500 hover:text-white border-transparent transition-all shadow-sm" title="Xóa giáo viên">
+                                    <button type="submit" 
+                                        class="flex items-center justify-center w-8 h-8 bg-slate-50 border border-slate-200 rounded-lg text-red-400 hover:bg-red-500 hover:text-white border-transparent transition-all shadow-sm" title="Xóa giáo viên">
                                         <span class="material-symbols-outlined text-[16px]">delete</span>
                                     </button>
                                 </form>

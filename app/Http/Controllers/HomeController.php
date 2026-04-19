@@ -38,18 +38,21 @@ class HomeController extends Controller
 
     public function index(Request $request)
     {
-        $schoolName    = Setting::getVal('school_name', 'TRƯỜNG THPT X');
-        $schoolYear    = Setting::getVal('school_year', '2023-2024');
-        $semester      = Setting::getVal('semester', 'Học kỳ I');
+        $settings      = Setting::pluck('value', 'key')->all();
+        $schoolName    = $settings['school_name']    ?? 'TRƯỜNG THPT X';
+        $schoolYear    = $settings['school_year']    ?? '2023-2024';
+        $semester      = $settings['semester']       ?? 'Học kỳ I';
+        
         $scheduleName  = $this->getScheduleName();
         
-        $principal     = Setting::getVal('principal_name', 'Nguyễn Văn A');
-        $vicePrincipal = Setting::getVal('vice_principal_name', 'Trần Thị B');
+        $principal     = $settings['principal_name']      ?? 'Nguyễn Văn A';
+        $vicePrincipal = $settings['vice_principal_name'] ?? 'Trần Thị B';
 
-        $assignFlag    = Setting::getVal('assign_gvcn_flag_salute', 0);
-        $assignMeeting = Setting::getVal('assign_gvcn_class_meeting', 0);
+        $assignFlag    = $settings['assign_gvcn_flag_salute']    ?? 0;
+        $assignMeeting = $settings['assign_gvcn_class_meeting']  ?? 0;
 
         $searchQuery = trim($request->get('q', ''));
+        $selectedDate = $request->get('date', now()->toDateString());
         
         $classroom   = null;
         $teacher     = null;
@@ -58,7 +61,6 @@ class HomeController extends Controller
         $gvcnName    = null;
         $shiftVars   = [];
 
-        $currentDate = now()->toDateString();
         $appliesFromDate = null;
         $appliesToDate   = null;
 
@@ -67,22 +69,19 @@ class HomeController extends Controller
             $classroom = Classroom::where('name', $searchQuery)->first();
             
             if ($classroom) {
-                // Lấy TKB phiên bản đang áp dụng cho ngày hôm nay
+                // 1. Thử tìm TKB bao gồm ngày được chọn
                 $schedules = Schedule::where('schedule_name', $scheduleName)
                     ->where('class_id', $classroom->id)
-                    ->where(function($q) use ($currentDate) {
-                        $q->where('applies_from', '<=', $currentDate)
-                          ->where('applies_to', '>=', $currentDate);
-                    })
+                    ->where('applies_from', '<=', $selectedDate)
+                    ->where('applies_to', '>=', $selectedDate)
                     ->with(['assignment.subject', 'assignment.teacher', 'room'])
                     ->get();
                 
-                // FALLBACK: Nếu hôm nay không nằm trong khoảng nào (ví dụ đang ở ngày nghỉ giữa 2 đợt), 
-                // thì lấy bản TKB gần nhất TRONG QUÁ KHỨ (không lấy bản của tương lai).
+                // 2. FALLBACK (Evergreen): Nếu ngày được chọn chưa có bản lịch riêng, lấy bản mới nhất trong quá khứ
                 if ($schedules->isEmpty()) {
                     $latestPastFrom = Schedule::where('schedule_name', $scheduleName)
                         ->where('class_id', $classroom->id)
-                        ->where('applies_from', '<=', $currentDate)
+                        ->where('applies_from', '<=', $selectedDate)
                         ->max('applies_from');
                     
                     if ($latestPastFrom) {
@@ -116,21 +115,19 @@ class HomeController extends Controller
                                   ->first();
                                   
                 if ($teacher) {
-                    // Lấy TKB phiên bản đang áp dụng cho ngày hôm nay cho GV
+                    // 1. Thử tìm TKB bao gồm ngày được chọn
                     $schedules = Schedule::where('schedule_name', $scheduleName)
                         ->where('teacher_id', $teacher->id)
-                        ->where(function($q) use ($currentDate) {
-                            $q->where('applies_from', '<=', $currentDate)
-                              ->where('applies_to', '>=', $currentDate);
-                        })
+                        ->where('applies_from', '<=', $selectedDate)
+                        ->where('applies_to', '>=', $selectedDate)
                         ->with(['assignment.subject', 'assignment.classroom', 'room'])
                         ->get();
 
-                    // FALLBACK: Lấy bản TKB gần nhất TRONG QUÁ KHỨ
+                    // 2. FALLBACK (Evergreen)
                     if ($schedules->isEmpty()) {
                         $latestPastFrom = Schedule::where('schedule_name', $scheduleName)
                             ->where('teacher_id', $teacher->id)
-                            ->where('applies_from', '<=', $currentDate)
+                            ->where('applies_from', '<=', $selectedDate)
                             ->max('applies_from');
                         
                         if ($latestPastFrom) {
@@ -156,7 +153,7 @@ class HomeController extends Controller
             'schoolName', 'schoolYear', 'semester', 'scheduleName',
             'principal', 'vicePrincipal',
             'searchQuery', 'classroom', 'teacher', 'schedules', 'gvcnClasses', 'gvcnName',
-            'shiftVars', 'assignFlag', 'assignMeeting', 'appliesFromDate', 'appliesToDate'
+            'shiftVars', 'assignFlag', 'assignMeeting', 'appliesFromDate', 'appliesToDate', 'selectedDate'
         ));
     }
 }

@@ -26,7 +26,7 @@
 
             <div class="flex flex-wrap items-center gap-3">
                 <button x-show="selectedConfigs.length > 0" 
-                        @click="if(confirm('CẢNH BÁO: Bạn sắp xóa ' + selectedConfigs.length + ' định mức chương trình học. Điều này có thể ảnh hưởng đến số tiết Ma trận. Bạn có chắc chắn không?')) document.getElementById('bulkDeleteForm').submit()"
+                        @click="if(confirm('CẢNH BÁO: Bạn sắp xóa ' + selectedConfigs.length + ' định mức chương trình học. Điều này có thể ảnh hưởng đến số tiết Ma trận. Bạn có chắc chắn không?')) document.getElementById('bulkDeleteForm').requestSubmit()"
                         x-transition
                         class="bg-red-500 text-white px-6 py-4 rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-600 transition-all flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">delete_sweep</span> Xóa (<span x-text="selectedConfigs.length"></span>)
@@ -131,9 +131,11 @@
                                         <a href="{{ route('curriculum.edit', $c->id) }}" class="p-2 bg-slate-50 rounded-xl text-blue-500 hover:bg-blue-500 hover:text-white transition-all shadow-sm border border-slate-100">
                                             <span class="material-symbols-outlined text-[16px]">edit</span>
                                         </a>
-                                        <form action="{{ route('curriculum.destroy', $c->id) }}" method="POST" onsubmit="return confirm('Xóa định mức môn này?')">
+                                        <form action="{{ route('curriculum.destroy', $c->id) }}" method="POST"
+                                            class="inline" hx-boost="false" onsubmit="return confirm('Xóa định mức môn này?')">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="p-2 bg-slate-50 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm border border-slate-100">
+                                            <button type="submit" 
+                                                class="p-2 bg-slate-50 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm border border-slate-100">
                                                 <span class="material-symbols-outlined text-[16px]">delete</span>
                                             </button>
                                         </form>

@@ -229,9 +229,15 @@
         });
         
         // HTMX config (hiển thị loading khi HTMX gọi AJAX)
-        document.addEventListener('htmx:configRequest', function() { 
+        document.addEventListener('htmx:configRequest', function(event) { 
             clearTimeout(nprogressTimer);
             nprogressTimer = setTimeout(() => NProgress.start(), 150); 
+            
+            // Tự động thêm CSRF Token vào Header cho HTMX (Dùng cho hx-delete, hx-post...)
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken) {
+                event.detail.headers['X-CSRF-TOKEN'] = csrfToken;
+            }
         });
         
         // ===========================================================================

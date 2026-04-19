@@ -31,7 +31,7 @@
 
                     <div class="flex items-center gap-2">
                         <button x-show="selectedRoomTypes.length > 0"
-                            @click="if(confirm('Xóa ' + selectedRoomTypes.length + ' loại phòng? Lưu ý: Chỉ xóa được loại phòng ĐANG TRỐNG.')) document.getElementById('bulkDeleteRoomTypesForm').submit()"
+                            @click="if(confirm('Xóa ' + selectedRoomTypes.length + ' loại phòng? Lưu ý: Chỉ xóa được loại phòng ĐANG TRỐNG.')) document.getElementById('bulkDeleteRoomTypesForm').requestSubmit()"
                             x-transition
                             class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white p-2.5 rounded-xl transition-all border border-red-100 flex items-center justify-center">
                             <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
@@ -52,10 +52,10 @@
                                 @php $allTypeIds = $roomTypes->pluck('id')->toJson(); @endphp
                                 <th class="p-4 w-12 text-center">
                                     <input type="checkbox" @change="
-                                            let ids = {{ $allTypeIds }}.map(id => String(id));
-                                            if($event.target.checked) selectedRoomTypes = [...new Set([...selectedRoomTypes, ...ids])];
-                                            else selectedRoomTypes = selectedRoomTypes.filter(id => !ids.includes(String(id)));
-                                        "
+                                                let ids = {{ $allTypeIds }}.map(id => String(id));
+                                                if($event.target.checked) selectedRoomTypes = [...new Set([...selectedRoomTypes, ...ids])];
+                                                else selectedRoomTypes = selectedRoomTypes.filter(id => !ids.includes(String(id)));
+                                            "
                                         :checked="{{ $roomTypes->count() > 0 ? 'true' : 'false' }} && {{ $allTypeIds }}.every(id => selectedRoomTypes.includes(String(id)))"
                                         class="w-3.5 h-3.5 text-blue-600 rounded border-slate-300">
                                 </th>
@@ -83,9 +83,9 @@
                                                 <span class="material-symbols-outlined text-[16px]">edit</span>
                                             </a>
                                             <form action="{{ route('room-types.destroy', $type->id) }}" method="POST"
-                                                onsubmit="return confirm('Xóa loại phòng này?')">
+                                                class="inline" hx-boost="false" onsubmit="return confirm('Xác nhận xóa loại phòng này? Lưu ý: Chỉ xóa được nếu loại phòng không chứa phòng nào.')">
                                                 @csrf @method('DELETE')
-                                                <button type="submit" class="text-red-400 hover:text-red-600">
+                                                <button type="submit" class="text-red-400 hover:text-red-600 transition-colors">
                                                     <span class="material-symbols-outlined text-[16px]">delete</span>
                                                 </button>
                                             </form>
@@ -105,7 +105,8 @@
 
                 <div class="p-4 bg-slate-50 border-t border-slate-100">
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">
-                        {{ $roomTypes->count() }} LOẠI PHÒNG</p>
+                        {{ $roomTypes->count() }} LOẠI PHÒNG
+                    </p>
                 </div>
             </div>
         </div>
@@ -126,7 +127,7 @@
 
                     <div class="flex items-center gap-3">
                         <button x-show="selectedRooms.length > 0"
-                            @click="if(confirm('Xóa ' + selectedRooms.length + ' phòng học? Nếu các phòng này đã được xếp trong TKB, lịch học của môn đó sẽ bị mất phòng.')) document.getElementById('bulkDeleteRoomsForm').submit()"
+                            @click="if(confirm('Xóa ' + selectedRooms.length + ' phòng học? Nếu các phòng này đã được xếp trong TKB, lịch học của môn đó sẽ bị mất phòng.')) document.getElementById('bulkDeleteRoomsForm').requestSubmit()"
                             x-transition
                             class="bg-red-500 text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-600 transition-all flex items-center gap-2">
                             <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Xóa (<span
@@ -148,10 +149,10 @@
                                 @php $allRoomIds = $rooms->pluck('id')->toJson(); @endphp
                                 <th class="px-8 py-5 w-12 text-center">
                                     <input type="checkbox" @change="
-                                            let ids = {{ $allRoomIds }}.map(id => String(id));
-                                            if($event.target.checked) selectedRooms = [...new Set([...selectedRooms, ...ids])];
-                                            else selectedRooms = selectedRooms.filter(id => !ids.includes(String(id)));
-                                        "
+                                                let ids = {{ $allRoomIds }}.map(id => String(id));
+                                                if($event.target.checked) selectedRooms = [...new Set([...selectedRooms, ...ids])];
+                                                else selectedRooms = selectedRooms.filter(id => !ids.includes(String(id)));
+                                            "
                                         :checked="{{ $rooms->count() > 0 ? 'true' : 'false' }} && {{ $allRoomIds }}.every(id => selectedRooms.includes(String(id)))"
                                         class="w-4 h-4 text-blue-600 rounded border-slate-300">
                                 </th>
@@ -185,7 +186,7 @@
                                                 <span class="material-symbols-outlined text-[16px]">edit</span> Sửa
                                             </a>
                                             <form action="{{ route('rooms.destroy', $room->id) }}" method="POST"
-                                                onsubmit="return confirm('Xóa phòng này?')">
+                                                class="inline" hx-boost="false" onsubmit="return confirm('Xác nhận xóa phòng này?')">
                                                 @csrf @method('DELETE')
                                                 <button type="submit"
                                                     class="text-slate-400 hover:text-red-500 font-black text-[10px] uppercase tracking-widest transition-colors flex items-center gap-1">

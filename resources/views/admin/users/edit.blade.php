@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-@section('title', 'Sửa Nhân Viên')
+@section('title', 'Sửa Cán Bộ')
 
 @section('content')
 
@@ -12,7 +12,8 @@
         'quan_ly_xep_lich' => 'Quản lý Xếp lịch',
         'quan_ly_giam_thi' => 'Quản lý Giám thị',
         'quan_ly_cai_dat' => 'Quản lý Cài đặt hệ thống',
-        'quan_ly_co_so_vat_chat' => 'Quản lý Cơ sở vật chất'
+        'quan_ly_co_so_vat_chat' => 'Quản lý Cơ sở vật chất',
+        'quan_ly_chuong_trinh_hoc' => 'Quản lý Chương trình học'
     ];
 @endphp
 
@@ -38,7 +39,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Họ và Tên <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" value="{{ $user->name }}" required placeholder="Nhập tên nhân viên..." 
+                        <input type="text" name="name" value="{{ $user->name }}" required placeholder="Nhập tên cán bộ..." 
                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-[#886cc0]/50 focus:border-[#886cc0] outline-none transition">
                     </div>
 
@@ -67,7 +68,7 @@
                     <span class="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-1 rounded-md">Lựa chọn nhiều quyền</span>
                 </div>
                 
-                <p class="text-sm text-gray-500 mb-6">Tích chọn các ô bên dưới để cập nhật quyền hạn cho nhân viên này.</p>
+                <p class="text-sm text-gray-500 mb-6">Tích chọn các ô bên dưới để cập nhật quyền hạn cho cán bộ này.</p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @foreach($permissions as $perm)

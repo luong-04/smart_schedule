@@ -51,8 +51,8 @@ class HomeController extends Controller
         $assignFlag    = $settings['assign_gvcn_flag_salute']    ?? 0;
         $assignMeeting = $settings['assign_gvcn_class_meeting']  ?? 0;
 
-        $searchQuery = trim($request->get('q', ''));
-        $selectedDate = $request->get('date', now()->toDateString());
+        $searchQuery = trim($request->input('q', ''));
+        $selectedDate = $request->input('date', now()->toDateString());
         
         $classroom   = null;
         $teacher     = null;
@@ -149,9 +149,13 @@ class HomeController extends Controller
             }
         }
 
+        $schoolAddress = $settings['school_address'] ?? '';
+        $schoolPhone   = $settings['school_phone']   ?? '';
+        $schoolEmail   = $settings['school_email']   ?? '';
+
         return view('trangchu', compact(
             'schoolName', 'schoolYear', 'semester', 'scheduleName',
-            'principal', 'vicePrincipal',
+            'principal', 'vicePrincipal', 'schoolAddress', 'schoolPhone', 'schoolEmail',
             'searchQuery', 'classroom', 'teacher', 'schedules', 'gvcnClasses', 'gvcnName',
             'shiftVars', 'assignFlag', 'assignMeeting', 'appliesFromDate', 'appliesToDate', 'selectedDate'
         ));

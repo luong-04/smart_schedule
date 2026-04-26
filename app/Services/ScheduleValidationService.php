@@ -7,6 +7,8 @@ use App\Models\Assignment;
 use App\Models\Classroom;
 use App\Models\SubjectConfiguration;
 use App\Models\Room;
+use App\Models\Setting;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Service Layer cho toàn bộ logic kiểm tra ràng buộc khi lưu lịch.
@@ -39,10 +41,10 @@ class ScheduleValidationService
     ): ?array {
         // Tính toán các tiết cố định từ settings
         $isMorning  = ($shiftStr === 'morning');
-        $flagDay    = $settings[$shiftStr . '_flag_day']    ?? \App\Models\Setting::DEFAULT_FLAG_DAY;
-        $flagPeriod = $settings[$shiftStr . '_flag_period'] ?? ($isMorning ? \App\Models\Setting::DEFAULT_FLAG_PER_M : \App\Models\Setting::DEFAULT_FLAG_PER_A);
-        $meetDay    = $settings[$shiftStr . '_meeting_day']    ?? \App\Models\Setting::DEFAULT_MEET_DAY;
-        $meetPeriod = $settings[$shiftStr . '_meeting_period'] ?? ($isMorning ? \App\Models\Setting::DEFAULT_MEET_PER_M : \App\Models\Setting::DEFAULT_MEET_PER_A);
+        $flagDay    = $settings[$shiftStr . '_flag_day']    ?? Setting::DEFAULT_FLAG_DAY;
+        $flagPeriod = $settings[$shiftStr . '_flag_period'] ?? ($isMorning ? Setting::DEFAULT_FLAG_PER_M : Setting::DEFAULT_FLAG_PER_A);
+        $meetDay    = $settings[$shiftStr . '_meeting_day']    ?? Setting::DEFAULT_MEET_DAY;
+        $meetPeriod = $settings[$shiftStr . '_meeting_period'] ?? ($isMorning ? Setting::DEFAULT_MEET_PER_M : Setting::DEFAULT_MEET_PER_A);
 
         $maxConsecutive      = (int) ($settings['max_consecutive_slots'] ?? 3);
         $maxDaysPerWeek      = (int) ($settings['max_days_per_week']     ?? 6);
@@ -142,8 +144,7 @@ class ScheduleValidationService
             }
         }
 
-        // ── 7. Kiểm tra tiết trống cho Lớp học ──────────────────────────────
-        // Chuyển teacherDayPeriods (teacherId -> day -> periods) thành classDayPeriods (day -> periods)
+        // Đảm bảo không có tiết trống trong lịch học của lớp
         $classDayPeriods = [];
         foreach ($teacherDayPeriods as $tId => $days) {
             foreach ($days as $day => $periods) {
@@ -158,7 +159,65 @@ class ScheduleValidationService
             }
         }
 
-        return null; // Mọi kiểm tra đều pass
+        // Kiểm tra tổng định mức tuần của Giáo viên
+        if ($error = $this->validateTeacherWeeklyLimit($teacherDayPeriods, $allAssignments, $settings, $teacherBusySlots)) {
+            return $error;
+        }
+
+        return null;
+    }
+
+    /**
+     * Xác thực định mức tiết dạy tuần của giáo viên (tổng tiết hiện có + tiết gán từ GVCN).
+     */
+    private function validateTeacherWeeklyLimit(array $teacherDayPeriods, $allAssignments, array $settings, array $teacherBusySlots): ?array
+    {
+        $assignFlag    = (bool) ($settings['assign_gvcn_flag_salute']    ?? false);
+        $assignMeeting = (bool) ($settings['assign_gvcn_class_meeting']  ?? false);
+
+        $teacherIds = array_keys($teacherDayPeriods);
+        
+        // Lấy thông tin GVCN (Số lớp chủ nhiệm của từng GV trong request)
+        $gvcnCounts = Classroom::whereIn('homeroom_teacher_id', $teacherIds)
+            ->select('homeroom_teacher_id', DB::raw('count(*) as count'))
+            ->groupBy('homeroom_teacher_id')
+            ->pluck('count', 'homeroom_teacher_id')
+            ->all();
+
+        foreach ($teacherDayPeriods as $tId => $days) {
+            // 1. Lấy thông tin giáo viên
+            $teacher = $allAssignments->first(fn($as) => $as->teacher_id == $tId)?->teacher;
+            if (!$teacher) continue;
+
+            $maxSlots = $teacher->max_slots_week;
+
+            // 2. Tính số tiết ở các lớp khác (đã load trong teacherBusySlots)
+            $usedOther = count($teacherBusySlots[$tId] ?? []);
+
+            // 3. Tính số tiết ở lớp hiện tại (đang trong request)
+            $usedHere = 0;
+            foreach ($days as $dayPeriods) {
+                $usedHere += count($dayPeriods);
+            }
+
+            // 4. Tính số tiết cộng thêm từ nhiệm vụ GVCN (Theo Setting)
+            $gvcnBonus = 0;
+            $classCount = $gvcnCounts[$tId] ?? 0;
+            if ($classCount > 0) {
+                if ($assignFlag)    $gvcnBonus += $classCount;
+                if ($assignMeeting) $gvcnBonus += $classCount;
+            }
+
+            $totalUsed = $usedOther + $usedHere + $gvcnBonus;
+
+            if ($totalUsed > $maxSlots) {
+                return [
+                    'message' => "Vượt định mức tuần: GV {$teacher->name} được phân tổng cộng {$totalUsed} tiết (bao gồm cả tiết GVCN nếu có), vượt quá giới hạn cho phép là {$maxSlots} tiết/tuần!"
+                ];
+            }
+        }
+
+        return null;
     }
 
     // ─────────────────────────────────────────────────────────────────────────

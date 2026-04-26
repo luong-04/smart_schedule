@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-@section('title', 'Quản lý Nhân viên')
+@section('title', 'Quản lý Cán bộ')
 
 @section('content')
 
@@ -28,19 +28,19 @@
     <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h2 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Người dùng & Phân quyền</h2>
-            <p class="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Hệ thống / <span class="text-blue-600">Nhân viên</span></p>
+            <p class="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Hệ thống / <span class="text-blue-600">Cán bộ</span></p>
         </div>
         
         <div class="flex items-center gap-3">
             <button x-show="selectedUsers.length > 0" 
-                    @click="if(confirm('CẢNH BÁO: Bạn sắp xóa ' + selectedUsers.length + ' tài khoản nhân viên. Thao tác này không thể hoàn tác. Tiếp tục?')) document.getElementById('bulkDeleteForm').requestSubmit()"
+                    @click="if(confirm('CẢNH BÁO: Bạn sắp xóa ' + selectedUsers.length + ' tài khoản cán bộ. Thao tác này không thể hoàn tác. Tiếp tục?')) document.getElementById('bulkDeleteForm').requestSubmit()"
                     x-transition
                     class="bg-red-500 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-200 hover:bg-red-600 transition-all flex items-center gap-2">
                 <span class="material-symbols-outlined text-[18px]">delete_sweep</span> Xóa (<span x-text="selectedUsers.length"></span>)
             </button>
 
             <a href="{{ route('users.create') }}" class="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-xl shadow-emerald-200">
-                <span class="material-symbols-outlined text-[18px]">add</span> Thêm nhân viên
+                <span class="material-symbols-outlined text-[18px]">add</span> Thêm cán bộ
             </a>
         </div>
     </div>
@@ -79,7 +79,7 @@
                                 :checked="{{ $users->count() > 0 ? 'true' : 'false' }} && {{ $allIdsJson }}.every(id => selectedUsers.includes(String(id)))"
                                 class="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
                         </th>
-                        <th class="px-6 py-5 font-black whitespace-nowrap">Nhân viên</th>
+                        <th class="px-6 py-5 font-black whitespace-nowrap">Cán bộ</th>
                         <th class="px-6 py-5 font-black whitespace-nowrap">Email đăng nhập</th>
                         <th class="px-6 py-5 font-black">Quyền hạn hệ thống</th>
                         <th class="px-6 py-5 font-black text-center whitespace-nowrap">Trạng thái</th>
@@ -132,7 +132,7 @@
                                     <span class="material-symbols-outlined text-[18px]">edit_note</span>
                                 </a>
                                 <form action="{{ route('users.destroy', $user->id) }}" method="POST"
-                                    class="inline" hx-boost="false" onsubmit="return confirm('Bạn có chắc chắn muốn xóa nhân viên này?')">
+                                    class="inline" hx-boost="false" onsubmit="return confirm('Bạn có chắc chắn muốn xóa cán bộ này?')">
                                     @csrf @method('DELETE')
                                     <button type="submit" 
                                         class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Xóa tài khoản">
@@ -148,7 +148,7 @@
                     <tr>
                         <td colspan="6" class="px-6 py-16 text-center">
                             <span class="material-symbols-outlined text-5xl text-slate-200 mb-3 block">person_off</span>
-                            <p class="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy tài khoản nhân viên</p>
+                            <p class="text-xs font-black uppercase tracking-widest text-slate-400">Không tìm thấy tài khoản cán bộ</p>
                         </td>
                     </tr>
                     @endif

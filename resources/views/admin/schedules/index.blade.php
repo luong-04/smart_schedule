@@ -123,7 +123,7 @@
             {{-- Xem lại lịch sử các phiên bản cũ --}}
             @if($historyRanges->count() > 0)
             <div class="relative group">
-                <select onchange="window.location.href='?class_id={{ $selectedClassId }}&date='+this.value" class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest focus:ring-primary focus:border-primary cursor-pointer outline-none hover:bg-slate-50 transition-all appearance-none pr-10 shadow-sm">
+                <select onchange="window.location.href='?class_id={{ $selectedClassId }}&date='+this.value" class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest focus:ring-primary focus:border-primary cursor-pointer outline-none hover:bg-slate-50 transition-all appearance-none pr-10 shadow-sm bg-none">
                     <option value="">Lịch sử phiên bản</option>
                     @foreach($historyRanges as $range)
                         <option value="{{ $range->applies_from->toDateString() }}" {{ $appliesFrom == $range->applies_from->toDateString() ? 'selected' : '' }}>

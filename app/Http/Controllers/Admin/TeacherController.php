@@ -29,6 +29,10 @@ class TeacherController extends Controller
             return $c->subject_id . '-' . $c->grade . '-' . $c->block;
         });
 
+        $settings = \App\Models\Setting::pluck('value', 'key')->all();
+        $assignFlag    = $settings['assign_gvcn_flag_salute']    ?? 0;
+        $assignMeeting = $settings['assign_gvcn_class_meeting']  ?? 0;
+
         foreach ($teachers as $t) {
             $totalAssigned = 0;
             foreach ($t->assignments as $as) {
@@ -37,6 +41,14 @@ class TeacherController extends Controller
                 $config = $configs->get($key);
                 $totalAssigned += $config ? $config->slots_per_week : 0;
             }
+
+            // Tính toán tiết định mức cho Giáo viên chủ nhiệm dựa trên thiết lập hệ thống
+            $gvcnClassCount = Classroom::where('homeroom_teacher_id', $t->id)->count();
+            if ($gvcnClassCount > 0) {
+                if ($assignFlag)    $totalAssigned += $gvcnClassCount;
+                if ($assignMeeting) $totalAssigned += $gvcnClassCount;
+            }
+
             $t->total_assigned_slots = $totalAssigned;
         }
 

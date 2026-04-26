@@ -112,12 +112,12 @@ class ScheduleController extends Controller
             'assignments' => Assignment::count(),
         ];
 
-        // Tối ưu: Lấy 5 ID lớp có thay đổi gần nhất bằng truy vấn SQL thay vì tải toàn bộ TKB vào memory
+        // Lấy danh sách 10 lớp học có lịch được cập nhật mới nhất
         $recentClassIds = Schedule::where('schedule_name', $scheduleName)
-            ->select('class_id')
-            ->orderBy('updated_at', 'desc')
-            ->distinct()
-            ->limit(6)
+            ->select('class_id', DB::raw('MAX(updated_at) as latest_update'))
+            ->groupBy('class_id')
+            ->orderBy('latest_update', 'desc')
+            ->limit(10)
             ->pluck('class_id');
 
         $recentSchedules = collect();
@@ -131,7 +131,7 @@ class ScheduleController extends Controller
                 $recentSchedules->push($s);
         }
 
-        // Tính tổng số lớp ĐÃ có ít nhất 1 tiết trong bản TKB hiện tại
+        // Tính tổng số lớp học đã bắt đầu thực hiện xếp lịch
         $scheduledCount = Schedule::where('schedule_name', $scheduleName)
             ->distinct('class_id')
             ->count('class_id');

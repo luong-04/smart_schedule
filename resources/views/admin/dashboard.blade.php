@@ -200,14 +200,26 @@
                         <h3 class="font-black text-slate-700 uppercase tracking-widest text-[10px]">Gợi ý công việc</h3>
                     </div>
 
-                    <div class="space-y-4">
-                        <div class="flex items-start gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-50">
-                            <span class="material-symbols-outlined text-emerald-500 text-sm mt-0.5">verified</span>
-                            <p class="text-[10px] font-bold text-slate-500 leading-tight uppercase tracking-tight">Kiểm tra <span class="text-blue-600">Định mức môn học</span> trước khi xếp.</p>
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-50 group/tip hover:bg-white hover:shadow-sm transition-all">
+                            <span class="material-symbols-outlined text-amber-500 text-sm mt-0.5">meeting_room</span>
+                            <p class="text-[9px] font-bold text-slate-500 leading-tight uppercase tracking-tight">1. Cập nhật <span class="text-amber-600">Phòng học</span> để phân loại phòng lý thuyết/thực hành.</p>
                         </div>
-                        <div class="flex items-start gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-50">
-                            <span class="material-symbols-outlined text-indigo-500 text-sm mt-0.5">bolt</span>
-                            <p class="text-[10px] font-bold text-slate-500 leading-tight uppercase tracking-tight">Sử dụng <span class="text-indigo-600">Ma trận TKB</span> để tối ưu thời gian.</p>
+                        <div class="flex items-start gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-50 group/tip hover:bg-white hover:shadow-sm transition-all">
+                            <span class="material-symbols-outlined text-emerald-500 text-sm mt-0.5">reorder</span>
+                            <p class="text-[9px] font-bold text-slate-500 leading-tight uppercase tracking-tight">2. Thiết lập <span class="text-emerald-600">Định mức môn</span> cho từng khối để tránh xếp nhầm tiết.</p>
+                        </div>
+                        <div class="flex items-start gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-50 group/tip hover:bg-white hover:shadow-sm transition-all">
+                            <span class="material-symbols-outlined text-blue-500 text-sm mt-0.5">person_add</span>
+                            <p class="text-[9px] font-bold text-slate-500 leading-tight uppercase tracking-tight">3. Hoàn thành <span class="text-blue-600">Phân công giảng dạy</span> để ma trận hiển thị thẻ môn.</p>
+                        </div>
+                        <div class="flex items-start gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-50 group/tip hover:bg-white hover:shadow-sm transition-all">
+                            <span class="material-symbols-outlined text-purple-500 text-sm mt-0.5">groups</span>
+                            <p class="text-[9px] font-bold text-slate-500 leading-tight uppercase tracking-tight">4. Cập nhật <span class="text-purple-600">GVCN</span> để tự động gán tiết Chào cờ & Sinh hoạt.</p>
+                        </div>
+                        <div class="flex items-start gap-3 p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100 group/tip hover:bg-white hover:shadow-sm hover:border-indigo-600 transition-all">
+                            <span class="material-symbols-outlined text-indigo-500 text-sm mt-0.5">grid_view</span>
+                            <p class="text-[9px] font-bold text-slate-500 leading-tight uppercase tracking-tight uppercase tracking-tight">5. Sử dụng <span class="text-indigo-600">Ma trận TKB</span> để bắt đầu sắp xếp lịch.</p>
                         </div>
                     </div>
 

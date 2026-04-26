@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-@section('title', 'Thêm Nhân Viên')
+@section('title', 'Thêm Cán Bộ')
 
 @section('content')
 
@@ -12,7 +12,8 @@
         'quan_ly_xep_lich' => 'Quản lý Xếp lịch',
         'quan_ly_giam_thi' => 'Quản lý Giám thị',
         'quan_ly_cai_dat' => 'Quản lý Cài đặt hệ thống',
-        'quan_ly_co_so_vat_chat' => 'Quản lý Cơ sở vật chất'
+        'quan_ly_co_so_vat_chat' => 'Quản lý Cơ sở vật chất',
+        'quan_ly_chuong_trinh_hoc' => 'Quản lý Chương trình học'
     ];
 @endphp
 
@@ -20,7 +21,7 @@
     <a href="{{ route('users.index') }}" class="text-sm font-semibold text-gray-500 hover:text-[#886cc0] flex items-center gap-1 w-fit mb-2 transition">
         <span class="material-symbols-outlined text-[18px]">arrow_back</span> Quay lại danh sách
     </a>
-    <h2 class="text-2xl font-bold text-gray-800">Thêm Nhân Viên Mới</h2>
+    <h2 class="text-2xl font-bold text-gray-800">Thêm Cán Bộ Mới</h2>
 </div>
 
 <form action="{{ route('users.store') }}" method="POST">
@@ -37,7 +38,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Họ và Tên <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" required placeholder="Nhập tên nhân viên..." 
+                        <input type="text" name="name" required placeholder="Nhập tên cán bộ..." 
                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-[#886cc0]/50 focus:border-[#886cc0] outline-none transition">
                     </div>
 
@@ -65,7 +66,7 @@
                     <span class="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-1 rounded-md">Lựa chọn nhiều quyền</span>
                 </div>
                 
-                <p class="text-sm text-gray-500 mb-6">Tích chọn các ô bên dưới để cho phép nhân viên này nhìn thấy và quản lý các danh mục tương ứng trên Menu.</p>
+                <p class="text-sm text-gray-500 mb-6">Tích chọn các ô bên dưới để cho phép cán bộ này nhìn thấy và quản lý các danh mục tương ứng trên Menu.</p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @foreach($permissions as $perm)

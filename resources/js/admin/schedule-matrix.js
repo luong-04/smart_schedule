@@ -30,18 +30,21 @@ document.addEventListener('DOMContentLoaded', function () {
             zone.classList.remove('conflict-zone');
         });
 
-        if (!active || !teacherId) return;
+        if (!active) return;
 
-        const busySlots = teacherBusySlots[teacherId] || [];
-        const roomBusy = roomId ? (roomBusySlots[roomId] || []) : [];
+        // Lấy danh sách slot bận dựa trên cấu hình kiểm tra xung đột
+        const busySlots = (teacherId && CHECK_TEACHER_CONFLICT == 1) ? (teacherBusySlots[teacherId] || {}) : {};
+        const roomBusy = (roomId && CHECK_ROOM_CONFLICT == 1) ? (roomBusySlots[roomId] || {}) : {};
+
+        if (Object.keys(busySlots).length === 0 && Object.keys(roomBusy).length === 0) return;
 
         document.querySelectorAll('.drop-zone').forEach(zone => {
             const day = zone.dataset.day;
             const period = zone.dataset.period;
             const slotKey = `${day}-${period}`;
 
-            // Nếu slot này trùng với lịch bận của GV hoặc phòng học thì tô màu đỏ
-            if (busySlots.includes(slotKey) || roomBusy.includes(slotKey)) {
+            // Đánh dấu xung đột nếu slot trùng với lịch bận của giáo viên hoặc phòng học
+            if (busySlots.hasOwnProperty(slotKey) || roomBusy.hasOwnProperty(slotKey)) {
                 zone.classList.add('conflict-zone');
             }
         });
@@ -211,11 +214,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const roomId = select.value;
             const roomName = select.options[select.selectedIndex].text;
 
-            // Kiểm tra xung đột phòng học nếu cấu hình yêu cầu
+            // Kiểm tra xung đột phòng học (nếu được kích hoạt trong cài đặt)
             if (CHECK_ROOM_CONFLICT == 1) {
                 let slotKey = pendingTargetDay + '-' + pendingTargetPeriod;
-                if (roomBusySlots[roomId] && roomBusySlots[roomId].includes(slotKey)) {
-                    showToast(`[${roomName}] đã bận vào Thứ ${pendingTargetDay} - Tiết ${pendingTargetPeriod}!`, 'error');
+                if (roomBusySlots[roomId] && roomBusySlots[roomId].hasOwnProperty(slotKey)) {
+                    const conflictingClass = roomBusySlots[roomId][slotKey];
+                    showToast(`Phòng [${roomName}] đã được lớp [${conflictingClass}] sử dụng vào Thứ ${pendingTargetDay} - Tiết ${pendingTargetPeriod}!`, 'error');
                     return;
                 }
             }
@@ -349,11 +353,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
 
-                // 4. KIỂM TRA TRÙNG LỊCH BẬN (LỚP KHÁC)
+                // Kiểm tra trùng lịch giáo viên ở các lớp khác
                 if (CHECK_TEACHER_CONFLICT == 1) {
                     let slotKey = targetDay + '-' + targetPeriod;
-                    if (teacherBusySlots[tid] && teacherBusySlots[tid].includes(slotKey)) {
-                        showToast(`GV bận dạy lớp khác vào Thứ ${targetDay} - Tiết ${targetPeriod}!`, 'error');
+                    if (teacherBusySlots[tid] && teacherBusySlots[tid].hasOwnProperty(slotKey)) {
+                        const conflictingClass = teacherBusySlots[tid][slotKey];
+                        showToast(`GV đang bận dạy lớp [${conflictingClass}] vào Thứ ${targetDay} - Tiết ${targetPeriod}!`, 'error');
                         bounceBack();
                         return;
                     }

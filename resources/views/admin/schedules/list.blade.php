@@ -52,7 +52,7 @@
                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Chọn phiên bản TKB</label>
                 <div class="relative">
                     <select name="date" onchange="this.form.submit()" 
-                            class="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 outline-none bg-white text-sm font-bold text-slate-700 cursor-pointer appearance-none">
+                            class="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 outline-none bg-white text-sm font-bold text-slate-700 cursor-pointer appearance-none bg-none">
                         @foreach($historyRanges as $range)
                             @php 
                                 $rangeStart = $range->applies_from->toDateString();

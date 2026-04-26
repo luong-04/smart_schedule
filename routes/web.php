@@ -80,7 +80,10 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
         Route::get('/matrix', [ScheduleController::class, 'index'])->name('matrix.index');
         Route::post('/matrix/save', [ScheduleController::class, 'save'])->name('admin.schedules.save');
+    });
 
+    // 5b. NHÓM CHƯƠNG TRÌNH HỌC (TÁCH RIÊNG)
+    Route::middleware(['can:quan_ly_chuong_trinh_hoc'])->group(function () {
         Route::delete('curriculum/bulk-delete', [CurriculumController::class, 'bulkDelete'])->name('curriculum.bulkDelete');
         Route::post('curriculum/import', [CurriculumController::class, 'import'])->name('curriculum.import');
         Route::resource('curriculum', CurriculumController::class);

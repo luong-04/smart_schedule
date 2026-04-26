@@ -24,7 +24,8 @@ class DatabaseSeeder extends Seeder
             'quan_ly_xep_lich',
             'quan_ly_giam_thi',
             'quan_ly_cai_dat',
-            'quan_ly_co_so_vat_chat'
+            'quan_ly_co_so_vat_chat',
+            'quan_ly_chuong_trinh_hoc'
         ];
 
         foreach ($permissions as $permission) {

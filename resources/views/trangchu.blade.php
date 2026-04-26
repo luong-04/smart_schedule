@@ -262,12 +262,44 @@
     </main>
 
     <!-- Footer -->
-    <footer class="w-full bg-white border-t border-slate-200 py-10 px-6 no-print flex-shrink-0">
-        <div class="max-w-6xl mx-auto text-center">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                &copy; {{ date('Y') }} {{ $schoolName }} <br>
-                Hiệu trưởng: {{ $principal }} | Hiệu phó: {{ $vicePrincipal }}
-            </p>
+    <footer class="w-full bg-white border-t border-slate-200 py-12 px-6 no-print flex-shrink-0">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <div class="flex items-start gap-4">
+                    <div class="bg-blue-50 p-3 rounded-2xl text-blue-600 shadow-sm">
+                        <span class="material-symbols-outlined text-xl">location_on</span>
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Địa chỉ</h4>
+                        <p class="text-sm font-bold text-slate-700">{{ $schoolAddress ?: 'Chưa cập nhật địa chỉ' }}</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="bg-emerald-50 p-3 rounded-2xl text-emerald-600 shadow-sm">
+                        <span class="material-symbols-outlined text-xl">call</span>
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Điện thoại</h4>
+                        <p class="text-sm font-bold text-slate-700">{{ $schoolPhone ?: 'Chưa cập nhật SĐT' }}</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="bg-indigo-50 p-3 rounded-2xl text-indigo-600 shadow-sm">
+                        <span class="material-symbols-outlined text-xl">mail</span>
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email liên hệ</h4>
+                        <p class="text-sm font-bold text-slate-700">{{ $schoolEmail ?: 'Chưa cập nhật email' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-8 border-t border-slate-100 text-center">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
+                    &copy; {{ date('Y') }} {{ $schoolName }} <br>
+                    Ban giám hiệu: {{ $principal }} (Hiệu trưởng) | {{ $vicePrincipal }} (Hiệu phó)
+                </p>
+            </div>
         </div>
     </footer>
 

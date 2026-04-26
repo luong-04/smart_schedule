@@ -143,11 +143,14 @@
                 <div class="space-y-4">
                     <p class="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Nghiệp vụ & Cấu hình</p>
                     <div class="flex flex-col gap-1.5">
-                        @can('quan_ly_xep_lich')
+                        @can('quan_ly_chuong_trinh_hoc')
                         <a href="{{ route('curriculum.index') }}" class="premium-sidebar-item flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('curriculum.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
                             <span class="material-symbols-outlined {{ request()->routeIs('curriculum.*') ? 'text-blue-600' : 'text-slate-400' }}">history_edu</span>
                             <span class="text-sm">Chương trình học</span>
                         </a>
+                        @endcan
+                        
+                        @can('quan_ly_xep_lich')
                         <a href="{{ route('matrix.index') }}" hx-boost="false" class="premium-sidebar-item flex items-center gap-3 px-3 py-3 rounded-xl transition-all {{ request()->routeIs('matrix.*') ? 'sidebar-item-active font-bold shadow-sm' : 'text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm' }}">
                             <span class="material-symbols-outlined {{ request()->routeIs('matrix.*') ? 'text-blue-600' : 'text-slate-400' }}">grid_on</span>
                             <span class="text-sm">Ma trận TKB</span>

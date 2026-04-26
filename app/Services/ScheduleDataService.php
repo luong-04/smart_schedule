@@ -24,32 +24,33 @@ class ScheduleDataService
         $otherSchedules = Schedule::where('schedule_name', $scheduleName)
             ->where('class_id', '!=', $selectedClassId)
             ->where('applies_from', $appliesFrom)
-            ->get(['id', 'assignment_id', 'room_id', 'teacher_id', 'day_of_week', 'period']);
+            ->with(['assignment.classroom']) // Load thêm quan hệ để lấy tên lớp học
+            ->get(['id', 'assignment_id', 'room_id', 'teacher_id', 'day_of_week', 'period', 'class_id']);
 
         $teacherBusySlots = [];
         $teacherOtherDays = [];
         $roomBusySlots    = [];
 
         foreach ($otherSchedules as $sch) {
-            // Dùng teacher_id trực tiếp từ bảng schedules (đã được denormalize để tối ưu N+1)
-            $tId = $sch->teacher_id ?? ($sch->assignment->teacher_id ?? null);
+            $tId = $sch->teacher_id;
             if (!$tId) continue;
 
             $rId = $sch->room_id;
             $slotKey = $sch->day_of_week . '-' . $sch->period;
+            $className = $sch->assignment->classroom->name ?? ('Lớp ID ' . $sch->class_id);
 
-            // 1. Gom slot bận của giáo viên
-            $teacherBusySlots[$tId][] = $slotKey;
+            // Lưu thông tin slot bận của giáo viên kèm tên lớp học
+            $teacherBusySlots[$tId][$slotKey] = $className;
 
-            // 2. Gom các ngày giáo viên có tiết dạy (ở lớp khác)
+            // Thu thập các ngày trong tuần giáo viên đã có lịch dạy ở lớp khác
             if (!isset($teacherOtherDays[$tId])) $teacherOtherDays[$tId] = [];
             if (!in_array($sch->day_of_week, $teacherOtherDays[$tId])) {
                 $teacherOtherDays[$tId][] = $sch->day_of_week;
             }
 
-            // 3. Gom slot bận của phòng học
+            // Lưu thông tin slot bận của phòng học kèm tên lớp học
             if ($rId) {
-                $roomBusySlots[$rId][] = $slotKey;
+                $roomBusySlots[$rId][$slotKey] = $className;
             }
         }
 
@@ -117,9 +118,10 @@ class ScheduleDataService
             $teacherUsed     = $teacherUsedCounts[$as->teacher_id] ?? 0;
             $gvcnClassCount  = $gvcnCounts[$as->teacher_id] ?? 0;
 
+            // Tính tiết định mức cho GVCN dựa trên Cài đặt (Chào cờ/Sinh hoạt)
             if ($gvcnClassCount > 0) {
-                if ($assignFlag)   $teacherUsed += 1;
-                if ($assignMeeting) $teacherUsed += 1;
+                if ($assignFlag)    $teacherUsed += $gvcnClassCount;
+                if ($assignMeeting) $teacherUsed += $gvcnClassCount;
             }
 
             $as->teacher_remaining       = max(0, $as->teacher->max_slots_week - $teacherUsed);
